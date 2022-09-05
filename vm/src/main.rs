@@ -9,13 +9,13 @@ use move_core_types::{
     language_storage::ModuleId,
 };
 use vm::access_path::AccessPath;
+use vm::message::Message;
 use vm::storage::state_view::StateView;
-use vm::transaction::Transaction;
 use vm::KernelVM;
 
 use crate::vm::{
+    message::{Sample, Script, ScriptFunction},
     storage::data_view_resolver::DataViewResolver,
-    transaction::{Sample, Script, ScriptFunction},
 };
 
 fn main() {
@@ -25,10 +25,10 @@ fn main() {
 
     let mut vm = KernelVM::new();
 
-    let txs = vec![
-        Transaction::sample(),
-        Transaction::new_script(AccountAddress::ONE, Script::sample()),
-        Transaction::new_script_function(
+    let messages = vec![
+        Message::sample(),
+        Message::new_script(AccountAddress::ONE, Script::sample()),
+        Message::new_script_function(
             AccountAddress::ZERO,
             ScriptFunction::new(
                 ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
@@ -37,13 +37,12 @@ fn main() {
                 vec![(100 as u64).to_be_bytes().to_vec()],
             ),
         ),
-        Transaction::new_script_function(AccountAddress::ONE, ScriptFunction::sample()),
-        // Transaction::new_script_function(AccountAddress::ONE, ScriptFunction::sample()),
+        Message::new_script_function(AccountAddress::ONE, ScriptFunction::sample()),
     ];
 
-    for tx in txs {
+    for tx in messages {
         let resolver = DataViewResolver::new(&db);
-        let (status, output) = vm.execute_user_transaction(tx, &resolver);
+        let (status, output) = vm.execute_message(tx, &resolver);
 
         println!("\nstatus {:?}", status);
         println!(

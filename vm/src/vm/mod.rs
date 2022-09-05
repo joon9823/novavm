@@ -1,9 +1,6 @@
 use anyhow::Result;
 use move_core_types::{
-    account_address::AccountAddress,
-    effects::{ChangeSet, Event},
-    value::MoveValue,
-    vm_status::StatusCode,
+    account_address::AccountAddress, effects::ChangeSet, value::MoveValue, vm_status::StatusCode,
 };
 pub use move_core_types::{
     resolver::MoveResolver,
@@ -16,8 +13,8 @@ pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFil
 
 use std::sync::Arc;
 
-pub mod transaction;
-use transaction::*;
+pub mod message;
+use message::*;
 
 use self::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 
@@ -40,11 +37,11 @@ impl KernelVM {
         }
     }
 
-    pub fn execute_user_transaction<S: StateView>(
+    pub fn execute_message<S: StateView>(
         &mut self,
-        txn: Transaction,
+        msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
-    ) -> (VMStatus, TransactionOutput) {
+    ) -> (VMStatus, MessageOutput) {
         // let gas_schedule = match self.get_gas_schedule() {
         //     Ok(gas_schedule) => gas_schedule,
         //     Err(e) => {
@@ -55,24 +52,23 @@ impl KernelVM {
         //         }
         //     }
         // };
-        let sender = txn.sender();
+        let sender = msg.sender();
 
-        let result = match txn.payload() {
-            payload @ TransactionPayload::Script(_)
-            | payload @ TransactionPayload::ScriptFunction(_) => {
-                self.execute_script_or_script_function(sender, remote_cache, txn.payload())
+        let result = match msg.payload() {
+            payload @ MessagePayload::Script(_) | payload @ MessagePayload::ScriptFunction(_) => {
+                self.execute_script_or_script_function(sender, remote_cache, payload)
             }
-            TransactionPayload::Module(m) => self.publish_module(sender, remote_cache, m),
+            MessagePayload::Module(m) => self.publish_module(sender, remote_cache, m),
         };
 
         match result {
             Ok(status_and_output) => status_and_output,
             Err(err) => {
-                let txn_status = TransactionStatus::from(err.clone());
+                let txn_status = MessageStatus::from(err.clone());
                 if txn_status.is_discarded() {
                     discard_error_vm_status(err)
                 } else {
-                    self.failed_transaction_cleanup(err, remote_cache)
+                    self.failed_message_cleanup(err, remote_cache)
                 }
             }
         }
@@ -83,7 +79,7 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         module: &Module,
-    ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+    ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
         let mut cost_strategy = UnmeteredGasMeter;
 
@@ -120,7 +116,7 @@ impl KernelVM {
             // charge_global_write_gas_usage(cost_strategy, &session, &txn_data.sender())?;
 
             // cost_strategy.set_metering(false);
-            self.success_transaction_cleanup(session)
+            self.success_message_cleanup(session)
         }
     }
 
@@ -128,8 +124,8 @@ impl KernelVM {
         &self,
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
-        payload: &TransactionPayload,
-    ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+        payload: &MessagePayload,
+    ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         let mut cost_strategy = UnmeteredGasMeter;
@@ -144,7 +140,7 @@ impl KernelVM {
         // Run the execution logic
         {
             match payload {
-                TransactionPayload::Script(script) => {
+                MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
                     // let Ok(s) = CompiledScript::deserialize(script.code());
                     let args = combine_signers_and_args(vec![sender], script.args().to_vec());
@@ -156,7 +152,7 @@ impl KernelVM {
                         &mut cost_strategy,
                     )
                 }
-                TransactionPayload::ScriptFunction(script_function) => {
+                MessagePayload::ScriptFunction(script_function) => {
                     let args = combine_signers_and_args(vec![sender], script_function.args().to_vec());
                     println!("num {:?}", script_function.ty_args().len());
                     session.execute_function_bypass_visibility(
@@ -167,7 +163,7 @@ impl KernelVM {
                         &mut cost_strategy,
                     )
                 }
-                TransactionPayload::Module(_) => {
+                MessagePayload::Module(_) => {
                     return Err(VMStatus::Error(StatusCode::UNREACHABLE));
                 }
             }
@@ -177,25 +173,25 @@ impl KernelVM {
                     e.into_vm_status()
                 })?;
 
-            self.success_transaction_cleanup(session)
+            self.success_message_cleanup(session)
         }
     }
 
-    fn success_transaction_cleanup<R: MoveResolver>(
+    fn success_message_cleanup<R: MoveResolver>(
         &self,
         mut session: Session<R>,
-    ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+    ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         Ok((
             VMStatus::Executed,
-            get_transaction_output(session, KeptVMStatus::Executed)?,
+            get_message_output(session, KeptVMStatus::Executed)?,
         ))
     }
 
-    fn failed_transaction_cleanup<S: StateView>(
+    fn failed_message_cleanup<S: StateView>(
         &self,
         error_code: VMStatus,
         remote_cache: &DataViewResolver<'_, S>,
-    ) -> (VMStatus, TransactionOutput) {
+    ) -> (VMStatus, MessageOutput) {
         // let mut gas_status = {
         //     let mut gas_status = GasStatus::new(gas_schedule, gas_left);
         //     gas_status.set_metering(false);
@@ -208,73 +204,26 @@ impl KernelVM {
         //     return discard_error_vm_status(error_code);
         // }
 
-        match TransactionStatus::from(error_code.clone()) {
-            TransactionStatus::Keep(status) => {
-                let txn_output = get_transaction_output(session, status)
+        match MessageStatus::from(error_code.clone()) {
+            MessageStatus::Keep(status) => {
+                let txn_output = get_message_output(session, status)
                     .unwrap_or_else(|e| discard_error_vm_status(e).1);
                 (error_code, txn_output)
             }
-            TransactionStatus::Discard(status) => {
+            MessageStatus::Discard(status) => {
                 (VMStatus::Error(status), discard_error_output(status))
             }
         }
     }
 }
 
-pub struct TransactionOutput {
-    change_set: ChangeSet,
-    events: Vec<Event>,
-
-    /// The amount of gas used during execution.
-    gas_used: u64,
-
-    /// The execution status.
-    status: TransactionStatus,
-}
-
-impl TransactionOutput {
-    pub fn new(
-        change_set: ChangeSet,
-        events: Vec<Event>,
-        gas_used: u64,
-        status: TransactionStatus,
-    ) -> Self {
-        TransactionOutput {
-            change_set,
-            events,
-            gas_used,
-            status,
-        }
-    }
-
-    pub fn change_set(&self) -> &ChangeSet {
-        &self.change_set
-    }
-
-    pub fn events(&self) -> &[Event] {
-        &self.events
-    }
-
-    pub fn gas_used(&self) -> u64 {
-        self.gas_used
-    }
-
-    pub fn status(&self) -> &TransactionStatus {
-        &self.status
-    }
-
-    pub fn into_inner(self) -> (ChangeSet, Vec<Event>, u64, TransactionStatus) {
-        (self.change_set, self.events, self.gas_used, self.status)
-    }
-}
-
-pub(crate) fn discard_error_output(err: StatusCode) -> TransactionOutput {
+pub(crate) fn discard_error_output(err: StatusCode) -> MessageOutput {
     info!("discard error output: {:?}", err);
-    // Since this transaction will be discarded, no writeset will be included.
-    TransactionOutput::new(ChangeSet::new(), vec![], 0, TransactionStatus::Discard(err))
+    // Since this message will be discarded, no writeset will be included.
+    MessageOutput::new(ChangeSet::new(), vec![], 0, MessageStatus::Discard(err))
 }
 
-pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, TransactionOutput) {
+pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, MessageOutput) {
     info!("discard error vm_status output: {:?}", err);
     let vm_status = err.clone();
     let error_code = match err.keep_or_discard() {
@@ -287,19 +236,19 @@ pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, TransactionOu
     (vm_status, discard_error_output(error_code))
 }
 
-pub(crate) fn get_transaction_output<R: MoveResolver>(
+pub(crate) fn get_message_output<R: MoveResolver>(
     session: Session<R>,
     status: KeptVMStatus,
-) -> Result<TransactionOutput, VMStatus> {
+) -> Result<MessageOutput, VMStatus> {
     let gas_used: u64 = 1;
 
     let (changeset, events) = session.finish().map_err(|e| e.into_vm_status())?;
 
-    Ok(TransactionOutput::new(
+    Ok(MessageOutput::new(
         changeset,
         events,
         gas_used,
-        TransactionStatus::Keep(status),
+        MessageStatus::Keep(status),
     ))
 }
 
