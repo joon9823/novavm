@@ -42,16 +42,6 @@ impl KernelVM {
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
     ) -> (VMStatus, MessageOutput) {
-        // let gas_schedule = match self.get_gas_schedule() {
-        //     Ok(gas_schedule) => gas_schedule,
-        //     Err(e) => {
-        //         if remote_cache.is_genesis() {
-        //             &G_LATEST_GAS_SCHEDULE
-        //         } else {
-        //             return discard_error_vm_status(e);
-        //         }
-        //     }
-        // };
         let sender = msg.sender();
 
         let result = match msg.payload() {
@@ -83,41 +73,18 @@ impl KernelVM {
         let mut session = self.move_vm.new_session(remote_cache);
         let mut cost_strategy = UnmeteredGasMeter;
 
-        {
-            // Run the validation logic
-            // cost_strategy.set_metering(false);
-            // genesis txn skip check gas and txn prologue.
-            // if !remote_cache.is_genesis() {
-            //     //let _timer = TXN_VERIFICATION_SECONDS.start_timer();
-            //     self.check_gas(txn_data)?;
-            //     self.run_prologue(&mut session, cost_strategy, txn_data)?;
-            // }
-        }
-        {
-            // // Genesis txn not enable gas charge.
-            // if !remote_cache.is_genesis() {
-            //     cost_strategy.set_metering(true);
-            // }
-            // cost_strategy
-            //     .charge_intrinsic_gas(txn_data.transaction_size())
-            //     .map_err(|e| e.into_vm_status())?;
-
-            session
+        session
                 .publish_module(module.code().to_vec(), sender, &mut cost_strategy)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
 
-            // after publish the modules, we need to clear loader cache, to make init script function and
-            // epilogue use the new modules.
-            // session.empty_loader_cache()?;
+        // after publish the modules, we need to clear loader cache, to make init script function and
+        // epilogue use the new modules.
+        // session.empty_loader_cache()?;
 
-            // charge_global_write_gas_usage(cost_strategy, &session, &txn_data.sender())?;
-
-            // cost_strategy.set_metering(false);
-            self.success_message_cleanup(session)
-        }
+        self.success_message_cleanup(session)
     }
 
     fn execute_script_or_script_function<S: StateView>(
@@ -130,16 +97,7 @@ impl KernelVM {
 
         let mut cost_strategy = UnmeteredGasMeter;
 
-        // Run the validation logic
-        {
-            // cost_strategy.set_metering(false);
-            // //let _timer = TXN_VERIFICATION_SECONDS.start_timer();
-            // run prologue
-        }
-
-        // Run the execution logic
-        {
-            match payload {
+        match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
                     // let Ok(s) = CompiledScript::deserialize(script.code());
@@ -173,8 +131,7 @@ impl KernelVM {
                     e.into_vm_status()
                 })?;
 
-            self.success_message_cleanup(session)
-        }
+        self.success_message_cleanup(session)
     }
 
     fn success_message_cleanup<R: MoveResolver>(
@@ -192,17 +149,7 @@ impl KernelVM {
         error_code: VMStatus,
         remote_cache: &DataViewResolver<'_, S>,
     ) -> (VMStatus, MessageOutput) {
-        // let mut gas_status = {
-        //     let mut gas_status = GasStatus::new(gas_schedule, gas_left);
-        //     gas_status.set_metering(false);
-        //     gas_status
-        // };
         let mut session: Session<_> = self.move_vm.new_session(remote_cache).into();
-
-        // init_script doesn't need run epilogue
-        // if remote_cache.is_genesis() {
-        //     return discard_error_vm_status(error_code);
-        // }
 
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
