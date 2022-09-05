@@ -9,6 +9,7 @@ edition = "2021"
 # - set package.edition to 2021
 # - set dependencies.*.branch to main. (originally those were dependencies.*.branch = "main")
 #  - it may be set back to rev before this package is published.
+# - set address20 features. (address length for secp256k1 is 20. see: https://docs.cosmos.network/master/basics/accounts.html)
 
 [dependencies]
 ##########################################################################################
@@ -50,11 +51,11 @@ move-vm-runtime = { git = "https://github.com/move-language/move", branch = "mai
 move-vm-test-utils = { git = "https://github.com/move-language/move", branch = "main" }
 move-vm-types = { git = "https://github.com/move-language/move", branch = "main" }
 read-write-set = { git = "https://github.com/move-language/move", branch = "main" }
-read-write-set-dynamic = { git = "https://github.com/move-language/move", branch = "main" }
+read-write-set-dynamic = { git = "https://github.com/move-language/20move", branch = "main" }
 
 [features]
 default = []
-address32 = ["move-core-types/address32"]
+address20 = ["move-core-types/address20"]
 fuzzing = ["move-core-types/fuzzing", "move-binary-format/fuzzing", "move-vm-types/fuzzing"]
 table-extension = ["move-unit-test/table-extension", "move-vm-test-utils/table-extension"]
 testing = ["move-stdlib/testing", "move-vm-runtime/testing"]
