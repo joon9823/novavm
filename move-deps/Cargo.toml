@@ -1,0 +1,61 @@
+[package]
+name = "move-deps"
+version = "0.0.1"
+publish = false
+edition = "2021"
+
+# This package is a copy from aptos-core/aptos-move/move-deps
+# CHANGES
+# - set package.edition to 2021
+# - set dependencies.*.branch to main. (originally those were dependencies.*.branch = "main")
+#  - it may be set back to rev before this package is published.
+
+[dependencies]
+##########################################################################################
+# !!!!! WARNING !!!!!
+#
+#   To update the Move dependencies, you MUST perform a search and replace throughout
+#   the whole repo. This is because we now have crates that directly depends on some Move
+#   crates, to dodge feature unification issues. Please DO NOT make them use move-deps,
+#   or you risk including testing only features in the production build.
+#
+#   The language team is aware of the poor user experience this created, and we are
+#   actively looking for solutions.
+#
+##########################################################################################
+move-abigen = { git = "https://github.com/move-language/move", branch = "main" }
+move-binary-format = { git = "https://github.com/move-language/move", branch = "main" }
+move-bytecode-utils = { git = "https://github.com/move-language/move", branch = "main" }
+move-bytecode-verifier = { git = "https://github.com/move-language/move", branch = "main" }
+move-cli = { git = "https://github.com/move-language/move", branch = "main" }
+move-command-line-common = { git = "https://github.com/move-language/move", branch = "main" }
+move-compiler = { git = "https://github.com/move-language/move", branch = "main" }
+move-core-types = { git = "https://github.com/move-language/move", branch = "main" }
+move-docgen = { git = "https://github.com/move-language/move", branch = "main" }
+move-errmapgen = { git = "https://github.com/move-language/move", branch = "main" }
+move-ir-compiler = { git = "https://github.com/move-language/move", branch = "main" }
+move-model = { git = "https://github.com/move-language/move", branch = "main" }
+move-package = { git = "https://github.com/move-language/move", branch = "main" }
+move-prover = { git = "https://github.com/move-language/move", branch = "main" }
+move-prover-boogie-backend = { git = "https://github.com/move-language/move", branch = "main" }
+move-prover-test-utils = { git = "https://github.com/move-language/move", branch = "main" }
+move-resource-viewer = { git = "https://github.com/move-language/move", branch = "main" }
+move-stackless-bytecode-interpreter = { git = "https://github.com/move-language/move", branch = "main" }
+move-stdlib = { git = "https://github.com/move-language/move", branch = "main" }
+move-symbol-pool = { git = "https://github.com/move-language/move", branch = "main" }
+move-table-extension = { git = "https://github.com/move-language/move", branch = "main" }
+move-transactional-test-runner = { git = "https://github.com/move-language/move", branch = "main" }
+move-unit-test = { git = "https://github.com/move-language/move", branch = "main" }
+move-vm-runtime = { git = "https://github.com/move-language/move", branch = "main" }
+move-vm-test-utils = { git = "https://github.com/move-language/move", branch = "main" }
+move-vm-types = { git = "https://github.com/move-language/move", branch = "main" }
+read-write-set = { git = "https://github.com/move-language/move", branch = "main" }
+read-write-set-dynamic = { git = "https://github.com/move-language/move", branch = "main" }
+
+[features]
+default = []
+address32 = ["move-core-types/address32"]
+fuzzing = ["move-core-types/fuzzing", "move-binary-format/fuzzing", "move-vm-types/fuzzing"]
+table-extension = ["move-unit-test/table-extension", "move-vm-test-utils/table-extension"]
+testing = ["move-stdlib/testing", "move-vm-runtime/testing"]
+failpoints = ["move-vm-runtime/failpoints"]
