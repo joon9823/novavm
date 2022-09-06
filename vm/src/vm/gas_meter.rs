@@ -781,3 +781,31 @@ pub fn unit_cost_table() -> CostTable {
     });
     cost_schedule
 }
+
+#[test]
+fn test_zero_cost_schedule() {
+    let cost_table = zero_cost_schedule();
+    for cost in cost_table.instruction_table.iter() {
+        assert_eq!(*cost, GasCost::new(0, 0));
+    }
+}
+
+#[test]
+fn test_unit_cost_table() {
+    let cost_table = unit_cost_table();
+    for cost in cost_table.instruction_table.iter() {
+        assert_eq!(*cost, GasCost::new(1, 1));
+    }
+}
+
+#[test]
+fn test_new_from_instructions() {
+    let instrs = bytecode_instruction_costs();
+    let cost_table = new_from_instructions(instrs);
+    
+    let mut instrs2 = bytecode_instruction_costs();
+    instrs2.sort_by_key(|cost| instruction_key(&cost.0));
+    for (instr, cost) in cost_table.instruction_table.iter().enumerate() {
+        assert_eq!(*cost, instrs2[instr].1);
+    }
+}
