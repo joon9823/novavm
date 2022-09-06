@@ -1,13 +1,12 @@
 use anyhow::Result;
 use move_core_types::{
-    account_address::AccountAddress, effects::ChangeSet, value::MoveValue, vm_status::StatusCode,
+    account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
 };
 pub use move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
 };
 use move_vm_runtime::{move_vm::MoveVM, session::Session};
-use move_vm_types::gas::UnmeteredGasMeter;
 
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
@@ -24,6 +23,9 @@ pub mod access_path;
 pub mod storage;
 pub mod gas_meter;
 
+
+mod args_validator;
+use args_validator::validate_combine_signer_and_txn_args;
 
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -109,7 +111,9 @@ impl KernelVM {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
                     // let Ok(s) = CompiledScript::deserialize(script.code());
-                    let args = combine_signers_and_args(vec![sender], script.args().to_vec());
+                    let loaded_func =
+                        session.load_script(script.code(), script.ty_args().to_vec())?;
+                    let args = validate_combine_signer_and_txn_args(&session, vec![sender], script.args().to_vec(), &loaded_func)?;
 
                     session.execute_script(
                         script.code().to_vec(),
@@ -118,13 +122,18 @@ impl KernelVM {
                         &mut cost_strategy,
                     )
                 }
-                MessagePayload::EntryFunction(script_function) => {
-                    let args = combine_signers_and_args(vec![sender], script_function.args().to_vec());
-                    // println!("num {:?}", script_function.ty_args().len());
-                    session.execute_function_bypass_visibility(
-                        script_function.module(),
-                        script_function.function(),
-                        script_function.ty_args().to_vec(),
+                MessagePayload::EntryFunction(entry_fn) => {
+                    let function = session.load_function(
+                        entry_fn.module(),
+                        entry_fn.function(),
+                        entry_fn.ty_args(),
+                    )?;
+                    let args = validate_combine_signer_and_txn_args(&session,vec![sender], entry_fn.args().to_vec(), &function)?;
+                    
+                    session.execute_entry_function(
+                        entry_fn.module(),
+                        entry_fn.function(),
+                        entry_fn.ty_args().to_vec(),
                         args,
                         &mut cost_strategy,
                     )
@@ -205,15 +214,4 @@ pub(crate) fn get_message_output<R: MoveResolver>(
         gas_used,
         MessageStatus::Keep(status),
     ))
-}
-
-fn combine_signers_and_args(
-    signers: Vec<AccountAddress>,
-    non_signer_args: Vec<Vec<u8>>,
-) -> Vec<Vec<u8>> {
-    signers
-        .into_iter()
-        .map(|s| MoveValue::Signer(s).simple_serialize().unwrap())
-        .chain(non_signer_args)
-        .collect()
 }
