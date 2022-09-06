@@ -51,7 +51,7 @@ move-vm-runtime = { git = "https://github.com/move-language/move", branch = "mai
 move-vm-test-utils = { git = "https://github.com/move-language/move", branch = "main" }
 move-vm-types = { git = "https://github.com/move-language/move", branch = "main" }
 read-write-set = { git = "https://github.com/move-language/move", branch = "main" }
-read-write-set-dynamic = { git = "https://github.com/move-language/20move", branch = "main" }
+read-write-set-dynamic = { git = "https://github.com/move-language/move", branch = "main" }
 
 [features]
 default = []
