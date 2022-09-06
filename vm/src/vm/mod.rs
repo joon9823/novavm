@@ -45,8 +45,8 @@ impl KernelVM {
         let sender = msg.sender();
 
         let result = match msg.payload() {
-            payload @ MessagePayload::Script(_) | payload @ MessagePayload::ScriptFunction(_) => {
-                self.execute_script_or_script_function(sender, remote_cache, payload)
+            payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
+                self.execute_script_or_entry_function(sender, remote_cache, payload)
             }
             MessagePayload::Module(m) => self.publish_module(sender, remote_cache, m),
         };
@@ -87,7 +87,7 @@ impl KernelVM {
         self.success_message_cleanup(session)
     }
 
-    fn execute_script_or_script_function<S: StateView>(
+    fn execute_script_or_entry_function<S: StateView>(
         &self,
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
@@ -110,7 +110,7 @@ impl KernelVM {
                         &mut cost_strategy,
                     )
                 }
-                MessagePayload::ScriptFunction(script_function) => {
+                MessagePayload::EntryFunction(script_function) => {
                     let args = combine_signers_and_args(vec![sender], script_function.args().to_vec());
                     println!("num {:?}", script_function.ty_args().len());
                     session.execute_function_bypass_visibility(
@@ -127,7 +127,7 @@ impl KernelVM {
             }
             .map_err(|e|
                 {
-                    println!("[VM] execute_script_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+                    println!("[VM] execute_entry_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
 

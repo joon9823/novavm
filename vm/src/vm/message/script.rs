@@ -71,7 +71,7 @@ impl Sample for Script {
 
 /// Call a Move script function.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ScriptFunction {
+pub struct EntryFunction {
     module: ModuleId,
     function: Identifier,
     ty_args: Vec<TypeTag>,
@@ -79,14 +79,14 @@ pub struct ScriptFunction {
     args: Vec<Vec<u8>>,
 }
 
-impl ScriptFunction {
+impl EntryFunction {
     pub fn new(
         module: ModuleId,
         function: Identifier,
         ty_args: Vec<TypeTag>,
         args: Vec<Vec<u8>>,
     ) -> Self {
-        ScriptFunction {
+        EntryFunction {
             module,
             function,
             ty_args,
@@ -114,7 +114,7 @@ impl ScriptFunction {
     }
 }
 
-impl Sample for ScriptFunction {
+impl Sample for EntryFunction {
     fn sample() -> Self {
         let amount: u64 = 100;
         Self {

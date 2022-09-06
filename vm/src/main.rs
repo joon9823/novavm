@@ -14,7 +14,7 @@ use vm::storage::state_view::StateView;
 use vm::KernelVM;
 
 use crate::vm::{
-    message::{Sample, Script, ScriptFunction},
+    message::{EntryFunction, Sample, Script},
     storage::data_view_resolver::DataViewResolver,
 };
 
@@ -28,16 +28,16 @@ fn main() {
     let messages = vec![
         Message::sample(),
         Message::new_script(AccountAddress::ONE, Script::sample()),
-        Message::new_script_function(
+        Message::new_entry_function(
             AccountAddress::ZERO,
-            ScriptFunction::new(
+            EntryFunction::new(
                 ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
                 Identifier::new("mint").unwrap(),
                 vec![],
                 vec![(100 as u64).to_be_bytes().to_vec()],
             ),
         ),
-        Message::new_script_function(AccountAddress::ONE, ScriptFunction::sample()),
+        Message::new_entry_function(AccountAddress::ONE, EntryFunction::sample()),
     ];
 
     for tx in messages {

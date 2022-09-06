@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 pub use module::Module;
-pub use script::{Script, ScriptFunction};
+pub use script::{EntryFunction, Script};
 
 mod module;
 mod script;
@@ -54,10 +54,10 @@ impl Message {
     /// Create a new `Message` with a script function.
     ///
     /// A script message contains only code to execute. No publishing is allowed in scripts.
-    pub fn new_script_function(sender: AccountAddress, script_function: ScriptFunction) -> Self {
+    pub fn new_entry_function(sender: AccountAddress, entry_function: EntryFunction) -> Self {
         Message {
             sender,
-            payload: MessagePayload::ScriptFunction(script_function),
+            payload: MessagePayload::EntryFunction(entry_function),
         }
     }
 
@@ -116,8 +116,8 @@ pub enum MessagePayload {
     Script(Script),
     /// A message that publish or update module code by a package.
     Module(Module),
-    /// A message that executes an existing script function published on-chain.
-    ScriptFunction(ScriptFunction),
+    /// A transaction that executes an existing entry function published on-chain.
+    EntryFunction(EntryFunction),
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -125,7 +125,7 @@ pub enum MessagePayload {
 pub enum MessagePayloadType {
     Script = 0,
     Module = 1,
-    ScriptFunction = 2,
+    EntryFunction = 2,
 }
 
 impl MessagePayload {
@@ -133,7 +133,7 @@ impl MessagePayload {
         match self {
             MessagePayload::Script(_) => MessagePayloadType::Script,
             MessagePayload::Module(_) => MessagePayloadType::Module,
-            MessagePayload::ScriptFunction(_) => MessagePayloadType::ScriptFunction,
+            MessagePayload::EntryFunction(_) => MessagePayloadType::EntryFunction,
         }
     }
 }
