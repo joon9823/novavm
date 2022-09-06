@@ -120,7 +120,7 @@ impl KernelVM {
                 }
                 MessagePayload::EntryFunction(script_function) => {
                     let args = combine_signers_and_args(vec![sender], script_function.args().to_vec());
-                    println!("num {:?}", script_function.ty_args().len());
+                    // println!("num {:?}", script_function.ty_args().len());
                     session.execute_function_bypass_visibility(
                         script_function.module(),
                         script_function.function(),
