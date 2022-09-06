@@ -18,9 +18,12 @@ use message::*;
 
 use self::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 
-pub mod access_path;
+use gas_meter::{GasStatus, Gas, unit_cost_table};
 
+pub mod access_path;
 pub mod storage;
+pub mod gas_meter;
+
 
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -71,7 +74,10 @@ impl KernelVM {
         module: &Module,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-        let mut cost_strategy = UnmeteredGasMeter;
+
+        // TODO : set gas_left with params
+        let cost_schedule = unit_cost_table();
+        let mut cost_strategy =  GasStatus::new(&cost_schedule,Gas::new(100_000u64));
 
         session
                 .publish_module(module.code().to_vec(), sender, &mut cost_strategy)
@@ -95,7 +101,9 @@ impl KernelVM {
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
-        let mut cost_strategy = UnmeteredGasMeter;
+        // TODO : set gas_left with params
+        let cost_schedule = unit_cost_table();
+        let mut cost_strategy =  GasStatus::new(&cost_schedule,Gas::new(100_000u64));
 
         match payload {
                 MessagePayload::Script(script) => {
