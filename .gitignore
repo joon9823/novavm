@@ -29,3 +29,7 @@ Cargo.lock
 
 #/target
 #/Cargo.lock
+
+# IDEs
+.idea/
+.vscode/
