@@ -233,9 +233,3 @@ impl MessageOutput {
         (self.change_set, self.events, self.gas_used, self.status)
     }
 }
-
-pub trait Sample {
-    /// A default construct for generate type Sample data for test or document.
-    /// Please ensure return same data when call sample fn.
-    fn sample() -> Self;
-}
