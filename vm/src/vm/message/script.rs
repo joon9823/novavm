@@ -123,7 +123,7 @@ impl Sample for EntryFunction {
             module: ModuleId::new(CORE_CODE_ADDRESS, Identifier::new("BasicCoin").unwrap()),
             function: Identifier::new("mint").unwrap(),
             ty_args: vec![],
-            args: vec![amount.to_be_bytes().to_vec()],
+            args: vec![amount.to_le_bytes().to_vec()],
         }
     }
 }
