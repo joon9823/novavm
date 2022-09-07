@@ -1,10 +1,8 @@
 script {
-    use std::debug;
-    const ONE: u64 = 1;
+    use 0x1::BasicCoin;
 
-    fun main(x: u64) {
-        let sum = x + ONE;
-        debug::print(&sum)
+    fun main(me: signer) {
+        BasicCoin::mint(me, 200);
     }
 }
 

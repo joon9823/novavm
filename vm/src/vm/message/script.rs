@@ -9,9 +9,6 @@ use move_deps::move_core_types::language_storage::{ModuleId, TypeTag};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[cfg(test)]
-use super::{Sample, CORE_CODE_ADDRESS};
-
 /// Call a Move script.
 #[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Script {
@@ -58,18 +55,6 @@ impl fmt::Debug for Script {
     }
 }
 
-#[cfg(test)]
-impl Sample for Script {
-    fn sample() -> Self {
-        Self {
-            code: include_bytes!("../../../move-test/build/test1/bytecode_scripts/main.mv")
-                .to_vec(),
-            ty_args: vec![],
-            args: vec![],
-        }
-    }
-}
-
 /// Call a Move script function.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct EntryFunction {
@@ -112,18 +97,5 @@ impl EntryFunction {
     }
     pub fn into_inner(self) -> (ModuleId, Identifier, Vec<TypeTag>, Vec<Vec<u8>>) {
         (self.module, self.function, self.ty_args, self.args)
-    }
-}
-
-#[cfg(test)]
-impl Sample for EntryFunction {
-    fn sample() -> Self {
-        let amount: u64 = 100;
-        Self {
-            module: ModuleId::new(CORE_CODE_ADDRESS, Identifier::new("BasicCoin").unwrap()),
-            function: Identifier::new("mint").unwrap(),
-            ty_args: vec![],
-            args: vec![amount.to_le_bytes().to_vec()],
-        }
     }
 }

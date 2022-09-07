@@ -104,12 +104,6 @@ impl Message {
     }
 }
 
-impl Sample for Message {
-    fn sample() -> Self {
-        Self::new_module(genesis_address(), Module::sample())
-    }
-}
-
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum MessagePayload {
     /// A message that executes code.

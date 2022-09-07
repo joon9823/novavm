@@ -4,9 +4,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[cfg(test)]
-use super::Sample;
-
 #[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Module {
     code: Vec<u8>,
@@ -31,15 +28,5 @@ impl fmt::Debug for Module {
         f.debug_struct("Module")
             .field("code", &hex::encode(&self.code))
             .finish()
-    }
-}
-
-#[cfg(test)]
-impl Sample for Module {
-    fn sample() -> Self {
-        Self {
-            code: include_bytes!("../../../move-test/build/test1/bytecode_modules/BasicCoin.mv")
-                .to_vec(),
-        }
     }
 }
