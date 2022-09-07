@@ -1,0 +1,46 @@
+[package]
+name = "kernelproc"
+version = "0.1.0"
+edition = "2021"
+#rust-version = "1.63"
+description = "Kernel VM Engine"
+homepage = "https://www.kernellabs.co"
+repository = "https://github.com/Kernel-Labs/kernelvm"
+license = "Apache-2.0"
+authors = ["Geoff Lee <geoff@kernellabs.co>", "Jeff Woo <jeff@kernellabs.co>", "Harvey Han <harvey@kernellabs.co>"]
+exclude = [".gitignore"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# the example is to allow us to compile a muslc static lib with the same codebase as we compile the
+# normal dynamic libs (best workaround I could find to override crate-type on the command line)
+[[example]]
+name = "muslc"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+# This feature requires Rust nightly because it depends on the unstable backtrace feature.
+backtraces = []
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+
+[dev-dependencies]
+
+[build-dependencies]
+cbindgen = "0.24.3"
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = true
+lto = false
+debug-assertions = false
+codegen-units = 16
+panic = 'unwind'
+incremental = true
+overflow-checks = true
+

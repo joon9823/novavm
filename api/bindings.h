@@ -1,5 +1,7 @@
-#ifndef __KERNEL_VM__
-#define __KERNEL_VM__
+/* (c) 2022 KernelLabs. Licensed under Apache-2.0 */
+
+#ifndef __LIBKERNELVM__
+#define __LIBKERNELVM__
 
 /* Generated with cbindgen:0.24.3 */
 
@@ -7,8 +9,10 @@
 
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
 
 /**
  * An optional Vector type that requires explicit creation and destruction
@@ -120,15 +124,60 @@
  * // `output` is ready to be passed around
  * ```
  */
-typedef struct {
+typedef struct UnmanagedVector {
   /**
    * True if and only if this is None. If this is true, the other fields must be ignored.
    */
   bool is_none;
   uint8_t *ptr;
-  uintptr_t len;
-  uintptr_t cap;
+  size_t len;
+  size_t cap;
 } UnmanagedVector;
+
+/**
+ * An opaque type. `*gas_meter_t` represents a pointer to Go memory holding the gas meter.
+ */
+typedef struct gas_meter_t {
+  uint8_t _private[0];
+} gas_meter_t;
+
+typedef struct db_t {
+  uint8_t _private[0];
+} db_t;
+
+/**
+ * A view into a `Option<&[u8]>`, created and maintained by Rust.
+ *
+ * This can be copied into a []byte in Go.
+ */
+typedef struct U8SliceView {
+  /**
+   * True if and only if this is None. If this is true, the other fields must be ignored.
+   */
+  bool is_none;
+  const uint8_t *ptr;
+  size_t len;
+} U8SliceView;
+
+typedef struct Db_vtable {
+  int32_t (*read_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct UnmanagedVector*, struct UnmanagedVector*);
+  int32_t (*write_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct U8SliceView, struct UnmanagedVector*);
+  int32_t (*remove_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct UnmanagedVector*);
+} Db_vtable;
+
+typedef struct Db {
+  struct gas_meter_t *gas_meter;
+  struct db_t *state;
+  struct Db_vtable vtable;
+} Db;
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+void destroy_unmanaged_vector(struct UnmanagedVector v);
+
+struct UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 /**
  * Returns a version number of this library as a C string.
@@ -137,8 +186,8 @@ typedef struct {
  */
 const char *version_str(void);
 
-UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, uintptr_t length);
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
 
-void destroy_unmanaged_vector(UnmanagedVector v);
-
-#endif /* __KERNEL_VM__ */
+#endif /* __LIBKERNELVM__ */
