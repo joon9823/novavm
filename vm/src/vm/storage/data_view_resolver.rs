@@ -4,8 +4,8 @@ use crate::vm::access_path::AccessPath;
 
 use super::state_view::StateView;
 use log::error;
-use move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
-use move_core_types::{
+use move_deps::move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
+use move_deps::move_core_types::{
     account_address::AccountAddress,
     language_storage::{ModuleId, StructTag},
     resolver::{ModuleResolver, ResourceResolver},

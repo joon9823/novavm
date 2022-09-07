@@ -3,7 +3,7 @@
 //! It is important to note that the cost schedule defined in this file does not track hashing
 //! operations or other native operations; the cost of each native operation will be returned by the
 //! native function itself.
-use move_binary_format::{
+use move_deps::move_binary_format::{
     errors::{PartialVMError, PartialVMResult},
     file_format::{
         Bytecode, ConstantPoolIndex, FieldHandleIndex, FieldInstantiationIndex,
@@ -12,7 +12,7 @@ use move_binary_format::{
     },
     file_format_common::{instruction_key, Opcodes},
 };
-use move_core_types::{
+use move_deps::move_core_types::{
     gas_algebra::{
         AbstractMemorySize, GasQuantity, InternalGas, InternalGasPerAbstractMemoryUnit,
         InternalGasUnit, NumArgs, NumBytes, ToUnit, ToUnitFractional,
@@ -20,7 +20,7 @@ use move_core_types::{
     language_storage::ModuleId,
     vm_status::StatusCode,
 };
-use move_vm_types::{
+use move_deps::move_vm_types::{
     gas::{GasMeter, SimpleInstruction},
     views::{TypeView, ValueView},
 };
@@ -773,7 +773,6 @@ pub static INITIAL_COST_SCHEDULE: Lazy<CostTable> = Lazy::new(|| {
     new_from_instructions(instrs)
 });
 
-
 pub fn unit_cost_table() -> CostTable {
     let mut cost_schedule = zero_cost_schedule();
     cost_schedule.instruction_table.iter_mut().for_each(|cost| {
@@ -802,7 +801,7 @@ fn test_unit_cost_table() {
 fn test_new_from_instructions() {
     let instrs = bytecode_instruction_costs();
     let cost_table = new_from_instructions(instrs);
-    
+
     let mut instrs2 = bytecode_instruction_costs();
     instrs2.sort_by_key(|cost| instruction_key(&cost.0));
     for (instr, cost) in cost_table.instruction_table.iter().enumerate() {

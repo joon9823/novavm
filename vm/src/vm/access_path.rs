@@ -37,10 +37,12 @@
 
 // use crate::parser::parse_struct_tag;
 use anyhow::{bail, Result};
-use move_core_types::account_address::AccountAddress;
-use move_core_types::identifier::Identifier;
-use move_core_types::language_storage::{ModuleId, ResourceKey, StructTag, TypeTag};
-use move_core_types::parser::parse_type_tag;
+use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    identifier::Identifier,
+    language_storage::{ModuleId, ResourceKey, StructTag, TypeTag},
+    parser::parse_type_tag,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use std::fmt;

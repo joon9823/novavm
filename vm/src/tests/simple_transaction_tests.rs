@@ -1,14 +1,14 @@
-use std::collections::BTreeMap;
 use crate::vm::{
+    access_path::AccessPath,
+    message::Message,
     message::{EntryFunction, Sample, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    access_path::AccessPath,
-    message::Message,
-    KernelVM    
+    KernelVM,
 };
+use std::collections::BTreeMap;
 
-use move_core_types::{
+use move_deps::move_core_types::{
     account_address::AccountAddress,
     effects::{ChangeSet, Op},
     identifier::Identifier,

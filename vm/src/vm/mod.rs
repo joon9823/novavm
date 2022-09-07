@@ -1,12 +1,16 @@
 use anyhow::Result;
-use move_core_types::{
-    account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
+use move_deps::{
+    move_core_types::{
+        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
+    },
+    move_vm_runtime::{move_vm::MoveVM, session::Session},
 };
-pub use move_core_types::{
+
+pub use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
 };
-use move_vm_runtime::{move_vm::MoveVM, session::Session};
+
 
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 

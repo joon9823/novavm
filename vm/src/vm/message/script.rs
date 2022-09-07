@@ -4,8 +4,8 @@
 // use crate::account_config::core_code_address;
 use crate::serde_helper::vec_bytes;
 
-use move_core_types::identifier::{IdentStr, Identifier};
-use move_core_types::language_storage::{ModuleId, TypeTag};
+use move_deps::move_core_types::identifier::{IdentStr, Identifier};
+use move_deps::move_core_types::language_storage::{ModuleId, TypeTag};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
