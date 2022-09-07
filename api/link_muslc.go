@@ -1,6 +1,6 @@
-//go:build linux && muslc && !sys_kernelvm
+//go:build linux && muslc && !sys_kernelproc
 
 package api
 
-// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelvm_muslc
+// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelproc_muslc
 import "C"

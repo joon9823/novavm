@@ -198,7 +198,7 @@ struct UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t
 /**
  * Returns a version number of this library as a C string.
  *
- * The string is owned by libkernelvm and must not be mutated or destroyed by the caller.
+ * The string is owned by libkernelproc and must not be mutated or destroyed by the caller.
  */
 const char *version_str(void);
 
