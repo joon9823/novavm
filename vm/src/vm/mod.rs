@@ -157,7 +157,7 @@ impl KernelVM {
 
     fn success_message_cleanup<R: MoveResolver>(
         &self,
-        mut session: Session<R>,
+        session: Session<R>,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         Ok((
             VMStatus::Executed,
@@ -170,7 +170,7 @@ impl KernelVM {
         error_code: VMStatus,
         remote_cache: &DataViewResolver<'_, S>,
     ) -> (VMStatus, MessageOutput) {
-        let mut session: Session<_> = self.move_vm.new_session(remote_cache).into();
+        let session: Session<_> = self.move_vm.new_session(remote_cache).into();
 
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
