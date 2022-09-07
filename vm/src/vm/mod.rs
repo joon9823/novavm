@@ -43,12 +43,12 @@ impl KernelVM {
         &mut self,
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
-        gas_left : Gas
+        gas_limit : Gas
     ) -> (VMStatus, MessageOutput) {
         let sender = msg.sender();
 
         let cost_schedule = unit_cost_table();
-        let cost_strategy =  GasStatus::new(&cost_schedule, gas_left);
+        let cost_strategy =  GasStatus::new(&cost_schedule, gas_limit);
 
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
