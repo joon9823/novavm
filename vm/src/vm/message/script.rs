@@ -9,6 +9,7 @@ use move_deps::move_core_types::language_storage::{ModuleId, TypeTag};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[cfg(test)]
 use super::{Sample, CORE_CODE_ADDRESS};
 
 /// Call a Move script.
@@ -57,14 +58,14 @@ impl fmt::Debug for Script {
     }
 }
 
+#[cfg(test)]
 impl Sample for Script {
-    /// Sample script source code empty_script.move
     fn sample() -> Self {
         Self {
-            code: hex::decode("a11ceb0b0500000007010002030206040802050a0707110c081d10062d0a0000000101020100000001030106090000056465627567057072696e740000000000000000000000000000000103080100000000000000000000070b000700160c010e01380002")
-                .expect("Decode sample script should success."),
+            code: include_bytes!("../../../move-test/build/test1/bytecode_scripts/main.mv")
+                .to_vec(),
             ty_args: vec![],
-            args: vec![(100 as u64).to_be_bytes().to_vec()],
+            args: vec![],
         }
     }
 }
@@ -114,6 +115,7 @@ impl EntryFunction {
     }
 }
 
+#[cfg(test)]
 impl Sample for EntryFunction {
     fn sample() -> Self {
         let amount: u64 = 100;

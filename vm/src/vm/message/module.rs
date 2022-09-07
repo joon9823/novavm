@@ -4,7 +4,9 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[cfg(test)]
 use super::Sample;
+
 #[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Module {
     code: Vec<u8>,
@@ -32,21 +34,12 @@ impl fmt::Debug for Module {
     }
 }
 
+#[cfg(test)]
 impl Sample for Module {
-    ///Sample module's source code:
-    /// ```move
-    /// address 0x1{
-    ///     module M{
-    ///     }
-    /// }
-    /// ```
-    ///
     fn sample() -> Self {
         Self {
-            code: hex::decode(
-                "a11ceb0b0500000008010002020204030605050b04070f1a0829100a39050c3e0f0000000108000002000100020c0300094261736963436f696e04436f696e046d696e740576616c75650000000000000000000000000000000100020103030001000001050e000b0112002d000200",
-            )
-            .expect("decode sample module should success"),
+            code: include_bytes!("../../../move-test/build/test1/bytecode_modules/BasicCoin.mv")
+                .to_vec(),
         }
     }
 }
