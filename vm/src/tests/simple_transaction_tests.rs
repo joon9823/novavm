@@ -5,7 +5,8 @@ use crate::vm::{
     storage::state_view::StateView,
     access_path::AccessPath,
     message::Message,
-    KernelVM, gas_meter::Gas    
+    gas_meter::Gas,
+    KernelVM,
 };
 
 use move_core_types::{
