@@ -1,5 +1,6 @@
 use crate::vm::{
     access_path::AccessPath,
+    gas_meter::Gas,
     message::Message,
     message::{EntryFunction, Sample, Script},
     storage::data_view_resolver::DataViewResolver,
@@ -75,20 +76,21 @@ fn test_simple_trasaction() {
         (Message::sample(), VMStatus::Executed),
         (Message::new_script(AccountAddress::ONE, Script::sample()), VMStatus::Error(StatusCode::LINKER_ERROR)),
         (Message::new_entry_function(
-            AccountAddress::ZERO,
-            EntryFunction::new(
-                ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
-                Identifier::new("mint").unwrap(),
-                vec![],
-                vec![(100 as u64).to_be_bytes().to_vec()],
-            ),
+                AccountAddress::ZERO,
+                EntryFunction::new(
+                    ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
+                    Identifier::new("mint").unwrap(),
+                    vec![],
+                    vec![(100 as u64).to_be_bytes().to_vec()],
+                ),
         ), VMStatus::Error(StatusCode::LINKER_ERROR)),
         (Message::new_entry_function(AccountAddress::ONE, EntryFunction::sample()), VMStatus::Executed),
     ];
 
+    let gas_left = Gas::new(100_000u64);
     for (tx, exp_status) in testcases {
         let resolver = DataViewResolver::new(&db);
-        let (status, output) = vm.execute_message(tx, &resolver);
+        let (status, output) = vm.execute_message(tx, &resolver, gas_left);
 
         assert!(status == exp_status);
         match status {
@@ -97,7 +99,7 @@ fn test_simple_trasaction() {
             },
             _ => assert!(output.change_set().accounts().len() == 0),
         }
- 
+
         if output.status().is_discarded() {
             continue;
         }

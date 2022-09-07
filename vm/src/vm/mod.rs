@@ -50,14 +50,18 @@ impl KernelVM {
         &mut self,
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
+        gas_limit : Gas
     ) -> (VMStatus, MessageOutput) {
         let sender = msg.sender();
 
+        let cost_schedule = unit_cost_table();
+        let cost_strategy =  GasStatus::new(&cost_schedule, gas_limit);
+
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(sender, remote_cache, payload)
+                self.execute_script_or_entry_function(sender, remote_cache, payload, cost_strategy)
             }
-            MessagePayload::Module(m) => self.publish_module(sender, remote_cache, m),
+            MessagePayload::Module(m) => self.publish_module(sender, remote_cache, m, cost_strategy),
         };
 
         match result {
@@ -72,18 +76,15 @@ impl KernelVM {
             }
         }
     }
-
+ 
     fn publish_module<S: StateView>(
         &self,
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         module: &Module,
+        mut cost_strategy : GasStatus
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-
-        // TODO : set gas_left with params
-        let cost_schedule = unit_cost_table();
-        let mut cost_strategy =  GasStatus::new(&cost_schedule,Gas::new(100_000u64));
 
         session
                 .publish_module(module.code().to_vec(), sender, &mut cost_strategy)
@@ -104,12 +105,9 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
+        mut cost_strategy : GasStatus
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-
-        // TODO : set gas_left with params
-        let cost_schedule = unit_cost_table();
-        let mut cost_strategy =  GasStatus::new(&cost_schedule,Gas::new(100_000u64));
 
         match payload {
                 MessagePayload::Script(script) => {
