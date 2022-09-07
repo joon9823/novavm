@@ -5,7 +5,7 @@ use crate::vm::{
     storage::state_view::StateView,
     access_path::AccessPath,
     message::Message,
-    KernelVM    
+    KernelVM, gas_meter::Gas    
 };
 
 use move_core_types::{
@@ -86,9 +86,10 @@ fn test_simple_trasaction() {
         (Message::new_entry_function(AccountAddress::ONE, EntryFunction::sample()), VMStatus::Executed),
     ];
 
+    let gas_left = Gas::new(100_000u64);
     for (tx, exp_status) in testcases {
         let resolver = DataViewResolver::new(&db);
-        let (status, output) = vm.execute_message(tx, &resolver);
+        let (status, output) = vm.execute_message(tx, &resolver, gas_left);
 
         assert!(status == exp_status);
         match status {
