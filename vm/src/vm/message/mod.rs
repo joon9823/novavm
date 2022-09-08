@@ -8,9 +8,9 @@ pub fn genesis_address() -> AccountAddress {
 
 use anyhow::{format_err, Error, Result};
 
-use move_core_types::effects::Event;
-use move_core_types::vm_status::*;
-use move_core_types::{account_address::AccountAddress, effects::ChangeSet};
+use move_deps::move_core_types::effects::Event;
+use move_deps::move_core_types::vm_status::*;
+use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

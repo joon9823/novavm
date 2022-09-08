@@ -1,15 +1,15 @@
-use std::collections::BTreeMap;
 use crate::vm::{
+    access_path::AccessPath,
+    gas_meter::Gas,
+    message::Message,
     message::{EntryFunction, Sample, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    access_path::AccessPath,
-    message::Message,
-    gas_meter::Gas,
     KernelVM,
 };
+use std::collections::BTreeMap;
 
-use move_core_types::{
+use move_deps::move_core_types::{
     account_address::AccountAddress,
     effects::{ChangeSet, Op},
     identifier::Identifier,
@@ -76,13 +76,13 @@ fn test_simple_trasaction() {
         (Message::sample(), VMStatus::Executed),
         (Message::new_script(AccountAddress::ONE, Script::sample()), VMStatus::Error(StatusCode::LINKER_ERROR)),
         (Message::new_entry_function(
-            AccountAddress::ZERO,
-            EntryFunction::new(
-                ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
-                Identifier::new("mint").unwrap(),
-                vec![],
-                vec![(100 as u64).to_be_bytes().to_vec()],
-            ),
+                AccountAddress::ZERO,
+                EntryFunction::new(
+                    ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
+                    Identifier::new("mint").unwrap(),
+                    vec![],
+                    vec![(100 as u64).to_be_bytes().to_vec()],
+                ),
         ), VMStatus::Error(StatusCode::LINKER_ERROR)),
         (Message::new_entry_function(AccountAddress::ONE, EntryFunction::sample()), VMStatus::Executed),
     ];
@@ -99,7 +99,7 @@ fn test_simple_trasaction() {
             },
             _ => assert!(output.change_set().accounts().len() == 0),
         }
- 
+
         if output.status().is_discarded() {
             continue;
         }
