@@ -27,6 +27,7 @@ backtraces = []
 crate-type = ["cdylib"]
 
 [dependencies]
+kernelvm = { version = "0.1.0", path = "../vm", features = ["backtraces"] }
 
 [dev-dependencies]
 
