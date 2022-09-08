@@ -11,6 +11,10 @@ authors = ["Geoff Lee <geoff@kernellabs.co>", "Jeff Woo <jeff@kernellabs.co>", "
 exclude = [".gitignore"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+backtraces = []
+
 [dependencies]
 move-binary-format = { git = "https://github.com/move-language/move", rev = "70b34a66473c34ad30d101290b249f2db3c847a2" }
 move-core-types = { git = "https://github.com/move-language/move", rev = "70b34a66473c34ad30d101290b249f2db3c847a2" }
@@ -25,3 +29,4 @@ hex = {version = "0.4.3", default-features = false}
 
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_warn"] }
 num_enum = "0.5.7"
+thiserror = "1.0.34"
