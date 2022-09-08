@@ -1,6 +1,6 @@
-//go:build linux && !muslc && amd64 && !sys_kernelvm
+//go:build linux && !muslc && amd64 && !sys_kernelproc
 
 package api
 
-// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelvm.x86_64
+// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelproc.x86_64
 import "C"

@@ -1,6 +1,6 @@
-//go:build sys_kernelvm
+//go:build sys_kernelproc
 
 package api
 
-// #cgo LDFLAGS: -lkernelvm
+// #cgo LDFLAGS: -lkernelproc
 import "C"

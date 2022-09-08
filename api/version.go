@@ -5,7 +5,7 @@ package api
 */
 import "C"
 
-func LibkernelvmVersion() (string, error) {
+func LibkernelprocVersion() (string, error) {
 	version_ptr, err := C.version_str()
 	if err != nil {
 		return "", err

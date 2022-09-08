@@ -1,6 +1,6 @@
-//go:build darwin && !sys_kernelvm
+//go:build darwin && !sys_kernelproc
 
 package api
 
-// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelvm
+// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelproc
 import "C"
