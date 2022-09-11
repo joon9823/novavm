@@ -9,8 +9,6 @@ use move_deps::move_core_types::language_storage::{ModuleId, TypeTag};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::{Sample, CORE_CODE_ADDRESS};
-
 /// Call a Move script.
 #[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Script {
@@ -57,18 +55,6 @@ impl fmt::Debug for Script {
     }
 }
 
-impl Sample for Script {
-    /// Sample script source code empty_script.move
-    fn sample() -> Self {
-        Self {
-            code: hex::decode("a11ceb0b0500000007010002030206040802050a0707110c081d10062d0a0000000101020100000001030106090000056465627567057072696e740000000000000000000000000000000103080100000000000000000000070b000700160c010e01380002")
-                .expect("Decode sample script should success."),
-            ty_args: vec![],
-            args: vec![(100 as u64).to_be_bytes().to_vec()],
-        }
-    }
-}
-
 /// Call a Move script function.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct EntryFunction {
@@ -111,17 +97,5 @@ impl EntryFunction {
     }
     pub fn into_inner(self) -> (ModuleId, Identifier, Vec<TypeTag>, Vec<Vec<u8>>) {
         (self.module, self.function, self.ty_args, self.args)
-    }
-}
-
-impl Sample for EntryFunction {
-    fn sample() -> Self {
-        let amount: u64 = 100;
-        Self {
-            module: ModuleId::new(CORE_CODE_ADDRESS, Identifier::new("BasicCoin").unwrap()),
-            function: Identifier::new("mint").unwrap(),
-            ty_args: vec![],
-            args: vec![amount.to_be_bytes().to_vec()],
-        }
     }
 }
