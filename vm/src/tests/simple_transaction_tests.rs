@@ -5,7 +5,7 @@ use crate::vm::{
     message::{EntryFunction, Sample, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    KernelVM,
+    kernel_vm::KernelVM,
 };
 use std::collections::BTreeMap;
 
