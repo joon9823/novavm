@@ -51,7 +51,6 @@ impl KernelVM {
         }
     }
 
-
     pub fn execute_message<S: StateView>(
         &mut self,
         msg: Message,

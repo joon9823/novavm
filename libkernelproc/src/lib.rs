@@ -15,7 +15,6 @@ pub use db::{db_t, Db};
 pub use memory::{
     destroy_unmanaged_vector, new_unmanaged_vector, ByteSliceView, U8SliceView, UnmanagedVector,
 };
-pub use vm::{create_vm_pool};
 
 #[cfg(test)]
 mod tests;

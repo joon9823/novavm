@@ -29,6 +29,7 @@ crate-type = ["cdylib"]
 [dependencies]
 errno = "0.2.8"
 kernelvm = { version = "0.1.0", path = "../vm", features = ["backtraces"] }
+once_cell = "1.14.0"
 pool = "0.1.4"
 thiserror = "1.0.34"
 
