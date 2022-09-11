@@ -11,7 +11,6 @@ pub use move_deps::move_core_types::{
     vm_status::{KeptVMStatus, VMStatus},
 };
 
-
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 use std::sync::Arc;
@@ -37,6 +36,12 @@ pub struct KernelVM {
     move_vm: Arc<MoveVM>,
 }
 
+impl Default for KernelVM{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KernelVM {
     pub fn new() -> Self {
         let inner = MoveVM::new(vec![])
@@ -45,6 +50,7 @@ impl KernelVM {
             move_vm: Arc::new(inner),
         }
     }
+
 
     pub fn execute_message<S: StateView>(
         &mut self,

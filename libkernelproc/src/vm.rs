@@ -1,3 +1,11 @@
-use kernelvm::vm;
+use std::sync::Arc;
 
-//static mut VM: vm::KernelVM = vm::KernelVM::new();
+use pool::Pool;
+
+use kernelvm::vm::KernelVM;
+
+
+pub fn create_vm_pool(cap: usize) -> Arc<Pool<KernelVM>> {
+   // Arc::new(Pool::new(cap, || KernelVM::new()))
+    Arc::new(Pool::with_capacity(cap, 0, || KernelVM::new()))
+}

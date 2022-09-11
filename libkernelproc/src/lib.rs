@@ -7,14 +7,15 @@ mod gas_meter;
 mod memory;
 mod version;
 mod vm;
-mod interface;
 mod error;
+mod interface;
 
 
 pub use db::{db_t, Db};
 pub use memory::{
     destroy_unmanaged_vector, new_unmanaged_vector, ByteSliceView, U8SliceView, UnmanagedVector,
 };
+pub use vm::{create_vm_pool};
 
 #[cfg(test)]
 mod tests;
