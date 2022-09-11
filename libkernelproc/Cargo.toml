@@ -27,7 +27,9 @@ backtraces = []
 crate-type = ["cdylib"]
 
 [dependencies]
+errno = "0.2.8"
 kernelvm = { version = "0.1.0", path = "../vm", features = ["backtraces"] }
+thiserror = "1.0.34"
 
 [dev-dependencies]
 

@@ -6,6 +6,10 @@ mod db;
 mod gas_meter;
 mod memory;
 mod version;
+mod vm;
+mod interface;
+mod error;
+
 
 pub use db::{db_t, Db};
 pub use memory::{

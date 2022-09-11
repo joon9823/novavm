@@ -17,19 +17,28 @@ else
 	endif
 endif
 
+all: test-filenames build test
+
 test-filenames:
 	echo $(SHARED_LIB_DST)
 	echo $(SHARED_LIB_SRC)
 
-all: test-filenames build test
 
-test:
+test: test-rust
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
 	RUST_BACKTRACE=1 go test -v -count=1 ./...
 
 test-safety:
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
 	GODEBUG=cgocheck=2 go test -race -v -count=1 ./...
+
+test-rust: test-vm test-lib
+
+test-vm:
+	(cd vm && cargo test)
+
+test-lib:
+	(cd libkernelproc && cargo test)
 
 build: build-rust build-go
 
