@@ -3,7 +3,7 @@ use move_deps::{
     move_core_types::{
         account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::Session},
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
 };
 
 pub use move_deps::move_core_types::{
@@ -51,7 +51,7 @@ impl KernelVM {
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
         gas_limit : Gas
-    ) -> (VMStatus, MessageOutput) {
+    ) -> (VMStatus, MessageOutput, Option<SerializedReturnValues>) {
         let sender = msg.sender();
 
         let cost_schedule = unit_cost_table();
@@ -68,11 +68,13 @@ impl KernelVM {
             Ok(status_and_output) => status_and_output,
             Err(err) => {
                 let txn_status = MessageStatus::from(err.clone());
-                if txn_status.is_discarded() {
-                    discard_error_vm_status(err)
-                } else {
-                    self.failed_message_cleanup(err, remote_cache)
-                }
+
+                let (status, message_output) = match txn_status.is_discarded() {
+                    true => discard_error_vm_status(err),
+                    false => self.failed_message_cleanup(err, remote_cache),
+                };
+                    
+                (status, message_output, None)
             }
         }
     }
@@ -83,8 +85,10 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
         module: &Module,
         mut cost_strategy : GasStatus
-    ) -> Result<(VMStatus, MessageOutput), VMStatus> {
+    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
+
+        // TODO: verification
 
         session
                 .publish_module(module.code().to_vec(), sender, &mut cost_strategy)
@@ -97,7 +101,8 @@ impl KernelVM {
         // epilogue use the new modules.
         // session.empty_loader_cache()?;
 
-        self.success_message_cleanup(session)
+        let (status,output) = self.success_message_cleanup(session)?;
+        Ok((status, output, None))
     }
 
     fn execute_script_or_entry_function<S: StateView>(
@@ -106,10 +111,12 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         mut cost_strategy : GasStatus
-    ) -> Result<(VMStatus, MessageOutput), VMStatus> {
+    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
-        match payload {
+        // TODO: verification
+
+        let res = match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
                     // let Ok(s) = CompiledScript::deserialize(script.code());
@@ -150,7 +157,8 @@ impl KernelVM {
                     e.into_vm_status()
                 })?;
 
-        self.success_message_cleanup(session)
+        let (status, output) = self.success_message_cleanup(session)?;
+        Ok((status, output, res.into()))
     }
 
     fn success_message_cleanup<R: MoveResolver>(
@@ -170,6 +178,7 @@ impl KernelVM {
     ) -> (VMStatus, MessageOutput) {
         let session: Session<_> = self.move_vm.new_session(remote_cache).into();
 
+        // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
                 let txn_output = get_message_output(session, status)

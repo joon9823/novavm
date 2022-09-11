@@ -104,12 +104,6 @@ impl Message {
     }
 }
 
-impl Sample for Message {
-    fn sample() -> Self {
-        Self::new_module(genesis_address(), Module::sample())
-    }
-}
-
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum MessagePayload {
     /// A message that executes code.
@@ -238,10 +232,4 @@ impl MessageOutput {
     pub fn into_inner(self) -> (ChangeSet, Vec<Event>, u64, MessageStatus) {
         (self.change_set, self.events, self.gas_used, self.status)
     }
-}
-
-pub trait Sample {
-    /// A default construct for generate type Sample data for test or document.
-    /// Please ensure return same data when call sample fn.
-    fn sample() -> Self;
 }
