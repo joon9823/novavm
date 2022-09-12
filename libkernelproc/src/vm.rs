@@ -1,30 +1,49 @@
 use std::sync::Arc;
 
-use crate::gas_meter;
+use crate::{gas_meter, Db};
+use crate::view::CosmosView;
+
+use move_deps::move_core_types::{account_address::AccountAddress};
+use kernelvm::EntryFunction;
+use kernelvm::Module;
+use kernelvm::vm::storage::data_view_resolver::DataViewResolver;
 use kernelvm::vm::KernelVM;
-use kernelvm::MessageOutput;
+use kernelvm::Message;
+use kernelvm::gas_meter::Gas;
 
 use once_cell::sync::Lazy;
 
-
-
-
-static INSTANCE: Lazy<Arc<KernelVM>> = Lazy::new(|| Arc::new(KernelVM::new()));
-
-/*  TODO: put VM into pool
-static pool_capacity: i32 = 1;
-static pool_extra: i32 = 0;
-use pool::Pool;
-
-static VM_POOL : Lazy<Pool<KernelVM>> = Lazy::new(|| {
-    Pool::with_capacity(pool_capacity, pool_extra, || KernelVM::new())
-});
-*/
-
-pub fn publish_module() -> MessageOutput {
-    _ = INSTANCE.execute_message(msg, remote_cache, gas_limit);
+struct ExecutionResult {
+    
 }
 
-pub fn execute_entry_function() -> MessageOutput {
-    _ = INSTANCE.execute_message(msg, remote_cache, gas_limit);
+static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
+
+fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+    let gas_limit = Gas::new(gas);
+
+    let module: Module = serde_json::from_slice(payload.as_slice()).unwrap();
+    let message: Message = Message::new_module(sender, module);
+
+	let cv = CosmosView::new(db_handle);
+	let data_view = DataViewResolver::new(&cv);
+
+    let (status, output, retval) = unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
+    // TODO handle results
+    ExecutionResult {  } // just stub
+}
+
+fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+    let gas_limit = Gas::new(gas);
+
+    let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
+    let message: Message = Message::new_entry_function(sender, entry);
+
+    let cv = CosmosView::new(db_handle);
+    let data_view = DataViewResolver::new(&cv);
+
+
+    let (status, output, retval) = unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
+    // TODO handle results
+    ExecutionResult {  } // just stub
 }
