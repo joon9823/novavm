@@ -4,9 +4,8 @@ target/
 .DS_Store
 
 build/
-*.mv
+# *.mv
 
-!/move-test/build
-!/src/framework/move-stdlib/build
-!/src/framework/move-stdlib/nursery/build
-!/src/framework/kernel-stdlib/build
+!/move-test/build/
+!/src/framework/move-stdlib/build/
+!/src/framework/move-stdlib/nursery/build/
