@@ -5,3 +5,8 @@ target/
 
 build/
 *.mv
+
+!/move-test/build
+!/src/framework/move-stdlib/build
+!/src/framework/move-stdlib/nursery/build
+!/src/framework/kernel-stdlib/build
