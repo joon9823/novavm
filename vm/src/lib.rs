@@ -7,8 +7,9 @@ pub mod errors;
 
 pub use crate::errors::VmError;
 pub use crate::errors::BackendError;
-pub use crate::vm::{KernelVM, gas_meter};
+pub use crate::vm::kernel_vm::KernelVM;
 pub use crate::vm::message::*;
+pub use crate::vm::gas_meter;
 
 #[cfg(test)]
 mod tests;
