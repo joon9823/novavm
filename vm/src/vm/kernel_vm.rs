@@ -15,10 +15,10 @@ pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFil
 
 
 use crate::vm::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
-
 use crate::vm::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::vm::args_validator::validate_combine_signer_and_txn_args;
 use crate::vm::message::*;
+use crate::vm::asset::{publish_move_stdlib,publish_move_stdlib_nursery};
 
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -32,6 +32,19 @@ impl KernelVM {
             .expect("should be able to create Move VM; check if there are duplicated natives");
         Self {
             move_vm: Arc::new(inner),
+        }
+    }
+
+    pub fn publish_genesis_module<S: StateView>(
+        &mut self,
+        remote_cache: &DataViewResolver<'_, S>,
+        gas_limit : Gas
+    ){        
+        for message in publish_move_stdlib() {
+            self.execute_message(message, remote_cache, gas_limit);
+        }
+        for message in publish_move_stdlib_nursery() {
+            self.execute_message(message, remote_cache, gas_limit);
         }
     }
 
