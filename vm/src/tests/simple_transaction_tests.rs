@@ -16,6 +16,8 @@ use move_deps::move_core_types::{
     vm_status::{StatusCode, VMStatus},
 };
 
+use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules};
+
 //faking chain db
 struct MockDB {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
@@ -134,7 +136,7 @@ fn test_simple_trasaction() {
             // get Coin structure
             Message::new_entry_function(
                 AccountAddress::ZERO,
-                EntryFunction::getCoinStruct(account_two),
+                EntryFunction::get_coin_struct(account_two),
             ),
             VMStatus::Executed,
             0,
@@ -212,7 +214,7 @@ impl EntryFunction {
         )
     }
 
-    fn getCoinStruct(addr: AccountAddress) -> Self {
+    fn get_coin_struct(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("getCoin").unwrap(),
@@ -230,5 +232,28 @@ impl Script {
             vec![],
             vec![],
         )
+    }
+}
+
+#[test]
+fn publish_move_modules(){
+    let mut db = MockDB::new();
+    let mut vm = KernelVM::new();
+
+    // publish move_stdlib and move_nursery modules
+    let mut modules = compile_move_stdlib_modules();
+    modules.append(&mut compile_move_nursery_modules());
+
+    for module in modules {
+        let resolver = DataViewResolver::new(&db);
+        let mut mod_blob = vec![];
+        module
+            .serialize(&mut mod_blob)
+            .expect("Module serialization error");
+        let (status, output, _) = vm
+            .initialize(mod_blob, &resolver)
+            .expect("Module must load");
+        assert!(status == VMStatus::Executed);
+        db.push_write_set(output.change_set().clone());
     }
 }
