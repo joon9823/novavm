@@ -5,35 +5,29 @@ use crate::vm::{
 use move_deps::move_core_types::{
     account_address::AccountAddress,
 };
+use move_deps::move_stdlib;
+use move_deps::move_binary_format::CompiledModule;
+use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
 
-use std::{fs, os::unix::prelude::OsStrExt};
-
-fn generate_messages(dir : &str)->Vec<Message>{
-    let paths = fs::read_dir(dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .collect::<Vec<_>>();
-    let mut messages : Vec<Message>  = vec![];
-    for path in paths{
-        println!("path: {:?}", path);
-        let code = path.as_path().as_os_str().as_bytes().to_vec();
-        let message = Message::new_module(
-            AccountAddress::ONE,
-            Module::new(code),
-        );
-        messages.push(message);
-    }
-    messages
-}
-
-pub fn publish_move_stdlib()->Vec<Message>{
-    let dir = "./src/framework/move-stdlib/build/MoveStdlib/bytecode_modules";
-    generate_messages(dir)
-}
-pub fn publish_move_stdlib_nursery()->Vec<Message>{
-    let dir = "./src/framework/move-stdlib/nursery/build/MoveNursery/bytecode_modules";
-    generate_messages(dir)
+pub fn compile_move_modules() -> Vec<CompiledModule> {
+    let mut src_files = move_stdlib::move_stdlib_files();
+    // src_files.append(&mut move_stdlib::move_nursery_files());
+    let (_files, compiled_units) = Compiler::from_files(
+        src_files,
+        vec![],
+        move_stdlib::move_stdlib_named_addresses(),
+    )
+    .build_and_report()
+    .expect("Error compiling...");
+    compiled_units
+        .into_iter()
+        .map(|unit| match unit {
+            AnnotatedCompiledUnit::Module(annot_unit) => annot_unit.named_module.module,
+            AnnotatedCompiledUnit::Script(_) => {
+                panic!("Expected a module but received a script")
+            }
+        })
+        .collect()
 }
 
 

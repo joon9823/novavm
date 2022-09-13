@@ -8,13 +8,15 @@ use crate::vm::{
 };
 use std::collections::BTreeMap;
 
-use move_deps::move_core_types::{
+use move_deps::{move_core_types::{
     account_address::AccountAddress,
     effects::{ChangeSet, Op},
     identifier::Identifier,
     language_storage::ModuleId,
     vm_status::{StatusCode, VMStatus},
-};
+}, move_compiler::shared::ast_debug::print};
+
+use crate::vm::asset::{publish_move_stdlib,publish_move_stdlib_nursery, compile_move_modules};
 
 //faking chain db
 struct MockDB {
@@ -134,7 +136,7 @@ fn test_simple_trasaction() {
             // get Coin structure
             Message::new_entry_function(
                 AccountAddress::ZERO,
-                EntryFunction::getCoinStruct(account_two),
+                EntryFunction::get_coin_struct(account_two),
             ),
             VMStatus::Executed,
             0,
@@ -212,7 +214,7 @@ impl EntryFunction {
         )
     }
 
-    fn getCoinStruct(addr: AccountAddress) -> Self {
+    fn get_coin_struct(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("getCoin").unwrap(),
@@ -231,4 +233,41 @@ impl Script {
             vec![],
         )
     }
+}
+
+
+
+#[test]
+fn publish_genesis_module(){
+    let mut db = MockDB::new();
+    let mut vm = KernelVM::new();  
+    for message in publish_move_stdlib(){
+        let resolver = DataViewResolver::new(&db);
+        let (status, output, _) = vm.execute_message(message, &resolver, Gas::new(100_000u64));
+        assert!(status == VMStatus::Executed);
+        db.push_write_set(output.change_set().clone());
+    }
+}
+
+
+#[test]
+fn publish_move_modules(){
+    let mut db = MockDB::new();
+    let mut vm = KernelVM::new();
+    let modules = compile_move_modules();
+
+    for module in modules {
+        let resolver = DataViewResolver::new(&db);
+        let mut mod_blob = vec![];
+        module
+            .serialize(&mut mod_blob)
+            .expect("Module serialization error");
+        let (status, output, _) = vm
+            .publish_genesis_module(mod_blob, &resolver)
+            .expect("Module must load");
+        println!("status: {:?}, output : {:?}", status, output.gas_used());
+        assert!(status == VMStatus::Executed);
+        db.push_write_set(output.change_set().clone());
+    }
+
 }
