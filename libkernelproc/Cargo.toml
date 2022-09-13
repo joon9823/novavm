@@ -29,6 +29,7 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1.0.64"
 errno = "0.2.8"
+hex = "0.4.3"
 kernelvm = { version = "0.1.0", path = "../vm", features = ["backtraces"] }
 move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20"] }
 once_cell = "1.14.0"
