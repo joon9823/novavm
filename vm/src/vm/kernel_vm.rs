@@ -31,14 +31,20 @@ impl KernelVM {
         let inner = MoveVM::new(
             move_stdlib::natives::all_natives(
             AccountAddress::from_hex_literal("0x1").unwrap(),
-            move_stdlib::natives::GasParameters::zeros()
-        )).expect("should be able to create Move VM; check if there are duplicated natives");
+            move_stdlib::natives::GasParameters::zeros())
+        .into_iter()
+        .chain(move_stdlib::natives::nursery_natives(
+            AccountAddress::from_hex_literal("0x1").unwrap(),
+            move_stdlib::natives::NurseryGasParameters::zeros()
+        )))
+        .expect("should be able to create Move VM; check if there are duplicated natives");
 
         Self {
             move_vm: Arc::new(inner),
         }
     }
 
+    // TODO : change hard-coded parts
     pub fn publish_genesis_module<S: StateView>(
         &mut self,
         compiled_module: Vec<u8>,
