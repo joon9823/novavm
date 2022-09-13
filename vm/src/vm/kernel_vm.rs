@@ -44,8 +44,7 @@ impl KernelVM {
         }
     }
 
-    // TODO : change hard-coded parts
-    pub fn publish_genesis_module<S: StateView>(
+    pub fn initialize<S: StateView>(
         &mut self,
         compiled_module: Vec<u8>,
         remote_cache: &DataViewResolver<'_, S>,

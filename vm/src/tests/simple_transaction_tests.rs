@@ -240,8 +240,10 @@ fn publish_move_modules(){
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
-    // publish move_stdlib modules
-    let modules = compile_move_stdlib_modules();
+    // publish move_stdlib and move_nursery modules
+    let mut modules = compile_move_stdlib_modules();
+    modules.append(&mut compile_move_nursery_modules());
+
     for module in modules {
         let resolver = DataViewResolver::new(&db);
         let mut mod_blob = vec![];
@@ -249,22 +251,7 @@ fn publish_move_modules(){
             .serialize(&mut mod_blob)
             .expect("Module serialization error");
         let (status, output, _) = vm
-            .publish_genesis_module(mod_blob, &resolver)
-            .expect("Module must load");
-        assert!(status == VMStatus::Executed);
-        db.push_write_set(output.change_set().clone());
-    }
-
-    // publish move_nursery modules
-    let nursery_modules = compile_move_nursery_modules();
-    for module in nursery_modules {
-        let resolver = DataViewResolver::new(&db);
-        let mut mod_blob = vec![];
-        module
-            .serialize(&mut mod_blob)
-            .expect("Module serialization error");
-        let (status, output, _) = vm
-            .publish_genesis_module(mod_blob, &resolver)
+            .initialize(mod_blob, &resolver)
             .expect("Module must load");
         assert!(status == VMStatus::Executed);
         db.push_write_set(output.change_set().clone());
