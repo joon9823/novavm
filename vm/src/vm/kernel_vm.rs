@@ -50,9 +50,7 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-
-        let cost_schedule = unit_cost_table();
-        let mut cost_strategy =  GasStatus::new(&cost_schedule, Gas::new(100_000u64));
+        let mut cost_strategy =  GasStatus::new_unmetered();
 
         session
                 .publish_module(compiled_module, AccountAddress::ONE, &mut cost_strategy)
