@@ -7,6 +7,7 @@ use move_deps::{
 };
 use std::sync::Arc;
 
+use move_deps::move_stdlib;
 pub use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
@@ -15,7 +16,6 @@ pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFil
 
 
 use crate::vm::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
-
 use crate::vm::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::vm::args_validator::validate_combine_signer_and_txn_args;
 use crate::vm::message::*;
@@ -28,11 +28,38 @@ pub struct KernelVM {
 
 impl KernelVM {
     pub fn new() -> Self {
-        let inner = MoveVM::new(vec![])
-            .expect("should be able to create Move VM; check if there are duplicated natives");
+        let inner = MoveVM::new(
+            move_stdlib::natives::all_natives(
+            AccountAddress::from_hex_literal("0x1").unwrap(),
+            move_stdlib::natives::GasParameters::zeros())
+        .into_iter()
+        .chain(move_stdlib::natives::nursery_natives(
+            AccountAddress::from_hex_literal("0x1").unwrap(),
+            move_stdlib::natives::NurseryGasParameters::zeros()
+        )))
+        .expect("should be able to create Move VM; check if there are duplicated natives");
+
         Self {
             move_vm: Arc::new(inner),
         }
+    }
+
+    pub fn initialize<S: StateView>(
+        &mut self,
+        compiled_module: Vec<u8>,
+        remote_cache: &DataViewResolver<'_, S>,
+    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
+        let mut session = self.move_vm.new_session(remote_cache);
+        let mut cost_strategy =  GasStatus::new_unmetered();
+
+        session
+                .publish_module(compiled_module, AccountAddress::ONE, &mut cost_strategy)
+                .map_err(|e| {
+                    println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+                    e.into_vm_status()
+                })?;
+        let (status,output) = self.success_message_cleanup(session)?;
+        Ok((status, output, None))
     }
 
     pub fn execute_message<S: StateView>(
@@ -67,7 +94,6 @@ impl KernelVM {
             }
         }
     }
- 
     fn publish_module<S: StateView>(
         &self,
         sender: AccountAddress,

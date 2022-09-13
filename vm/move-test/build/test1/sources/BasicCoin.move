@@ -1,4 +1,5 @@
 module 0x1::BasicCoin {
+
     struct Coin has key, copy {
         value: u64,
         test: bool,
