@@ -3,3 +3,4 @@
 pub struct gas_meter_t {
     _private: [u8; 0],
 }
+
