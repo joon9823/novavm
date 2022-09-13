@@ -19,7 +19,7 @@ use crate::vm::storage::{data_view_resolver::DataViewResolver, state_view::State
 use crate::vm::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::vm::args_validator::validate_combine_signer_and_txn_args;
 use crate::vm::message::*;
-
+use crate::vm::natives;
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct KernelVM {
@@ -33,9 +33,15 @@ impl KernelVM {
             AccountAddress::from_hex_literal("0x1").unwrap(),
             move_stdlib::natives::GasParameters::zeros())
         .into_iter()
-        .chain(move_stdlib::natives::nursery_natives(
+        .chain(
+            move_stdlib::natives::nursery_natives(
             AccountAddress::from_hex_literal("0x1").unwrap(),
-            move_stdlib::natives::NurseryGasParameters::zeros()
+            move_stdlib::natives::NurseryGasParameters::zeros()))
+        .into_iter()
+        .chain(
+            natives::all_natives(
+                AccountAddress::from_hex_literal("0x1").unwrap(), 
+                natives::GasParameters::zeros()
         )))
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
