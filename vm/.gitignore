@@ -4,5 +4,6 @@ target/
 .DS_Store
 
 build/
+*.mv
 
 !/move-test/build/
