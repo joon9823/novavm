@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use crate::vm::access_path::AccessPath;
+use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
 use log::error;

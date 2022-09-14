@@ -1,10 +1,10 @@
-use crate::vm::{
+use crate::{
     access_path::AccessPath,
     gas_meter::Gas,
+    kernel_vm::KernelVM,
     message::{EntryFunction, Message, Module, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    kernel_vm::KernelVM,
 };
 use std::collections::BTreeMap;
 
@@ -236,7 +236,7 @@ impl Script {
 }
 
 #[test]
-fn publish_move_modules(){
+fn publish_move_modules() {
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 

@@ -7,7 +7,7 @@ use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
 use kernelvm::BackendError;
-use kernelvm::vm::backend::{BackendResult, GasInfo, Querier};
+use kernelvm::backend::{BackendResult, GasInfo, Querier};
 
 // this represents something passed in from the caller side of FFI
 #[repr(C)]

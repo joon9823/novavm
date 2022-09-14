@@ -15,11 +15,12 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::vm::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
-use crate::vm::gas_meter::{GasStatus, Gas, unit_cost_table};
-use crate::vm::args_validator::validate_combine_signer_and_txn_args;
-use crate::vm::message::*;
 use crate::vm::natives;
+use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
+use crate::gas_meter::{GasStatus, Gas, unit_cost_table};
+use crate::args_validator::validate_combine_signer_and_txn_args;
+use crate::message::*;
+
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct KernelVM {
