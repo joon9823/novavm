@@ -15,7 +15,7 @@ use move_deps::move_core_types::{account_address::AccountAddress, effects::Chang
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-pub use module::Module;
+pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
 mod module;
@@ -63,12 +63,11 @@ impl Message {
 
     /// Create a new `Message` with a module to publish.
     ///
-    /// A module message is the only way to publish code. Only one module per message
-    /// can be published.
-    pub fn new_module(sender: AccountAddress, module: Module) -> Self {
+    /// A module message is the only way to publish code.
+    pub fn new_module(sender: AccountAddress, modules: ModuleBundle) -> Self {
         Message {
             sender,
-            payload: MessagePayload::Module(module),
+            payload: MessagePayload::ModuleBundle(modules),
         }
     }
 
@@ -108,8 +107,8 @@ impl Message {
 pub enum MessagePayload {
     /// A message that executes code.
     Script(Script),
-    /// A message that publish or update module code by a package.
-    Module(Module),
+    /// A message that publishes multiple modules at the same time.
+    ModuleBundle(ModuleBundle),
     /// A transaction that executes an existing entry function published on-chain.
     EntryFunction(EntryFunction),
 }
@@ -118,7 +117,7 @@ pub enum MessagePayload {
 #[repr(u8)]
 pub enum MessagePayloadType {
     Script = 0,
-    Module = 1,
+    ModuleBundle = 1,
     EntryFunction = 2,
 }
 
@@ -126,7 +125,7 @@ impl MessagePayload {
     pub fn payload_type(&self) -> MessagePayloadType {
         match self {
             MessagePayload::Script(_) => MessagePayloadType::Script,
-            MessagePayload::Module(_) => MessagePayloadType::Module,
+            MessagePayload::ModuleBundle(_) => MessagePayloadType::ModuleBundle,
             MessagePayload::EntryFunction(_) => MessagePayloadType::EntryFunction,
         }
     }
@@ -138,7 +137,7 @@ impl TryFrom<u8> for MessagePayloadType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(MessagePayloadType::Script),
-            1 => Ok(MessagePayloadType::Module),
+            1 => Ok(MessagePayloadType::ModuleBundle),
             _ => Err(format_err!("invalid PayloadType")),
         }
     }
