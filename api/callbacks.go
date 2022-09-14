@@ -48,6 +48,8 @@ import (
 	"github.com/Kernel-Labs/kernelvm/types"
 )
 
+type Querier = types.Querier
+
 // Note: we have to include all exports in the same file (at least since they both import bindings.h),
 // or get odd cgo build errors about duplicate definitions
 
