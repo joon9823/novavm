@@ -84,7 +84,7 @@ impl KernelVM {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, cost_strategy)
             }
-            MessagePayload::Module(m) => self.publish_module(sender, remote_cache, m, cost_strategy),
+            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, cost_strategy),
         };
 
         match result {
@@ -101,19 +101,20 @@ impl KernelVM {
             }
         }
     }
-    fn publish_module<S: StateView>(
+    fn publish_module_bundle<S: StateView>(
         &self,
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
-        module: &Module,
+        modules: &ModuleBundle,
         mut cost_strategy : GasStatus
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
+        let module_bin_list = modules.clone().into_inner();
         session
-                .publish_module(module.code().to_vec(), sender, &mut cost_strategy)
+                .publish_module_bundle(module_bin_list, sender, &mut cost_strategy)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
@@ -169,7 +170,7 @@ impl KernelVM {
                         &mut cost_strategy,
                     )
                 }
-                MessagePayload::Module(_) => {
+                MessagePayload::ModuleBundle(_) => {
                     return Err(VMStatus::Error(StatusCode::UNREACHABLE));
                 }
             }
