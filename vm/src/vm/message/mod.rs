@@ -8,18 +8,20 @@ pub fn genesis_address() -> AccountAddress {
 
 use anyhow::{format_err, Error, Result};
 
+use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_core_types::effects::Event;
 use move_deps::move_core_types::vm_status::*;
-use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 pub use module::Module;
 pub use script::{EntryFunction, Script};
+pub use write_set::{WriteOp, WriteSet};
 
 mod module;
 mod script;
+mod write_set;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
@@ -187,8 +189,9 @@ impl From<VMStatus> for MessageStatus {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MessageOutput {
-    change_set: ChangeSet,
+    write_set: WriteSet,
     events: Vec<Event>,
 
     /// The amount of gas used during execution.
@@ -200,21 +203,21 @@ pub struct MessageOutput {
 
 impl MessageOutput {
     pub fn new(
-        change_set: ChangeSet,
+        write_set: WriteSet,
         events: Vec<Event>,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
         MessageOutput {
-            change_set,
+            write_set,
             events,
             gas_used,
             status,
         }
     }
 
-    pub fn change_set(&self) -> &ChangeSet {
-        &self.change_set
+    pub fn write_set(&self) -> &WriteSet {
+        &self.write_set
     }
 
     pub fn events(&self) -> &[Event] {
@@ -229,7 +232,7 @@ impl MessageOutput {
         &self.status
     }
 
-    pub fn into_inner(self) -> (ChangeSet, Vec<Event>, u64, MessageStatus) {
-        (self.change_set, self.events, self.gas_used, self.status)
+    pub fn into_inner(self) -> (WriteSet, Vec<Event>, u64, MessageStatus) {
+        (self.write_set, self.events, self.gas_used, self.status)
     }
 }

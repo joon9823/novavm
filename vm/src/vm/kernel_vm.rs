@@ -1,9 +1,9 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
+        account_address::AccountAddress, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}}, move_binary_format::{errors::{PartialVMError, Location}},
 };
 use std::sync::Arc;
 
@@ -15,10 +15,10 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
+use crate::{vm::message::WriteSet, MessageStatus, MessageOutput, MessagePayload, Message, Module};
 use crate::vm::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::vm::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::vm::args_validator::validate_combine_signer_and_txn_args;
-use crate::vm::message::*;
 
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -193,7 +193,6 @@ impl KernelVM {
     ) -> (VMStatus, MessageOutput) {
         let session: Session<_> = self.move_vm.new_session(remote_cache).into();
 
-        // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
                 let txn_output = get_message_output(session, status)
@@ -210,7 +209,7 @@ impl KernelVM {
 pub(crate) fn discard_error_output(err: StatusCode) -> MessageOutput {
     info!("discard error output: {:?}", err);
     // Since this message will be discarded, no writeset will be included.
-    MessageOutput::new(ChangeSet::new(), vec![], 0, MessageStatus::Discard(err))
+    MessageOutput::new(WriteSet::new(), vec![], 0, MessageStatus::Discard(err))
 }
 
 pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, MessageOutput) {
@@ -233,9 +232,13 @@ pub(crate) fn get_message_output<R: MoveResolver>(
     let gas_used: u64 = 1;
 
     let (changeset, events) = session.finish().map_err(|e| e.into_vm_status())?;
+    
+    let write_set = WriteSet::from(changeset).map_err(|_|
+        PartialVMError::new(StatusCode::FAILED_TO_SERIALIZE_WRITE_SET_CHANGES).finish(Location::Undefined).into_vm_status()
+    )?;
 
     Ok(MessageOutput::new(
-        changeset,
+        write_set,
         events,
         gas_used,
         MessageStatus::Keep(status),

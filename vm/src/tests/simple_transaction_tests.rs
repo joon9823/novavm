@@ -1,22 +1,22 @@
 use crate::vm::{
     access_path::AccessPath,
     gas_meter::Gas,
+    kernel_vm::KernelVM,
     message::{EntryFunction, Message, Module, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    kernel_vm::KernelVM,
 };
 use std::collections::BTreeMap;
 
 use move_deps::move_core_types::{
     account_address::AccountAddress,
-    effects::{ChangeSet, Op},
     identifier::Identifier,
     language_storage::ModuleId,
     vm_status::{StatusCode, VMStatus},
 };
 
-use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules};
+use crate::vm::asset::{compile_move_nursery_modules, compile_move_stdlib_modules};
+use crate::vm::message::{WriteOp, WriteSet};
 
 //faking chain db
 struct MockDB {
@@ -30,21 +30,22 @@ impl MockDB {
         }
     }
 
-    fn write_op(&mut self, ref ap: AccessPath, ref blob_opt: Op<Vec<u8>>) {
+    fn write_op(&mut self, ref ap: AccessPath, ref blob_opt: WriteOp) {
+        use WriteOp::{Delete, Modify, New};
         match blob_opt {
-            Op::New(blob) | Op::Modify(blob) => {
+            New(blob) | Modify(blob) => {
                 self.map.insert(ap.clone(), Some(blob.clone()));
             }
-            Op::Delete => {
+            Delete => {
                 self.map.remove(ap);
                 self.map.insert(ap.clone(), None);
             }
         }
     }
 
-    pub fn push_write_set(&mut self, changeset: ChangeSet) {
-        for (addr, account_changeset) in changeset.into_inner() {
-            let (modules, resources) = account_changeset.into_inner();
+    pub fn push_write_set(&mut self, writeset: WriteSet) {
+        for (addr, account_writeset) in writeset.into_inner() {
+            let (modules, resources) = account_writeset.into_inner();
             for (struct_tag, blob_opt) in resources {
                 let ap = AccessPath::resource_access_path(addr, struct_tag);
                 self.write_op(ap, blob_opt)
@@ -150,7 +151,7 @@ fn test_simple_trasaction() {
         let (status, output, result) = vm.execute_message(tx, &resolver, gas_left);
 
         assert!(status == exp_status);
-        assert!(output.change_set().accounts().len() == exp_changed_accounts);
+        assert!(output.write_set().accounts().len() == exp_changed_accounts);
 
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
         assert!(result_bytes == exp_result);
@@ -159,7 +160,8 @@ fn test_simple_trasaction() {
             continue;
         }
         // apply output into db
-        db.push_write_set(output.change_set().clone());
+        let (writeset, _, _, _) = output.into_inner();
+        db.push_write_set(writeset);
     }
 }
 
@@ -236,7 +238,7 @@ impl Script {
 }
 
 #[test]
-fn publish_move_modules(){
+fn publish_move_modules() {
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
@@ -254,6 +256,6 @@ fn publish_move_modules(){
             .initialize(mod_blob, &resolver)
             .expect("Module must load");
         assert!(status == VMStatus::Executed);
-        db.push_write_set(output.change_set().clone());
+        db.push_write_set(output.write_set().clone());
     }
 }
