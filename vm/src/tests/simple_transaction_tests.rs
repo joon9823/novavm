@@ -16,7 +16,7 @@ use move_deps::move_core_types::{
     vm_status::{StatusCode, VMStatus},
 };
 
-use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
+use crate::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
 
 //faking chain db
 struct MockDB {

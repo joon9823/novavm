@@ -76,6 +76,6 @@ fn kernel_stdlib_named_addresses() -> BTreeMap<String, NumericalAddress> {
 
 fn move_kernel_stdlib_files() -> Vec<String> {
     // FIXME : make this configurable or cosnt var
-    let path = std::path::PathBuf::from("src/vm/natives/sources");
+    let path = std::path::PathBuf::from("src/natives/sources");
     find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
 }
