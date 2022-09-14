@@ -238,22 +238,6 @@ typedef struct {
   Db_vtable vtable;
 } Db;
 
-/**
- * A view into an externally owned byte slice (Go `[]byte`).
- * Use this for the current call only. A view cannot be copied for safety reasons.
- * If you need a copy, use [`ByteSliceView::to_owned`].
- *
- * Go's nil value is fully supported, such that we can differentiate between nil and an empty slice.
- */
-typedef struct {
-  /**
-   * True if and only if the byte slice is nil in Go. If this is true, the other fields must be ignored.
-   */
-  bool is_nil;
-  const uint8_t *ptr;
-  size_t len;
-} ByteSliceView;
-
 typedef struct {
   uint8_t _private[0];
 } api_t;
@@ -281,16 +265,43 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
+/**
+ * A view into an externally owned byte slice (Go `[]byte`).
+ * Use this for the current call only. A view cannot be copied for safety reasons.
+ * If you need a copy, use [`ByteSliceView::to_owned`].
+ *
+ * Go's nil value is fully supported, such that we can differentiate between nil and an empty slice.
+ */
+typedef struct {
+  /**
+   * True if and only if the byte slice is nil in Go. If this is true, the other fields must be ignored.
+   */
+  bool is_nil;
+  const uint8_t *ptr;
+  size_t len;
+} ByteSliceView;
+
 void destroy_unmanaged_vector(UnmanagedVector v);
 
 /**
  * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
  */
 UnmanagedVector execute_contract(Db db,
+                                 GoApi api,
+                                 GoQuerier querier,
+                                 bool is_verbose,
+                                 uint64_t gas_limit,
+                                 uint64_t *gas_used,
+                                 UnmanagedVector *errmsg,
                                  ByteSliceView sender,
                                  ByteSliceView message);
 
-UnmanagedVector initialize(Db db, ByteSliceView module_bundle);
+UnmanagedVector initialize(Db db,
+                           GoApi api,
+                           GoQuerier querier,
+                           bool is_verbose,
+                           UnmanagedVector *errmsg,
+                           ByteSliceView module_bundle);
 
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
@@ -299,6 +310,12 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
  * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
  */
 UnmanagedVector publish_module(Db db,
+                               GoApi api,
+                               GoQuerier querier,
+                               bool is_verbose,
+                               uint64_t gas_limit,
+                               uint64_t *gas_used,
+                               UnmanagedVector *errmsg,
                                ByteSliceView sender,
                                ByteSliceView module_bundle);
 
