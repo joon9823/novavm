@@ -250,6 +250,33 @@ typedef struct Db {
   struct Db_vtable vtable;
 } Db;
 
+typedef struct api_t {
+  uint8_t _private[0];
+} api_t;
+
+typedef struct GoApi_vtable {
+  int32_t (*humanize_address)(const struct api_t*, struct U8SliceView, struct UnmanagedVector*, struct UnmanagedVector*, uint64_t*);
+  int32_t (*canonicalize_address)(const struct api_t*, struct U8SliceView, struct UnmanagedVector*, struct UnmanagedVector*, uint64_t*);
+} GoApi_vtable;
+
+typedef struct GoApi {
+  const struct api_t *state;
+  struct GoApi_vtable vtable;
+} GoApi;
+
+typedef struct querier_t {
+  uint8_t _private[0];
+} querier_t;
+
+typedef struct Querier_vtable {
+  int32_t (*query_external)(const struct querier_t*, uint64_t, uint64_t*, struct U8SliceView, struct UnmanagedVector*, struct UnmanagedVector*);
+} Querier_vtable;
+
+typedef struct GoQuerier {
+  const struct querier_t *state;
+  struct Querier_vtable vtable;
+} GoQuerier;
+
 void destroy_unmanaged_vector(struct UnmanagedVector v);
 
 struct UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);

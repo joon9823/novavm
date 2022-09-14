@@ -123,12 +123,10 @@ type KVStore interface {
 }
 
 var db_vtable = C.Db_vtable{
-	read_db: (C.read_db_fn)(C.cGet_cgo),
-	/* FIXME: unblock this after PoC
+	read_db:   (C.read_db_fn)(C.cGet_cgo),
 	write_db:  (C.write_db_fn)(C.cSet_cgo),
 	remove_db: (C.remove_db_fn)(C.cDelete_cgo),
 	scan_db:   (C.scan_db_fn)(C.cScan_cgo),
-	*/
 }
 
 type DBState struct {
