@@ -1,5 +1,4 @@
 use crate::error::GoError;
-use crate::error::Error;
 use crate::gas_meter::gas_meter_t;
 use crate::memory::UnmanagedVector;
 
