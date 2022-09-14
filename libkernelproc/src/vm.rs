@@ -14,17 +14,17 @@ use kernelvm::gas_meter::Gas;
 use once_cell::sync::Lazy;
 
 // FIXME: just stub. move it to other place
-struct ExecutionResult {
+pub(crate) struct ExecutionResult {
     
 }
 
 // FIXME: just stub. move it to other place
-enum ExecutionError {
+pub(crate) enum ExecutionError {
 }
 
 static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 
-fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db, gas: u64) -> Result<ExecutionResult, ExecutionError> {
+pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<ExecutionResult, ExecutionError> {
 	let cv = CosmosView::new(db_handle);
 	let data_view = DataViewResolver::new(&cv);
 
@@ -34,7 +34,7 @@ fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db, gas: u64) -> Result<Exec
     Ok(ExecutionResult {  }) // just stub
 }
 
-fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+pub(crate) fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
     let gas_limit = Gas::new(gas);
 
     let module: Module = serde_json::from_slice(payload.as_slice()).unwrap();
@@ -48,7 +48,7 @@ fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: 
     ExecutionResult {  } // just stub
 }
 
-fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+pub(crate) fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
     let gas_limit = Gas::new(gas);
 
     let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();

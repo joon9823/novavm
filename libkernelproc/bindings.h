@@ -283,7 +283,16 @@ typedef struct GoQuerier {
 
 void destroy_unmanaged_vector(struct UnmanagedVector v);
 
+struct UnmanagedVector execute_contract(void);
+
+struct UnmanagedVector initialize(void);
+
 struct UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
+
+/**
+ * exported function to publish a module
+ */
+struct UnmanagedVector publish_module(void);
 
 /**
  * Returns a version number of this library as a C string.
