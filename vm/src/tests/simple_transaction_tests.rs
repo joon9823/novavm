@@ -68,11 +68,185 @@ impl StateView for MockDB {
 }
 
 #[cfg(test)]
-#[test]
-fn test_simple_trasaction() {
+impl Module {
+    fn create_basic_coin() -> Self {
+        Self::new(
+            include_bytes!("../../move-test/build/test1/bytecode_modules/BasicCoin.mv").to_vec(),
+        )
+    }
+
+    fn get_basic_coin_module_id() -> ModuleId {
+        ModuleId::new(AccountAddress::ONE, Identifier::new("BasicCoin").unwrap())
+    }
+}
+
+#[cfg(test)]
+impl EntryFunction {
+    fn print_number(number: u64) -> Self{
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("print_number").unwrap(),
+            vec![],
+            vec![number.to_le_bytes().to_vec()],
+        )
+    }
+
+    fn canonicalize(value: u64) -> Self{
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("canonicalize").unwrap(),
+            vec![],
+            vec![value.to_le_bytes().to_vec()],
+        )
+    }
+    
+    fn canonicalize_address() -> Self{
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("canonicalize_address").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+
+    fn mint(amount: u64) -> Self {
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("mint").unwrap(),
+            vec![],
+            vec![amount.to_le_bytes().to_vec()],
+        )
+    }
+
+    fn mint_with_wrong_module_address(amount: u64) -> Self {
+        Self::new(
+            ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
+            Identifier::new("mint").unwrap(),
+            vec![],
+            vec![amount.to_le_bytes().to_vec()],
+        )
+    }
+
+    fn number() -> Self {
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("number").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+    fn get(addr: AccountAddress) -> Self {
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("get").unwrap(),
+            vec![],
+            vec![addr.to_vec()],
+        )
+    }
+
+    fn get_coin_struct(addr: AccountAddress) -> Self {
+        Self::new(
+            Module::get_basic_coin_module_id(),
+            Identifier::new("get_coin").unwrap(),
+            vec![],
+            vec![addr.to_vec()],
+        )
+    }
+}
+
+#[cfg(test)]
+impl Script {
+    fn mint_200() -> Self {
+        Self::new(
+            include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
+            vec![],
+            vec![],
+        )
+    }
+}
+
+fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> ){
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
+    // publish move_stdlib and move_nursery and kernel_stdlib modules
+    let mut modules = compile_move_stdlib_modules();
+    modules.append(&mut compile_move_nursery_modules());
+    modules.append(&mut compile_kernel_stdlib_modules());
+
+    for module in modules {
+        let resolver = DataViewResolver::new(&db);
+        let mut mod_blob = vec![];
+        module
+            .serialize(&mut mod_blob)
+            .expect("Module serialization error");
+        let (status, output, _) = vm
+            .initialize(mod_blob, &resolver)
+            .expect("Module must load");
+        assert!(status == VMStatus::Executed);
+        db.push_write_set(output.change_set().clone());
+    }
+
+    let gas_left = Gas::new(100_000u64);
+    for (tx, exp_status, exp_changed_accounts, exp_result) in testcases {
+        let resolver = DataViewResolver::new(&db);
+        let (status, output, result) = vm.execute_message(tx, &resolver, gas_left);
+
+        println!("status: {:?}, exp_status: {:?}", status,exp_status);
+        assert!(status == exp_status);
+        println!("output: {:?}, exp_changed_accounts: {:?}", output.change_set().accounts().len(), exp_changed_accounts);
+        assert!(output.change_set().accounts().len() == exp_changed_accounts);
+
+        let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
+        println!("result: {:?}, exp_result: {:?}", result_bytes, exp_result);
+        assert!(result_bytes == exp_result);
+
+        if output.status().is_discarded() {
+            continue;
+        }
+        // apply output into db
+        db.push_write_set(output.change_set().clone());
+    }
+
+    
+}
+
+#[cfg(test)]
+#[test]
+fn test_deps_transaction(){
+    let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
+        (
+            // publish module
+            Message::new_module(
+                AccountAddress::ONE,
+                ModuleBundle::from(Module::create_basic_coin()),
+            ),
+            VMStatus::Executed,
+            1,
+            None,
+        ),
+        (
+            // canonicalize with entry function
+            Message::new_entry_function(
+                AccountAddress::ONE, 
+                EntryFunction::canonicalize(100)),
+            VMStatus::Executed,
+            0,
+            // return Some(vec![cost,values])
+            Some(vec![1,100]),
+
+        )
+    ];
+
+    run_transaction(testcases);
+}
+
+
+#[cfg(test)]
+#[test]
+fn test_simple_trasaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
 
@@ -147,96 +321,9 @@ fn test_simple_trasaction() {
         ),
     ];
 
-    let gas_left = Gas::new(100_000u64);
-    for (tx, exp_status, exp_changed_accounts, exp_result) in testcases {
-        let resolver = DataViewResolver::new(&db);
-        let (status, output, result) = vm.execute_message(tx, &resolver, gas_left);
-
-        assert!(status == exp_status);
-        assert!(output.change_set().accounts().len() == exp_changed_accounts);
-
-        let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-        assert!(result_bytes == exp_result);
-
-        if output.status().is_discarded() {
-            continue;
-        }
-        // apply output into db
-        db.push_write_set(output.change_set().clone());
-    }
+    run_transaction(testcases);
 }
 
-#[cfg(test)]
-impl Module {
-    fn create_basic_coin() -> Self {
-        Self::new(
-            include_bytes!("../../move-test/build/test1/bytecode_modules/BasicCoin.mv").to_vec(),
-        )
-    }
-
-    fn get_basic_coin_module_id() -> ModuleId {
-        ModuleId::new(AccountAddress::ONE, Identifier::new("BasicCoin").unwrap())
-    }
-}
-
-#[cfg(test)]
-impl EntryFunction {
-    fn mint(amount: u64) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("mint").unwrap(),
-            vec![],
-            vec![amount.to_le_bytes().to_vec()],
-        )
-    }
-
-    fn mint_with_wrong_module_address(amount: u64) -> Self {
-        Self::new(
-            ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
-            Identifier::new("mint").unwrap(),
-            vec![],
-            vec![amount.to_le_bytes().to_vec()],
-        )
-    }
-
-    fn number() -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("number").unwrap(),
-            vec![],
-            vec![],
-        )
-    }
-
-    fn get(addr: AccountAddress) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("get").unwrap(),
-            vec![],
-            vec![addr.to_vec()],
-        )
-    }
-
-    fn get_coin_struct(addr: AccountAddress) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("get_coin").unwrap(),
-            vec![],
-            vec![addr.to_vec()],
-        )
-    }
-}
-
-#[cfg(test)]
-impl Script {
-    fn mint_200() -> Self {
-        Self::new(
-            include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
-            vec![],
-            vec![],
-        )
-    }
-}
 
 #[test]
 fn publish_move_modules() {
