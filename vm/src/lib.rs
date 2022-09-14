@@ -7,16 +7,16 @@ pub use crate::errors::VmError;
 pub use crate::kernel_vm::KernelVM;
 pub use crate::message::*;
 
+pub mod access_path;
+pub mod backend;
 pub mod gas_meter;
 pub mod message;
+pub mod storage;
 
-mod access_path;
 mod args_validator;
 mod asset;
-mod backend;
 mod errors;
 mod kernel_vm;
-mod storage;
 
 #[cfg(test)]
 mod tests;
