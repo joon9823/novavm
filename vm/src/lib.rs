@@ -1,17 +1,22 @@
 //#![cfg_attr(feature = "backtraces", feature(backtrace))]
 
 pub mod serde_helper;
-pub mod vm;
-pub mod errors;
 
-
-pub use crate::errors::VmError;
 pub use crate::errors::BackendError;
-pub use crate::vm::kernel_vm::KernelVM;
-pub use crate::vm::message::*;
-pub use crate::vm::gas_meter;
-pub use crate::vm::backend;
+pub use crate::errors::VmError;
+pub use crate::kernel_vm::KernelVM;
+pub use crate::message::*;
 
+pub mod gas_meter;
+pub mod message;
+
+mod access_path;
+mod args_validator;
+mod asset;
+mod backend;
+mod errors;
+mod kernel_vm;
+mod storage;
 
 #[cfg(test)]
 mod tests;

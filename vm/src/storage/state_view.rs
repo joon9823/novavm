@@ -5,7 +5,7 @@
 
 //! This crate defines [`trait StateView`](StateView).
 
-use crate::vm::access_path::AccessPath;
+use crate::access_path::AccessPath;
 use anyhow::Result;
 
 /// `StateView` is a trait that defines a read-only snapshot of the global state. It is passed to
