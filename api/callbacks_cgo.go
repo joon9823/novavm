@@ -4,6 +4,9 @@ package api
 #include "bindings.h"
 #include <stdio.h>
 
+// remove it after POC
+#define __POC__ 1
+
 // imports (db)
 GoError cSet(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cGet(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
@@ -22,17 +25,21 @@ GoError cGet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceV
 	return cGet(ptr, gas_meter, used_gas, key, val, errOut);
 }
 GoError cSet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut) {
+	if (__POC__) return GoError_Other;
 	return cSet(ptr, gas_meter, used_gas, key, val, errOut);
 }
 GoError cDelete_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut) {
+	if (__POC__) return GoError_Other;
 	return cDelete(ptr, gas_meter, used_gas, key, errOut);
 }
 GoError cScan_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut) {
+	if (__POC__) return GoError_Other;
 	return cScan(ptr, gas_meter, used_gas, start, end, order, out, errOut);
 }
 
 // Gateway functions (iterator)
 GoError cNext_cgo(iterator_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut) {
+	if (__POC__) return GoError_Other;
 	return cNext(ptr, gas_meter, used_gas, key, val, errOut);
 }
 
@@ -46,6 +53,7 @@ GoError cHumanAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, Un
 
 // Gateway functions (querier)
 GoError cQueryExternal_cgo(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut) {
+	if (__POC__) return GoError_Other;
     return cQueryExternal(ptr, gas_limit, used_gas, request, result, errOut);
 }
 */

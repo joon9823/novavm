@@ -219,10 +219,29 @@ typedef struct db_t {
   uint8_t _private[0];
 } db_t;
 
+typedef struct iterator_t {
+  /**
+   * An ID assigned to this contract call
+   */
+  uint64_t call_id;
+  uint64_t iterator_index;
+} iterator_t;
+
+typedef struct Iterator_vtable {
+  int32_t (*next_db)(struct iterator_t, struct gas_meter_t*, uint64_t*, struct UnmanagedVector*, struct UnmanagedVector*, struct UnmanagedVector*);
+} Iterator_vtable;
+
+typedef struct GoIter {
+  struct gas_meter_t *gas_meter;
+  struct iterator_t state;
+  struct Iterator_vtable vtable;
+} GoIter;
+
 typedef struct Db_vtable {
   int32_t (*read_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct UnmanagedVector*, struct UnmanagedVector*);
   int32_t (*write_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct U8SliceView, struct UnmanagedVector*);
   int32_t (*remove_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct UnmanagedVector*);
+  int32_t (*scan_db)(struct db_t*, struct gas_meter_t*, uint64_t*, struct U8SliceView, struct U8SliceView, int32_t, struct GoIter*, struct UnmanagedVector*);
 } Db_vtable;
 
 typedef struct Db {

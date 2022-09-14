@@ -1,12 +1,6 @@
-//use cosmwasm_std::{Binary, ContractResult, SystemError, SystemResult};
-//use cosmwasm_vm::{BackendResult, GasInfo, Querier};
-
-use std::io::Error;
-
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
-use kernelvm::BackendError;
 use kernelvm::vm::backend::{BackendResult, GasInfo, Querier};
 
 // this represents something passed in from the caller side of FFI
