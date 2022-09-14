@@ -52,6 +52,10 @@ enum GoError {
    */
   GoError_User = 5,
   /**
+   * Unimplemented
+   */
+  GoError_Unimplemented = 6,
+  /**
    * An error type that should never be created by us. It only serves as a fallback for the i32 to GoError conversion.
    */
   GoError_Other = -1,

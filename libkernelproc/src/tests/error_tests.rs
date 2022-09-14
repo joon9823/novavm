@@ -25,6 +25,11 @@ fn go_error_into_result_works() {
     let a = unsafe { error.into_result(error_msg, default) };
     assert_eq!(a.unwrap_err(), BackendError::OutOfGas {});
 
+    let error = GoError::Unimplemented;
+    let error_msg = UnmanagedVector::new(None);
+    let a = unsafe { error.into_result(error_msg, default) };
+    assert_eq!(a.unwrap_err(), BackendError::Unimplemented {});
+
     // CannotSerialize maps to Unknown
     let error = GoError::CannotSerialize;
     let error_msg = UnmanagedVector::new(None);

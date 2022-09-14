@@ -213,7 +213,7 @@ func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView
 func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, val C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
 	// TODO: remove this after PoC
 	if isInPoc {
-		return C.GoError_Panic
+		return C.GoError_Unimplemented
 	}
 	defer recoverPanic(&ret)
 
@@ -242,7 +242,7 @@ func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8Sli
 func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
 	// TODO: remove this after PoC
 	if isInPoc {
-		return C.GoError_Panic
+		return C.GoError_Unimplemented
 	}
 	defer recoverPanic(&ret)
 
@@ -270,7 +270,7 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 func cScan(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, start C.U8SliceView, end C.U8SliceView, order ci32, out *C.GoIter, errOut *C.UnmanagedVector) (ret C.GoError) {
 	// TODO: remove this after PoC
 	if isInPoc {
-		return C.GoError_Panic
+		return C.GoError_Unimplemented
 	}
 	defer recoverPanic(&ret)
 
@@ -317,7 +317,7 @@ func cScan(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, start C.U8
 func cNext(ref C.iterator_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key *C.UnmanagedVector, val *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
 	// TODO: remove this after PoC
 	if isInPoc {
-		return C.GoError_Panic
+		return C.GoError_Unimplemented
 	}
 	// typical usage of iterator
 	// 	for ; itr.Valid(); itr.Next() {
