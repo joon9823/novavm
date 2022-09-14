@@ -17,7 +17,7 @@ module 0x1::BasicCoin {
         123
     }
 
-    public entry fun getCoin(addr: address): Coin acquires Coin {
+    public entry fun get_coin(addr: address): Coin acquires Coin {
         *borrow_global<Coin>(addr)
     }
 }

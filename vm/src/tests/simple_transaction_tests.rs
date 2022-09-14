@@ -220,7 +220,7 @@ impl EntryFunction {
     fn get_coin_struct(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
-            Identifier::new("getCoin").unwrap(),
+            Identifier::new("get_coin").unwrap(),
             vec![],
             vec![addr.to_vec()],
         )
