@@ -16,7 +16,7 @@ use move_deps::move_core_types::{
     vm_status::{StatusCode, VMStatus},
 };
 
-use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules};
+use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
 
 //faking chain db
 struct MockDB {
@@ -240,9 +240,10 @@ fn publish_move_modules(){
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
-    // publish move_stdlib and move_nursery modules
+    // publish move_stdlib and move_nursery and kernel_stdlib modules
     let mut modules = compile_move_stdlib_modules();
     modules.append(&mut compile_move_nursery_modules());
+    modules.append(&mut compile_kernel_stdlib_modules());
 
     for module in modules {
         let resolver = DataViewResolver::new(&db);

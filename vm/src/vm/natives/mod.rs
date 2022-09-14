@@ -20,7 +20,7 @@ impl GasParameters {
     pub fn zeros() -> Self {
         Self {
             address: address::GasParameters {
-                canonize_address: address::CanonizeAddressGasParameters { base: 0.into() },
+                canonicalize_address: address::CanonicalizeAddressGasParameters { base: 0.into() },
                 humanize_address: address::HumanizeAddressGasParameters { base: 0.into() },
             },
         }
