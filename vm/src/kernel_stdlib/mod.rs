@@ -46,12 +46,3 @@ pub fn all_natives(
 
     make_table_from_iter(framework_addr, natives)
 }
-
-/// A temporary hack to patch Table -> table module name as long as it is not upgraded
-/// in the Move repo.
-pub fn patch_table_module(table: NativeFunctionTable) -> NativeFunctionTable {
-    table
-        .into_iter()
-        .map(|(m, _, f, i)| (m, Identifier::new("table").unwrap(), f, i))
-        .collect()
-}
