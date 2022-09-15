@@ -1,25 +1,44 @@
 use crate::Db;
+use crate::UnmanagedVector;
+use crate::storage::Storage;
 use crate::view::CosmosView;
 use crate::error::Error;
+use crate::GoStorage;
 
-use kernelvm::vm::kernel_vm::VMStatus;
-use move_deps::move_core_types::{account_address::AccountAddress};
 use kernelvm::EntryFunction;
 use kernelvm::Module;
 use kernelvm::vm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::vm::kernel_vm::{KernelVM};
+use kernelvm::vm::kernel_vm::{KernelVM, VMStatus};
 use kernelvm::Message;
 use kernelvm::gas_meter::Gas;
+
+use move_deps::move_core_types::account_address::AccountAddress;
+use move_deps::move_core_types::effects::Op;
 
 use once_cell::sync::Lazy;
 
 static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 
 pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec<u8>, Error> {
-	let cv = CosmosView::new(db_handle);
-	let data_view = DataViewResolver::new(&cv);
+    let cv = CosmosView::new(db_handle);
+    let data_view = DataViewResolver::new(&cv);
 
     let (status, output, retval) = unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
+
+    let mut storage = GoStorage::new(db_handle);
+    let gas_used: u64 = 0;
+    let errmsg = UnmanagedVector::new(None);
+    for (addr, cset) in output.change_set().accounts() {
+        for (id, module) in cset.modules() {
+            let (res, _) = match module {
+                Op::New(v) | Op::Modify(v) => { storage.set(id.as_bytes(), v.as_ref())  },
+                Op::Delete => { storage.remove(id.as_bytes()) }
+            };
+            res
+        }
+        
+    }
+    //db_handle.vtable.write_db()
     // TODO handle results
 
     let ok = Vec::from(status.to_string()); // FIXME: IT IS JUST PLACEHOLDER
@@ -36,8 +55,8 @@ pub(crate) fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle
     let module: Module = serde_json::from_slice(payload.as_slice()).unwrap();
     let message: Message = Message::new_module(sender, module);
 
-	let cv = CosmosView::new(db_handle);
-	let data_view = DataViewResolver::new(&cv);
+    let cv = CosmosView::new(db_handle);
+    let data_view = DataViewResolver::new(&cv);
 
     let (status, output, retval) = unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
     // TODO handle results
