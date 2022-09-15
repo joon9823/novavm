@@ -161,7 +161,7 @@ func buildDB(state *DBState, gm *GasMeter) C.Db {
 
 /* TODO: to be removed:
 var iterator_vtable = C.Iterator_vtable{
-	next_db: (C.next_db_fn)(C.cNext_cgo),
+    next_db: (C.next_db_fn)(C.cNext_cgo),
 }
 */
 
@@ -174,14 +174,14 @@ const frameLenLimit = 32768
 // contract: original pointer/struct referenced must live longer than C.Db struct
 // since this is only used internally, we can verify the code that this is the case
 func buildIterator(callID uint64, it dbm.Iterator) (C.iterator_t, error) {
-	idx, err := storeIterator(callID, it, frameLenLimit)
-	if err != nil {
-		return C.iterator_t{}, err
-	}
-	return C.iterator_t{
-		call_id:        cu64(callID),
-		iterator_index: cu64(idx),
-	}, nil
+    idx, err := storeIterator(callID, it, frameLenLimit)
+    if err != nil {
+        return C.iterator_t{}, err
+    }
+    return C.iterator_t{
+        call_id:        cu64(callID),
+        iterator_index: cu64(idx),
+    }, nil
 }
 */
 
@@ -215,10 +215,6 @@ func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView
 
 //export cSet
 func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, val C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
 	defer recoverPanic(&ret)
 
 	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
@@ -244,10 +240,6 @@ func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8Sli
 
 //export cDelete
 func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
 	defer recoverPanic(&ret)
 
 	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
@@ -273,94 +265,86 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 /* TODO: to be removed:
 //export cScan
 func cScan(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, start C.U8SliceView, end C.U8SliceView, order ci32, out *C.GoIter, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
-	defer recoverPanic(&ret)
+    defer recoverPanic(&ret)
 
-	if ptr == nil || gasMeter == nil || usedGas == nil || out == nil || errOut == nil {
-		// we received an invalid pointer
-		return C.GoError_BadArgument
-	}
-	if !(*errOut).is_none {
-		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
-	}
+    if ptr == nil || gasMeter == nil || usedGas == nil || out == nil || errOut == nil {
+        // we received an invalid pointer
+        return C.GoError_BadArgument
+    }
+    if !(*errOut).is_none {
+        panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
+    }
 
-	gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
-	state := (*DBState)(unsafe.Pointer(ptr))
-	kv := state.Store
-	s := copyU8Slice(start)
-	e := copyU8Slice(end)
+    gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
+    state := (*DBState)(unsafe.Pointer(ptr))
+    kv := state.Store
+    s := copyU8Slice(start)
+    e := copyU8Slice(end)
 
-	var iter dbm.Iterator
-	gasBefore := gm.GasConsumed()
-	switch order {
-	case 1: // Ascending
-		iter = kv.Iterator(s, e)
-	case 2: // Descending
-		iter = kv.ReverseIterator(s, e)
-	default:
-		return C.GoError_BadArgument
-	}
-	gasAfter := gm.GasConsumed()
-	*usedGas = (C.uint64_t)(gasAfter - gasBefore)
+    var iter dbm.Iterator
+    gasBefore := gm.GasConsumed()
+    switch order {
+    case 1: // Ascending
+        iter = kv.Iterator(s, e)
+    case 2: // Descending
+        iter = kv.ReverseIterator(s, e)
+    default:
+        return C.GoError_BadArgument
+    }
+    gasAfter := gm.GasConsumed()
+    *usedGas = (C.uint64_t)(gasAfter - gasBefore)
 
-	cIterator, err := buildIterator(state.CallID, iter)
-	if err != nil {
-		// store the actual error message in the return buffer
-		*errOut = newUnmanagedVector([]byte(err.Error()))
-		return C.GoError_User
-	}
+    cIterator, err := buildIterator(state.CallID, iter)
+    if err != nil {
+        // store the actual error message in the return buffer
+        *errOut = newUnmanagedVector([]byte(err.Error()))
+        return C.GoError_User
+    }
 
-	out.state = cIterator
-	out.vtable = iterator_vtable
-	return C.GoError_None
+    out.state = cIterator
+    out.vtable = iterator_vtable
+    return C.GoError_None
 }
 
 //export cNext
 func cNext(ref C.iterator_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key *C.UnmanagedVector, val *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
-	// typical usage of iterator
-	// 	for ; itr.Valid(); itr.Next() {
-	// 		k, v := itr.Key(); itr.Value()
-	// 		...
-	// 	}
+    // typical usage of iterator
+    // 	for ; itr.Valid(); itr.Next() {
+    // 		k, v := itr.Key(); itr.Value()
+    // 		...
+    // 	}
 
-	defer recoverPanic(&ret)
-	if ref.call_id == 0 || gasMeter == nil || usedGas == nil || key == nil || val == nil || errOut == nil {
-		// we received an invalid pointer
-		return C.GoError_BadArgument
-	}
-	if !(*key).is_none || !(*val).is_none || !(*errOut).is_none {
-		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
-	}
+    defer recoverPanic(&ret)
+    if ref.call_id == 0 || gasMeter == nil || usedGas == nil || key == nil || val == nil || errOut == nil {
+        // we received an invalid pointer
+        return C.GoError_BadArgument
+    }
+    if !(*key).is_none || !(*val).is_none || !(*errOut).is_none {
+        panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
+    }
 
-	gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
-	iter := retrieveIterator(uint64(ref.call_id), uint64(ref.iterator_index))
-	if iter == nil {
-		panic("Unable to retrieve iterator.")
-	}
-	if !iter.Valid() {
-		// end of iterator, return as no-op, nil key is considered end
-		return C.GoError_None
-	}
+    gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
+    iter := retrieveIterator(uint64(ref.call_id), uint64(ref.iterator_index))
+    if iter == nil {
+        panic("Unable to retrieve iterator.")
+    }
+    if !iter.Valid() {
+        // end of iterator, return as no-op, nil key is considered end
+        return C.GoError_None
+    }
 
-	gasBefore := gm.GasConsumed()
-	// call Next at the end, upon creation we have first data loaded
-	k := iter.Key()
-	v := iter.Value()
-	// check iter.Error() ????
-	iter.Next()
-	gasAfter := gm.GasConsumed()
-	*usedGas = (C.uint64_t)(gasAfter - gasBefore)
+    gasBefore := gm.GasConsumed()
+    // call Next at the end, upon creation we have first data loaded
+    k := iter.Key()
+    v := iter.Value()
+    // check iter.Error() ????
+    iter.Next()
+    gasAfter := gm.GasConsumed()
+    *usedGas = (C.uint64_t)(gasAfter - gasBefore)
 
-	*key = newUnmanagedVector(k)
-	*val = newUnmanagedVector(v)
-	return C.GoError_None
+    *key = newUnmanagedVector(k)
+    *val = newUnmanagedVector(v)
+    return C.GoError_None
 }
 */
 
