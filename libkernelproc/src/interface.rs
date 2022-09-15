@@ -42,7 +42,22 @@ pub extern "C" fn execute_contract(db: Db, api: GoApi, querier: GoQuerier, is_ve
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe( move || {
-        vm::publish_module(addr, payload, db, gas_limit)
+        vm::execute_contract(addr, payload, db, gas_limit)
+    })).unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    return UnmanagedVector::new(Some(ret))
+}
+
+// exported function to query contract (in smart way)
+/// TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
+#[no_mangle]
+pub extern "C" fn query_contract(db: Db, api: GoApi, querier: GoQuerier, is_verbose: bool, gas_limit: u64, gas_used: Option<&mut u64>, errmsg: Option<&mut UnmanagedVector>, sender: ByteSliceView, message: ByteSliceView) -> UnmanagedVector {
+    let payload = message.to_owned().unwrap();
+    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
+
+    let res = catch_unwind(AssertUnwindSafe( move || {
+        vm::query_contract(addr, payload, db, gas_limit)
     })).unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);

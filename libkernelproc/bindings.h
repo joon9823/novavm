@@ -301,6 +301,19 @@ UnmanagedVector publish_module(Db db,
                                ByteSliceView module);
 
 /**
+ * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
+ */
+UnmanagedVector query_contract(Db db,
+                               GoApi api,
+                               GoQuerier querier,
+                               bool is_verbose,
+                               uint64_t gas_limit,
+                               uint64_t *gas_used,
+                               UnmanagedVector *errmsg,
+                               ByteSliceView sender,
+                               ByteSliceView message);
+
+/**
  * Returns a version number of this library as a C string.
  *
  * The string is owned by libkernelproc and must not be mutated or destroyed by the caller.
