@@ -3,7 +3,7 @@ use move_deps::{
     move_core_types::{
         account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}}, move_binary_format::CompiledModule,
 };
 use std::sync::Arc;
 
@@ -52,6 +52,7 @@ impl KernelVM {
         let mut session = self.move_vm.new_session(remote_cache);
         let mut cost_strategy =  GasStatus::new_unmetered();
 
+        let _compiled_module = CompiledModule::deserialize(&compiled_module).unwrap();
         session
                 .publish_module(compiled_module, AccountAddress::ONE, &mut cost_strategy)
                 .map_err(|e| {

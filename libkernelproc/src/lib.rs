@@ -6,7 +6,6 @@ mod db;
 mod error;
 mod gas_meter;
 mod interface;
-mod iterator;
 mod memory;
 mod querier;
 mod version;

@@ -19,9 +19,11 @@ pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec
 	let cv = CosmosView::new(db_handle);
 	let data_view = DataViewResolver::new(&cv);
 
-    let (status, output, retval) = unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
+    let (status, output, retval) = unsafe { 
+        INSTANCE.initialize(module_bundle, &data_view) 
+    }.unwrap();
     // TODO handle results
-
+    
     let ok = Vec::from(status.to_string()); // FIXME: IT IS JUST PLACEHOLDER
 
     match status {

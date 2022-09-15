@@ -24,8 +24,9 @@ test-filenames:
 	echo $(SHARED_LIB_SRC)
 
 
-test: test-rust
-	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
+test: test-rust test-go
+
+test-go: 
 	RUST_BACKTRACE=1 go test -v -count=1 ./...
 
 test-safety:
