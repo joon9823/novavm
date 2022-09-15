@@ -1,10 +1,10 @@
-use crate::vm::{
+use crate::{
     access_path::AccessPath,
     gas_meter::Gas,
-    message::{EntryFunction, Message, Module, Script},
+    kernel_vm::KernelVM,
+    message::{EntryFunction, Message, Module, ModuleBundle, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
-    kernel_vm::KernelVM,
 };
 use std::collections::BTreeMap;
 
@@ -16,7 +16,7 @@ use move_deps::move_core_types::{
     vm_status::{StatusCode, VMStatus},
 };
 
-use crate::vm::asset::{compile_move_stdlib_modules, compile_move_nursery_modules};
+use crate::asset::{compile_move_nursery_modules, compile_move_stdlib_modules};
 
 //faking chain db
 struct MockDB {
@@ -79,7 +79,10 @@ fn test_simple_trasaction() {
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (
             // publish module
-            Message::new_module(AccountAddress::ONE, Module::create_basic_coin()),
+            Message::new_module(
+                AccountAddress::ONE,
+                ModuleBundle::from(Module::create_basic_coin()),
+            ),
             VMStatus::Executed,
             1,
             None,
@@ -236,7 +239,7 @@ impl Script {
 }
 
 #[test]
-fn publish_move_modules(){
+fn publish_move_modules() {
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 

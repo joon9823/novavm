@@ -7,8 +7,8 @@ use crate::GoStorage;
 
 use kernelvm::EntryFunction;
 use kernelvm::Module;
-use kernelvm::vm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::vm::kernel_vm::{KernelVM, VMStatus};
+use kernelvm::storage::data_view_resolver::DataViewResolver;
+use kernelvm::{KernelVM, VMStatus};
 use kernelvm::Message;
 use kernelvm::gas_meter::Gas;
 

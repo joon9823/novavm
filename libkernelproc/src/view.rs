@@ -3,7 +3,7 @@
 // this crate handles communication between db.rs and vm.rs
 use crate::{Db, UnmanagedVector, U8SliceView, error::GoError};
 
-use kernelvm::vm::{storage::state_view::StateView, access_path::AccessPath};
+use kernelvm::{storage::state_view::StateView, access_path::AccessPath};
 use anyhow::{anyhow, Error};
 
 pub struct CosmosView {
