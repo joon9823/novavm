@@ -8,6 +8,7 @@ mod gas_meter;
 mod interface;
 mod memory;
 mod querier;
+mod storage;
 mod version;
 mod view;
 mod vm;
@@ -18,6 +19,7 @@ pub use memory::{
     destroy_unmanaged_vector, new_unmanaged_vector, ByteSliceView, U8SliceView, UnmanagedVector,
 };
 pub use view::CosmosView;
+pub use storage::GoStorage;
 
 #[cfg(test)]
 mod tests;
