@@ -2,7 +2,7 @@ use crate::error::GoError;
 use crate::gas_meter::gas_meter_t;
 use crate::memory::UnmanagedVector;
 
-use kernelvm::{BackendError, vm::backend::GasInfo, vm::backend::BackendResult};
+use kernelvm::{BackendError, GasInfo, BackendResult};
 
 /// A record of a key-value storage that is created through an iterator API.
 /// The first element (key) is always raw binary data. The second element

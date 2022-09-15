@@ -6,6 +6,7 @@ pub use crate::errors::BackendError;
 pub use crate::errors::VmError;
 pub use crate::kernel_vm::KernelVM;
 pub use crate::message::*;
+pub use crate::backend::*;
 
 pub mod access_path;
 pub mod backend;

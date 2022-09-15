@@ -2,7 +2,7 @@
 //use std::convert::TryInto;
 
 //use kernelvm::BackendError;
-use kernelvm::vm::backend::{BackendResult, GasInfo};
+use kernelvm::backend::{BackendResult, GasInfo};
 
 use crate::db::Db;
 use crate::error::GoError;
@@ -58,7 +58,6 @@ pub trait Storage {
     fn remove(&mut self, key: &[u8]) -> BackendResult<()>;
 }
 
-#[derive(Copy)]
 pub struct GoStorage {
     db: Db,
     //iterators: HashMap<u32, GoIter>,
