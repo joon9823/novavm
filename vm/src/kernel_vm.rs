@@ -29,6 +29,7 @@ pub struct KernelVM {
 
 impl KernelVM {
     pub fn new() -> Self {
+        // TODO: set gas policy for native functions
         let inner = MoveVM::new(
             move_stdlib::natives::all_natives(
             AccountAddress::from_hex_literal("0x1").unwrap(),
