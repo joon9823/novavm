@@ -1,6 +1,6 @@
 //use cosmwasm_vm::{BackendApi, BackendError, BackendResult, GasInfo};
 use kernelvm::BackendError;
-use kernelvm::vm::backend::{BackendApi, BackendResult, GasInfo};
+use kernelvm::backend::{BackendApi, BackendResult, GasInfo};
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
