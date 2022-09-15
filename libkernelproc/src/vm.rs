@@ -6,8 +6,8 @@ use crate::view::CosmosView;
 use move_deps::move_core_types::{account_address::AccountAddress};
 use kernelvm::EntryFunction;
 use kernelvm::Module;
-use kernelvm::vm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::vm::kernel_vm::KernelVM;
+use kernelvm::storage::data_view_resolver::DataViewResolver;
+use kernelvm::KernelVM;
 use kernelvm::Message;
 use kernelvm::gas_meter::Gas;
 

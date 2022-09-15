@@ -1,8 +1,7 @@
-
 use std::ops::AddAssign;
 
 use crate::errors::BackendError;
-use crate::vm::storage::state_view::StateView;
+use crate::storage::state_view::StateView;
 
 /// Holds all external dependencies of the contract.
 /// Designed to allow easy dependency injection at runtime.
@@ -13,7 +12,6 @@ pub struct Backend<A: BackendApi, S: StateView, Q: Querier> {
     pub storage: S,
     pub querier: Q,
 }
-
 
 /// A result type for calling into the backend. Such a call can cause
 /// non-negligible computational cost in both success and faiure case and must always have gas information
@@ -90,7 +88,6 @@ pub trait BackendApi: Copy + Clone + Send {
     fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>>;
     fn human_address(&self, canonical: &[u8]) -> BackendResult<String>;
 }
-
 
 pub trait Querier {
     /// This is all that must be implemented for the Querier.
