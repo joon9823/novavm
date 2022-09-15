@@ -4,7 +4,7 @@ use crate::{gas_meter, Db};
 use crate::view::CosmosView;
 
 use move_deps::move_core_types::{account_address::AccountAddress};
-use kernelvm::EntryFunction;
+use kernelvm::{EntryFunction, ModuleBundle};
 use kernelvm::Module;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
 use kernelvm::KernelVM;
@@ -23,7 +23,8 @@ fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: 
     let gas_limit = Gas::new(gas);
 
     let module: Module = serde_json::from_slice(payload.as_slice()).unwrap();
-    let message: Message = Message::new_module(sender, module);
+    let bundle: ModuleBundle = ModuleBundle::from(module);
+    let message: Message = Message::new_module(sender, bundle);
 
 	let cv = CosmosView::new(db_handle);
 	let data_view = DataViewResolver::new(&cv);
