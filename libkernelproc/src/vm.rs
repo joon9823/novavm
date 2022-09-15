@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
-use crate::{gas_meter, Db};
+use crate::Db;
 use crate::view::CosmosView;
+use crate::error::Error;
 
 use move_deps::move_core_types::{account_address::AccountAddress};
 use kernelvm::EntryFunction;
@@ -13,28 +12,19 @@ use kernelvm::gas_meter::Gas;
 
 use once_cell::sync::Lazy;
 
-// FIXME: just stub. move it to other place
-pub(crate) struct ExecutionResult {
-    
-}
-
-// FIXME: just stub. move it to other place
-pub(crate) enum ExecutionError {
-}
-
 static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 
-pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<ExecutionResult, ExecutionError> {
+pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec<u8>, Error> {
 	let cv = CosmosView::new(db_handle);
 	let data_view = DataViewResolver::new(&cv);
 
     let (status, output, retval) = unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
 
     // TODO handle results
-    Ok(ExecutionResult {  }) // just stub
+    Ok(Vec::from("PLACEHOLDER"))
 }
 
-pub(crate) fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+pub(crate) fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> Result<Vec<u8>, Error>{
     let gas_limit = Gas::new(gas);
 
     let module: Module = serde_json::from_slice(payload.as_slice()).unwrap();
@@ -45,10 +35,11 @@ pub(crate) fn publish_module(sender: AccountAddress, payload: Vec<u8>, db_handle
 
     let (status, output, retval) = unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
     // TODO handle results
-    ExecutionResult {  } // just stub
+
+    Ok(Vec::from("PLACEHOLDER"))
 }
 
-pub(crate) fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> ExecutionResult {
+pub(crate) fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u64) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
     let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
@@ -60,5 +51,5 @@ pub(crate) fn execute_contract(sender: AccountAddress, payload: Vec<u8>, db_hand
 
     let (status, output, retval) = unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
     // TODO handle results
-    ExecutionResult {  } // just stub
+    Ok(Vec::from("PLACEHOLDER"))
 }

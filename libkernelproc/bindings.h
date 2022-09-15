@@ -317,7 +317,7 @@ UnmanagedVector publish_module(Db db,
                                uint64_t *gas_used,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
-                               ByteSliceView module_bundle);
+                               ByteSliceView module);
 
 /**
  * Returns a version number of this library as a C string.
