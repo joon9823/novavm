@@ -1,9 +1,0 @@
-[package]
-name = "KernelNatives"
-version = "1.5.0"
-
-[addresses]
-kernel_std = "0x1"
-
-[dev-addresses]
-kernel_std = "0x1"

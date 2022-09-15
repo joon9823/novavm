@@ -15,7 +15,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::natives;
+use crate::kernel_stdlib;
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::args_validator::validate_combine_signer_and_txn_args;
@@ -40,9 +40,9 @@ impl KernelVM {
             move_stdlib::natives::NurseryGasParameters::zeros()))
         .into_iter()
         .chain(
-            natives::all_natives(
+            kernel_stdlib::all_natives(
                 AccountAddress::from_hex_literal("0x1").unwrap(), 
-                natives::GasParameters::zeros()
+                kernel_stdlib::GasParameters::zeros()
         )))
         .expect("should be able to create Move VM; check if there are duplicated natives");
 

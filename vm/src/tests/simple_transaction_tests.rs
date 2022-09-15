@@ -91,24 +91,23 @@ impl EntryFunction {
         )
     }
 
-    fn canonicalize(value: u64) -> Self{
+    fn balance(addr: AccountAddress) -> Self{
         Self::new(
             Module::get_basic_coin_module_id(),
-            Identifier::new("canonicalize").unwrap(),
+            Identifier::new("balance").unwrap(),
             vec![],
-            vec![value.to_le_bytes().to_vec()],
+            vec![addr.to_vec()],
         )
     }
     
-    fn canonicalize_address() -> Self{
+    fn transfer(from : AccountAddress, to : AccountAddress, amount : u64) -> Self{
         Self::new(
             Module::get_basic_coin_module_id(),
-            Identifier::new("canonicalize_address").unwrap(),
+            Identifier::new("transfer").unwrap(),
             vec![],
-            vec![],
+            vec![from.to_vec(), to.to_vec(), amount.to_le_bytes().to_vec()],
         )
     }
-
 
     fn mint(amount: u64) -> Self {
         Self::new(
@@ -193,14 +192,10 @@ fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> 
     for (tx, exp_status, exp_changed_accounts, exp_result) in testcases {
         let resolver = DataViewResolver::new(&db);
         let (status, output, result) = vm.execute_message(tx, &resolver, gas_left);
-
-        println!("status: {:?}, exp_status: {:?}", status,exp_status);
         assert!(status == exp_status);
-        println!("output: {:?}, exp_changed_accounts: {:?}", output.change_set().accounts().len(), exp_changed_accounts);
         assert!(output.change_set().accounts().len() == exp_changed_accounts);
 
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-        println!("result: {:?}, exp_result: {:?}", result_bytes, exp_result);
         assert!(result_bytes == exp_result);
 
         if output.status().is_discarded() {
@@ -216,6 +211,11 @@ fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> 
 #[cfg(test)]
 #[test]
 fn test_deps_transaction(){
+    let account_two =
+        AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
+    let account_three =
+        AccountAddress::from_hex_literal("0x3").expect("0x3 account should be created");
+
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (
             // publish module
@@ -228,18 +228,24 @@ fn test_deps_transaction(){
             None,
         ),
         (
-            // canonicalize with entry function
+            // bank module : balance
             Message::new_entry_function(
                 AccountAddress::ONE, 
-                EntryFunction::canonicalize(100)),
+                EntryFunction::balance(account_two)),
             VMStatus::Executed,
             0,
-            // return Some(vec![cost,values])
-            Some(vec![1,100]),
-
+            Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
+        ),
+        (
+            // bank module : transfer
+            Message::new_entry_function(
+                AccountAddress::ONE, 
+                EntryFunction::transfer(account_two, account_three, 100)),
+            VMStatus::Executed,
+            0,
+            Some(vec![]),
         )
     ];
-
     run_transaction(testcases);
 }
 
@@ -322,29 +328,4 @@ fn test_simple_trasaction() {
     ];
 
     run_transaction(testcases);
-}
-
-
-#[test]
-fn publish_move_modules() {
-    let mut db = MockDB::new();
-    let mut vm = KernelVM::new();
-
-    // publish move_stdlib and move_nursery and kernel_stdlib modules
-    let mut modules = compile_move_stdlib_modules();
-    modules.append(&mut compile_move_nursery_modules());
-    modules.append(&mut compile_kernel_stdlib_modules());
-
-    for module in modules {
-        let resolver = DataViewResolver::new(&db);
-        let mut mod_blob = vec![];
-        module
-            .serialize(&mut mod_blob)
-            .expect("Module serialization error");
-        let (status, output, _) = vm
-            .initialize(mod_blob, &resolver)
-            .expect("Module must load");
-        assert!(status == VMStatus::Executed);
-        db.push_write_set(output.change_set().clone());
-    }
 }
