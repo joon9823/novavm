@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"math"
 
 	dbm "github.com/tendermint/tm-db"
@@ -164,37 +163,31 @@ func (q MockQuerier) GasConsumed() uint64 {
 const CanonicalLength = 32
 
 const (
-	CostCanonical uint64 = 440
-	CostHuman     uint64 = 550
+	CostTransfer uint64 = 100
 )
 
-func MockCanonicalAddress(human string) ([]byte, uint64, error) {
-	if len(human) > CanonicalLength {
-		return nil, 0, fmt.Errorf("human encoding too long")
-	}
-	res := make([]byte, CanonicalLength)
-	copy(res, []byte(human))
-	return res, CostCanonical, nil
+var _ GoAPI = MockAPI{}
+
+type MockAPI struct {
+	BankModule *MockBankModule
 }
 
-func MockHumanAddress(canon []byte) (string, uint64, error) {
-	if len(canon) != CanonicalLength {
-		return "", 0, fmt.Errorf("wrong canonical length")
+func NewMockAPI(bankModule *MockBankModule) *MockAPI {
+	return &MockAPI{
+		BankModule: bankModule,
 	}
-	cut := CanonicalLength
-	for i, v := range canon {
-		if v == 0 {
-			cut = i
-			break
-		}
-	}
-	human := string(canon[:cut])
-	return human, CostHuman, nil
 }
 
-func NewMockAPI() *GoAPI {
-	return &GoAPI{
-		HumanAddress:     MockHumanAddress,
-		CanonicalAddress: MockCanonicalAddress,
-	}
+func (m MockAPI) BankTransfer(recipient []byte, amount types.Coin) (uint64, error) {
+	err := m.BankModule.Transfer(string(recipient), amount)
+	return CostTransfer, err
+}
+
+type MockBankModule struct {
+	balance map[string]types.Coin
+}
+
+func (m MockBankModule) Transfer(recipient string, amount types.Coin) error {
+	m.balance[recipient] = amount
+	return nil
 }

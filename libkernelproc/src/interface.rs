@@ -5,8 +5,6 @@ use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVect
 
 use move_deps::move_core_types::account_address::AccountAddress;
 
-use move_deps::move_core_types::account_address::AccountAddress;
-
 // VM initializer
 #[no_mangle]
 pub extern "C" fn initialize(

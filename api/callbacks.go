@@ -11,8 +11,7 @@ typedef GoError (*read_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_
 typedef GoError (*write_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 typedef GoError (*remove_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
 // and api
-typedef GoError (*humanize_address_fn)(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
-typedef GoError (*canonicalize_address_fn)(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
+typedef GoError (*bank_transfer_fn)(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
 typedef GoError (*query_external_fn)(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
 
 // forward declarations (db)
@@ -20,8 +19,7 @@ GoError cGet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceV
 GoError cSet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cDelete_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
 // api
-GoError cHumanAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
-GoError cCanonicalAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
+GoError cBankTransfer_cgo(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
 // and querier
 GoError cQueryExternal_cgo(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
 
@@ -31,7 +29,6 @@ import "C"
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"reflect"
 	"runtime/debug"
@@ -166,10 +163,6 @@ func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView
 
 //export cSet
 func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, val C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
 	defer recoverPanic(&ret)
 
 	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
@@ -195,10 +188,6 @@ func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8Sli
 
 //export cDelete
 func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
-	// TODO: remove this after PoC
-	if isInPoc {
-		return C.GoError_Unimplemented
-	}
 	defer recoverPanic(&ret)
 
 	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
@@ -223,19 +212,12 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 
 /***** GoAPI *******/
 
-type (
-	HumanizeAddress     func([]byte) (string, uint64, error)
-	CanonicalizeAddress func(string) ([]byte, uint64, error)
-)
-
-type GoAPI struct {
-	HumanAddress     HumanizeAddress
-	CanonicalAddress CanonicalizeAddress
+type GoAPI interface {
+	BankTransfer([]byte, types.Coin) (uint64, error)
 }
 
 var api_vtable = C.GoApi_vtable{
-	humanize_address:     (C.humanize_address_fn)(C.cHumanAddress_cgo),
-	canonicalize_address: (C.canonicalize_address_fn)(C.cCanonicalAddress_cgo),
+	bank_transfer: (C.bank_transfer_fn)(C.cBankTransfer_cgo),
 }
 
 // contract: original pointer/struct referenced must live longer than C.GoApi struct
@@ -247,58 +229,30 @@ func buildAPI(api *GoAPI) C.GoApi {
 	}
 }
 
-//export cHumanAddress
-func cHumanAddress(ptr *C.api_t, src C.U8SliceView, dest *C.UnmanagedVector, errOut *C.UnmanagedVector, used_gas *cu64) (ret C.GoError) {
+//export cBankTransfer
+func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, amount C.U8SliceView, errOut *C.UnmanagedVector, used_gas *cu64) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
-	if dest == nil || errOut == nil {
+	if errOut == nil {
 		return C.GoError_BadArgument
 	}
-	if !(*dest).is_none || !(*errOut).is_none {
+	if !(*errOut).is_none {
 		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
 	}
 
-	api := (*GoAPI)(unsafe.Pointer(ptr))
-	s := copyU8Slice(src)
+	api := *(*GoAPI)(unsafe.Pointer(ptr))
+	r := copyU8Slice(recipient)
+	d := string(copyU8Slice(denom))
+	a := string(copyU8Slice(denom))
 
-	h, cost, err := api.HumanAddress(s)
+	cost, err := api.BankTransfer(r, types.Coin{Denom: d, Amount: a})
 	*used_gas = cu64(cost)
 	if err != nil {
 		// store the actual error message in the return buffer
 		*errOut = newUnmanagedVector([]byte(err.Error()))
 		return C.GoError_User
 	}
-	if len(h) == 0 {
-		panic(fmt.Sprintf("`api.HumanAddress()` returned an empty string for %q", s))
-	}
-	*dest = newUnmanagedVector([]byte(h))
-	return C.GoError_None
-}
 
-//export cCanonicalAddress
-func cCanonicalAddress(ptr *C.api_t, src C.U8SliceView, dest *C.UnmanagedVector, errOut *C.UnmanagedVector, used_gas *cu64) (ret C.GoError) {
-	defer recoverPanic(&ret)
-
-	if dest == nil || errOut == nil {
-		return C.GoError_BadArgument
-	}
-	if !(*dest).is_none || !(*errOut).is_none {
-		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
-	}
-
-	api := (*GoAPI)(unsafe.Pointer(ptr))
-	s := string(copyU8Slice(src))
-	c, cost, err := api.CanonicalAddress(s)
-	*used_gas = cu64(cost)
-	if err != nil {
-		// store the actual error message in the return buffer
-		*errOut = newUnmanagedVector([]byte(err.Error()))
-		return C.GoError_User
-	}
-	if len(c) == 0 {
-		panic(fmt.Sprintf("`api.CanonicalAddress()` returned an empty string for %q", s))
-	}
-	*dest = newUnmanagedVector(c)
 	return C.GoError_None
 }
 

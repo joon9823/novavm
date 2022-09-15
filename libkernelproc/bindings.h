@@ -224,8 +224,7 @@ typedef struct {
 } api_t;
 
 typedef struct {
-  int32_t (*humanize_address)(const api_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*, uint64_t*);
-  int32_t (*canonicalize_address)(const api_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*, uint64_t*);
+  int32_t (*bank_transfer)(const api_t*, U8SliceView, U8SliceView, U8SliceView, UnmanagedVector*, uint64_t*);
 } GoApi_vtable;
 
 typedef struct {

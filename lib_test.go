@@ -16,7 +16,7 @@ func Test_CrateVM(t *testing.T) {
 	gasMeter := api.NewMockGasMeter(100000000)
 	err = vm.CreateVM(
 		api.NewLookup(gasMeter),
-		*api.NewMockAPI(),
+		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		gasMeter,
 		true,
