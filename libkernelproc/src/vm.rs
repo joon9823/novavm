@@ -97,7 +97,12 @@ fn execute_entry(sender: AccountAddress, payload: Vec<u8>, db_handle: Db, gas: u
     match status {
         VMStatus::Executed => {
             if is_read_only {
-                return Ok(Vec::from(status.to_string()))
+                return match retval { // FIXME: retval or output?
+                    Some(val) => {
+                        Ok(Vec::from("FIXME: some SerializedReturnValues are out there."))  // FIXME need to define query result format
+                     },
+                    None => { Ok(Vec::from("no data"))}
+                }
             }
             for (addr, cset) in output.change_set().accounts() {
                 for (id, module) in cset.modules() {
