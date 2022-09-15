@@ -1,7 +1,6 @@
 use crate::Db;
 use crate::UnmanagedVector;
 use crate::storage::Storage;
-use crate::view::CosmosView;
 use crate::error::Error;
 use crate::GoStorage;
 

@@ -1,6 +1,6 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use crate::{UnmanagedVector, vm, Db, ByteSliceView, api::GoApi, querier::GoQuerier, CosmosView};
+use crate::{UnmanagedVector, vm, Db, ByteSliceView, api::GoApi, querier::GoQuerier};
 use crate::error::{Error, handle_c_error_binary};
 
 use move_deps::move_core_types::account_address::AccountAddress; 

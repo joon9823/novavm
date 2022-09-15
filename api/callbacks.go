@@ -10,9 +10,9 @@ package api
 typedef GoError (*read_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 typedef GoError (*write_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 typedef GoError (*remove_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
-typedef GoError (*scan_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
+// TODO: to be removed: typedef GoError (*scan_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
 // iterator
-typedef GoError (*next_db_fn)(iterator_t idx, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut);
+// TODO: to be removed: typedef GoError (*next_db_fn)(iterator_t idx, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut);
 // and api
 typedef GoError (*humanize_address_fn)(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
 typedef GoError (*canonicalize_address_fn)(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
@@ -22,9 +22,9 @@ typedef GoError (*query_external_fn)(querier_t *ptr, uint64_t gas_limit, uint64_
 GoError cGet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 GoError cSet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cDelete_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
-GoError cScan_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
+// TODO: to be removed: GoError cScan_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
 // iterator
-GoError cNext_cgo(iterator_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut);
+// TODO: to be removed:  GoError cNext_cgo(iterator_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut);
 // api
 GoError cHumanAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
 GoError cCanonicalAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
@@ -128,7 +128,7 @@ var db_vtable = C.Db_vtable{
 	read_db:   (C.read_db_fn)(C.cGet_cgo),
 	write_db:  (C.write_db_fn)(C.cSet_cgo),
 	remove_db: (C.remove_db_fn)(C.cDelete_cgo),
-	scan_db:   (C.scan_db_fn)(C.cScan_cgo),
+	// TODO: to be removed: scan_db:   (C.scan_db_fn)(C.cScan_cgo),
 }
 
 type DBState struct {
@@ -159,15 +159,18 @@ func buildDB(state *DBState, gm *GasMeter) C.Db {
 	}
 }
 
+/* TODO: to be removed:
 var iterator_vtable = C.Iterator_vtable{
 	next_db: (C.next_db_fn)(C.cNext_cgo),
 }
+*/
 
 // An iterator including referenced objects is 117 bytes large (calculated using https://github.com/DmitriyVTitov/size).
 // We limit the number of iterators per contract call ID here in order limit memory usage to 32768*117 = ~3.8 MB as a safety measure.
 // In any reasonable contract, gas limits should hit sooner than that though.
 const frameLenLimit = 32768
 
+/* TODO: to be removed:
 // contract: original pointer/struct referenced must live longer than C.Db struct
 // since this is only used internally, we can verify the code that this is the case
 func buildIterator(callID uint64, it dbm.Iterator) (C.iterator_t, error) {
@@ -180,6 +183,7 @@ func buildIterator(callID uint64, it dbm.Iterator) (C.iterator_t, error) {
 		iterator_index: cu64(idx),
 	}, nil
 }
+*/
 
 //export cGet
 func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView, val *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
@@ -266,6 +270,7 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 	return C.GoError_None
 }
 
+/* TODO: to be removed:
 //export cScan
 func cScan(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, start C.U8SliceView, end C.U8SliceView, order ci32, out *C.GoIter, errOut *C.UnmanagedVector) (ret C.GoError) {
 	// TODO: remove this after PoC
@@ -357,6 +362,7 @@ func cNext(ref C.iterator_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key *
 	*val = newUnmanagedVector(v)
 	return C.GoError_None
 }
+*/
 
 /***** GoAPI *******/
 
