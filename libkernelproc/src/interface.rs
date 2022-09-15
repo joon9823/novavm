@@ -1,7 +1,9 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::error::{handle_c_error_binary, Error};
-use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, CosmosView, Db, UnmanagedVector};
+use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
+
+use move_deps::move_core_types::account_address::AccountAddress;
 
 use move_deps::move_core_types::account_address::AccountAddress;
 
