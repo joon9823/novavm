@@ -2,7 +2,7 @@ use crate::{
     access_path::AccessPath,
     gas_meter::Gas,
     kernel_vm::KernelVM,
-    message::{EntryFunction, Message, Module, Script},
+    message::{EntryFunction, Message, Module, ModuleBundle, Script},
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
 };
@@ -79,7 +79,10 @@ fn test_simple_trasaction() {
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (
             // publish module
-            Message::new_module(AccountAddress::ONE, Module::create_basic_coin()),
+            Message::new_module(
+                AccountAddress::ONE,
+                ModuleBundle::from(Module::create_basic_coin()),
+            ),
             VMStatus::Executed,
             1,
             None,
