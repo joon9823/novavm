@@ -148,67 +148,6 @@ impl Storage for GoStorage {
         (Ok(output), gas_info)
     }
 
-    /* we don't need iterators
-    fn scan(
-        &mut self,
-        start: Option<&[u8]>,
-        end: Option<&[u8]>,
-        order: Order,
-    ) -> BackendResult<u32> {
-        let mut error_msg = UnmanagedVector::default();
-        let mut iter = GoIter::new(self.db.gas_meter);
-        let mut used_gas = 0_u64;
-        let go_error: GoError = (self.db.vtable.scan_db)(
-            self.db.state,
-            self.db.gas_meter,
-            &mut used_gas as *mut u64,
-            U8SliceView::new(start),
-            U8SliceView::new(end),
-            order.into(),
-            &mut iter as *mut GoIter,
-            &mut error_msg as *mut UnmanagedVector,
-        )
-        .into();
-        let gas_info = GasInfo::with_externally_used(used_gas);
-
-        // return complete error message (reading from buffer for GoError::Other)
-        let default = || {
-            format!(
-                "Failed to read the next key between {:?} and {:?}",
-                start.map(String::from_utf8_lossy),
-                end.map(String::from_utf8_lossy),
-            )
-        };
-        unsafe {
-            if let Err(err) = go_error.into_result(error_msg, default) {
-                return (Err(err), gas_info);
-            }
-        }
-
-        let next_id: u32 = self
-            .iterators
-            .len()
-            .try_into()
-            .expect("Iterator count exceeded uint32 range. This is a bug.");
-        self.iterators.insert(next_id, iter); // This moves iter. Is this okay?
-        (Ok(next_id), gas_info)
-    }
-
-    fn next(&mut self, iterator_id: u32) -> BackendResult<Option<Record>> {
-        let iterator = match self.iterators.get_mut(&iterator_id) {
-            Some(i) => i,
-            None => {
-                return (
-                    Err(BackendError::iterator_does_not_exist(iterator_id)),
-                    GasInfo::free(),
-                )
-            }
-        };
-        iterator.next()
-    }
-    */
-
-
     fn set(&mut self, key: &[u8], value: &[u8]) -> BackendResult<()> {
         let mut error_msg = UnmanagedVector::default();
         let mut used_gas = 0_u64;
