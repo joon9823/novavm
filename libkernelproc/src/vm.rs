@@ -137,7 +137,30 @@ fn execute_entry(
     match status {
         VMStatus::Executed => {
             if is_read_only {
-                return Ok(Vec::from(status.to_string()));
+                return match retval { // FIXME: retval or output?
+                    Some(val) => {
+                        Ok(Vec::from("FIXME: some SerializedReturnValues are out there."))  // FIXME need to define query result format
+                     },
+                    None => { Ok(Vec::from("no data"))}
+                }
+            }
+            for (addr, cset) in output.change_set().accounts() {
+                for (id, module) in cset.modules() {
+                    let (res, gas_used) = match module {
+                        Op::New(v) | Op::Modify(v) => { storage.set(id.as_bytes(), v.as_ref())  },
+                        Op::Delete => { storage.remove(id.as_bytes()) }
+                    };
+                    // TODO: deduct gas
+                    res?;
+                }
+                 for (id, module) in cset.resources() {
+                    let (res, gas_used) = match module {
+                        Op::New(v) | Op::Modify(v) => { storage.set(&Vec::from(id.to_string()), v.as_ref())  },
+                        Op::Delete => { storage.remove(&Vec::from(id.to_string())) }
+                    };
+                    // TODO: deduct gas
+                    res?;
+                }
             }
 
             let _res = push_write_set(&mut storage, output.change_set());
