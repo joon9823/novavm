@@ -1,10 +1,8 @@
 use crate::Db;
-use crate::UnmanagedVector;
 use crate::storage::Storage;
 use crate::error::Error;
 use crate::GoStorage;
 
-use kernelvm::BackendError;
 use kernelvm::EntryFunction;
 use kernelvm::ModuleBundle;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
