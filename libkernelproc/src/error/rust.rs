@@ -1,4 +1,4 @@
-use kernelvm::VmError;
+use kernelvm::{VmError, BackendError};
 use errno::{set_errno, Errno};
 use thiserror::Error;
 
@@ -29,6 +29,10 @@ pub enum RustError {
     VmErr {
         msg: String,
     },
+    #[error("failure occured from backend: {}", msg)]
+    BackendFailure {
+        msg: String,
+    }
 }
 
 impl RustError {
@@ -65,6 +69,12 @@ impl RustError {
         RustError::OutOfGas {
         }
     }
+
+    pub fn backend_failure<S: ToString>(msg: S) -> Self {
+        RustError::BackendFailure {
+            msg: msg.to_string(),
+        }
+    }
 }
 
 impl From<VmError> for RustError {
@@ -73,6 +83,12 @@ impl From<VmError> for RustError {
             VmError::GasDepletion { .. } => RustError::out_of_gas(),
             _ => RustError::vm_err(source),
         }
+    }
+}
+
+impl From<BackendError> for RustError {
+    fn from(source: BackendError) -> Self {
+        RustError::backend_failure(source.to_string())
     }
 }
 

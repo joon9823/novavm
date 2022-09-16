@@ -85,8 +85,7 @@ impl AddAssign for GasInfo {
 /// We can use feature flags to opt-in to non-essential methods
 /// for backwards compatibility in systems that don't have them all.
 pub trait BackendApi: Copy + Clone + Send {
-    fn canonical_address(&self, human: &str) -> BackendResult<Vec<u8>>;
-    fn human_address(&self, canonical: &[u8]) -> BackendResult<String>;
+    fn bank_transfer(&self, recipient: &[u8], denom: &str, amount: &str) -> BackendResult<()>;
 }
 
 pub trait Querier {

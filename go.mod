@@ -2,7 +2,10 @@ module github.com/Kernel-Labs/kernelvm
 
 go 1.19
 
-require github.com/tendermint/tm-db v0.6.7
+require (
+	github.com/stretchr/testify v1.7.0
+	github.com/tendermint/tm-db v0.6.7
+)
 
 require (
 	github.com/DataDog/zstd v1.4.1 // indirect
@@ -19,8 +22,6 @@ require (
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/objx v0.4.0 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect

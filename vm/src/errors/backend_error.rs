@@ -16,6 +16,8 @@ pub enum BackendError {
     IteratorDoesNotExist { id: u32 },
     #[error("Ran out of gas during call into backend")]
     OutOfGas {},
+    #[error("Unimplemented")]
+    Unimplemented {},
     #[error("Unknown error during call into backend: {msg}")]
     Unknown { msg: String },
     // This is the only error case of BackendError that is reported back to the contract.
@@ -38,6 +40,10 @@ impl BackendError {
 
     pub fn out_of_gas() -> Self {
         BackendError::OutOfGas {}
+    }
+
+    pub fn unimplemented() -> Self {
+        BackendError::Unimplemented {}
     }
 
     pub fn unknown(msg: impl Into<String>) -> Self {

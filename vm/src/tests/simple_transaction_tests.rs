@@ -8,13 +8,13 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-use move_deps::move_core_types::{
+use move_deps::{move_core_types::{
     account_address::AccountAddress,
     effects::{ChangeSet, Op},
     identifier::Identifier,
     language_storage::ModuleId,
     vm_status::{StatusCode, VMStatus},
-};
+}, move_binary_format::CompiledModule};
 
 use crate::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
 
@@ -70,9 +70,12 @@ impl StateView for MockDB {
 #[cfg(test)]
 impl Module {
     fn create_basic_coin() -> Self {
-        Self::new(
+        let s = Self::new(
             include_bytes!("../../move-test/build/test1/bytecode_modules/BasicCoin.mv").to_vec(),
-        )
+        );
+        let _compiled_module = CompiledModule::deserialize(s.code()).unwrap();
+
+        s
     }
 
     fn get_basic_coin_module_id() -> ModuleId {

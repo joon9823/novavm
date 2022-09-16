@@ -28,6 +28,8 @@ pub enum GoError {
     CannotSerialize = 4,
     /// An error happened during normal operation of a Go callback, which should be fed back to the contract
     User = 5,
+    /// Unimplemented
+    Unimplemented = 6,
     /// An error type that should never be created by us. It only serves as a fallback for the i32 to GoError conversion.
     Other = -1,
 }
@@ -42,6 +44,7 @@ impl From<i32> for GoError {
             3 => GoError::OutOfGas,
             4 => GoError::CannotSerialize,
             5 => GoError::User,
+            6 => GoError::Unimplemented,
             _ => GoError::Other,
         }
     }
@@ -88,6 +91,7 @@ impl GoError {
             GoError::BadArgument => Err(BackendError::bad_argument()),
             GoError::OutOfGas => Err(BackendError::out_of_gas()),
             GoError::User => Err(BackendError::user_err(build_error_msg())),
+            GoError::Unimplemented => Err(BackendError::unimplemented()),
             // Everything else goes into unknown
             GoError::CannotSerialize | GoError::Other => {
                 Err(BackendError::unknown(build_error_msg()))

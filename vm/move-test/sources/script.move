@@ -5,4 +5,3 @@ script {
         BasicCoin::mint(me, 200);
     }
 }
-

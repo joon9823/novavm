@@ -1,12 +1,27 @@
 package kernel
 
+import (
+	"github.com/Kernel-Labs/kernelvm/api"
+)
+
 // VM struct is the core of kernelvm.
 type VM struct {
+	printDebug bool
 }
 
 // CreateVM creates a new VM.
 // TODO: add params and returns
-func CreateVM() {}
+func CreateVM(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasMeter api.GasMeter,
+	printDebug bool,
+	moduleBundle []byte,
+) error {
+	_, err := api.Initialize(kvStore, goApi, querier, gasMeter, printDebug, moduleBundle)
+	return err
+}
 
 // VM Destroyer
 // TODO: add params and returns
