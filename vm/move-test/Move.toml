@@ -4,6 +4,8 @@ version = "0.0.0"
 
 [dependencies]
 MoveNursery = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib/nursery", rev = "70b34a66473c34ad30d101290b249f2db3c847a2" }
+KernelStdlib = { local = "../src/kernel_stdlib" }
 
 [addresses]
+kernel_std = "0x1"
 std = "0x1"
