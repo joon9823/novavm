@@ -7,7 +7,11 @@ use move_deps::{
 };
 use std::sync::Arc;
 
-use move_deps::move_stdlib;
+
+use move_deps::{
+    move_stdlib,
+    move_core_types::language_storage::CORE_CODE_ADDRESS
+};
 pub use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
@@ -32,18 +36,18 @@ impl KernelVM {
         // TODO: set gas policy for native functions
         let inner = MoveVM::new(
             move_stdlib::natives::all_natives(
-            AccountAddress::from_hex_literal("0x1").unwrap(),
+            CORE_CODE_ADDRESS,
             move_stdlib::natives::GasParameters::zeros())
         .into_iter()
         .chain(
             move_stdlib::natives::nursery_natives(
-            AccountAddress::from_hex_literal("0x1").unwrap(),
+            CORE_CODE_ADDRESS,
             move_stdlib::natives::NurseryGasParameters::zeros()))
         .into_iter()
         .chain(
             kernel_stdlib::all_natives(
-                AccountAddress::from_hex_literal("0x1").unwrap(), 
-                kernel_stdlib::GasParameters::zeros()
+            CORE_CODE_ADDRESS, 
+            kernel_stdlib::GasParameters::zeros()
         )))
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
@@ -60,7 +64,7 @@ impl KernelVM {
         let mut session = self.move_vm.new_session(remote_cache);
         let mut gas_meter =  GasStatus::new_unmetered();
         session
-                .publish_module(compiled_module, AccountAddress::ONE, &mut gas_meter)
+                .publish_module(compiled_module, CORE_CODE_ADDRESS, &mut gas_meter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
@@ -88,6 +92,7 @@ impl KernelVM {
             MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
         };
         let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
+        println!("gas_used: {:?}", gas_used);
 
         match result {
             Ok(status_and_output) => status_and_output,
@@ -96,7 +101,6 @@ impl KernelVM {
 
                 let (status, message_output) = match txn_status.is_discarded() {
                     true => discard_error_vm_status(err),
-                    // TODO: set gas_used for faile message
                     false => self.failed_message_cleanup(err, remote_cache,  gas_used),
                 };
                     
