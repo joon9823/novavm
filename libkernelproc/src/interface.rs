@@ -1,5 +1,4 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::str;
 
 use crate::error::{handle_c_error_binary, Error};
 use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
