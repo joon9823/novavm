@@ -1,15 +1,17 @@
-module 0x1::BasicCoin {
-    struct Coin has key, copy {
+module std::BasicCoin {
+    struct Kernel {}
+
+    struct Coin<phantom CoinType> has key, copy {
         value: u64,
         test: bool,
     }
 
-    public entry fun mint(account: signer, value: u64) {
-        move_to(&account, Coin { value, test: true })
+    public entry fun mint<CoinType>(account: signer, value: u64) {
+        move_to(&account, Coin<CoinType> { value, test: true })
     }
 
-    public entry fun get(account: address): u64 acquires Coin{
-        let c = borrow_global<Coin>(account);
+    public entry fun get<CoinType>(account: address): u64 acquires Coin{
+        let c = borrow_global<Coin<CoinType>>(account);
         c.value
     }
 
@@ -17,7 +19,7 @@ module 0x1::BasicCoin {
         123
     }
 
-    public entry fun getCoin(addr: address): Coin acquires Coin {
-        *borrow_global<Coin>(addr)
+    public entry fun getCoin<CoinType>(addr: address): Coin<CoinType> acquires Coin {
+        *borrow_global<Coin<CoinType>>(addr)
     }
 }

@@ -40,8 +40,7 @@ pub extern "C" fn publish_module(
     module: ByteSliceView,
 ) -> UnmanagedVector {
     let m = module.to_owned().unwrap();
-    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
-    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
+    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
         vm::publish_module(addr, m, db, gas_limit)
@@ -67,8 +66,7 @@ pub extern "C" fn execute_contract(
     message: ByteSliceView,
 ) -> UnmanagedVector {
     let payload = message.to_owned().unwrap();
-    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
-    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
+    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
         vm::execute_contract(addr, payload, db, gas_limit)
@@ -76,18 +74,27 @@ pub extern "C" fn execute_contract(
     .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
-    return UnmanagedVector::new(Some(ret))
+    return UnmanagedVector::new(Some(ret));
 }
 
 // exported function to query contract (in smart way)
 /// TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
 #[no_mangle]
-pub extern "C" fn query_contract(db: Db, api: GoApi, querier: GoQuerier, is_verbose: bool, gas_limit: u64, gas_used: Option<&mut u64>, errmsg: Option<&mut UnmanagedVector>, sender: ByteSliceView, message: ByteSliceView) -> UnmanagedVector {
+pub extern "C" fn query_contract(
+    db: Db,
+    api: GoApi,
+    querier: GoQuerier,
+    is_verbose: bool,
+    gas_limit: u64,
+    gas_used: Option<&mut u64>,
+    errmsg: Option<&mut UnmanagedVector>,
+    sender: ByteSliceView,
+    message: ByteSliceView,
+) -> UnmanagedVector {
     let payload = message.to_owned().unwrap();
-    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
-    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
+    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
-    let res = catch_unwind(AssertUnwindSafe( move || {
+    let res = catch_unwind(AssertUnwindSafe(move || {
         vm::query_contract(addr, payload, db, gas_limit)
     }))
     .unwrap_or_else(|_| Err(Error::panic()));

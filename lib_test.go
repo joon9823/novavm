@@ -1,36 +1,17 @@
 package kernel_test
 
 import (
-	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	vm "github.com/Kernel-Labs/kernelvm"
 	"github.com/Kernel-Labs/kernelvm/api"
+	"github.com/Kernel-Labs/kernelvm/types"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_CrateVM(t *testing.T) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
-	require.NoError(t, err)
-
-	gasMeter := api.NewMockGasMeter(100000000)
-	_, err = vm.CreateVM(
-		api.NewLookup(gasMeter),
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
-		gasMeter,
-		true,
-		f,
-	)
-
-	require.NoError(t, err)
-}
-
-func Test_PublishModule(t *testing.T) {
+func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
@@ -45,43 +26,29 @@ func Test_PublishModule(t *testing.T) {
 		f,
 	)
 
-	_, err = vm.PublishModule(
-		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
-		gasMeter,
-		10000,
-		"0x00000000000000000000000000000001",
-		f,
-	)
-
-	require.NoError(t, err)
-	// TODO uncomment when usedGas properly passed
-	// require.NotZero(t, usedGas)
+	return vm, kvStore
 }
 
-func Test_ExecuteContract(t *testing.T) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
-	require.NoError(t, err)
+func mintCoin(
+	t *testing.T,
+	vm vm.VM,
+	kvStore *api.Lookup,
+	minter types.AccountAddress,
+	amount uint64,
+) {
 	gasMeter := api.NewMockGasMeter(100000000)
-	kvStore := api.NewLookup(gasMeter)
-	vm, err := vm.CreateVM(
-		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
-		gasMeter,
-		true,
-		f,
-	)
 
-	payload := EntryFunction{
-		Module: ModuleId{
-			Address: AccountAddress("00000000000000000000000000000001"),
+	std, err := types.NewAccountAddress("0x1")
+	require.NoError(t, err)
+
+	payload := types.EntryFunction{
+		Module: types.ModuleId{
+			Address: std,
 			Name:    "BasicCoin",
 		},
 		Function: "mint",
-		TyArgs:   []TypeTag{},
-		Args:     []Arg{convertUint64(100)},
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		Args:     []types.Arg{types.SerializeUint64(amount)},
 	}
 	bz, err := json.Marshal(payload)
 	require.NoError(t, err)
@@ -92,62 +59,86 @@ func Test_ExecuteContract(t *testing.T) {
 		api.MockQuerier{},
 		gasMeter,
 		10000,
-		"0x00000000000000000000000000000001",
+		minter,
 		bz,
 	)
 
-	fmt.Println(err)
 	require.NoError(t, err)
 	// TODO uncomment when usedGas properly passed
 	// require.NotZero(t, usedGas)
 }
 
-func convertUint64(num uint64) []byte {
-	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, num)
-	return bz
+func Test_CrateVM(t *testing.T) {
+	_, _ = initializeVM(t)
 }
 
-type AccountAddress string
-type Identifier string
-type TypeTag string
+func Test_PublishModule(t *testing.T) {
+	vm, kvStore := initializeVM(t)
 
-const (
-	Bool    = TypeTag("bool")
-	U8      = TypeTag("u8")
-	U64     = TypeTag("u64")
-	U128    = TypeTag("u128")
-	Address = TypeTag("address")
-	Signer  = TypeTag("signer")
-	// TODO - enable serialization
-	// Vector = TypeTag("vector")
-	// Struct = TypeTag("struct")
-)
+	gasMeter := api.NewMockGasMeter(100000000)
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 
-type ModuleId struct {
-	Address AccountAddress `json:"address"`
-	Name    Identifier     `json:"name"`
+	_, err = vm.PublishModule(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		gasMeter,
+		10000,
+		types.StdAddress,
+		f,
+	)
+
+	require.NoError(t, err)
+	// TODO uncomment when usedGas properly passed
+	// require.NotZero(t, usedGas)
 }
 
-type EntryFunction struct {
-	Module   ModuleId   `json:"module"`
-	Function Identifier `json:"function"`
-	TyArgs   []TypeTag  `json:"ty_args"`
-	Args     []Arg      `json:"args"`
+func Test_ExecuteContract(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+
+	minter, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	mintCoin(t, vm, kvStore, minter, 100)
 }
 
-type Arg []byte
+func Test_QueryContract(t *testing.T) {
+	vm, kvStore := initializeVM(t)
 
-func (arg *Arg) UnmarshalJSON(data []byte) error {
-	*arg = Arg(data)
-	return nil
-}
+	minter, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
 
-func (arg *Arg) MarshalJSON() ([]byte, error) {
-	str := ""
-	for _, b := range *arg {
-		str += fmt.Sprintf("%d,", b)
+	mintAmount := uint64(100)
+	mintCoin(t, vm, kvStore, minter, mintAmount)
+
+	gasMeter := api.NewMockGasMeter(100000000)
+	payload := types.EntryFunction{
+		Module: types.ModuleId{
+			Address: types.StdAddress,
+			Name:    "BasicCoin",
+		},
+		Function: "get",
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		Args:     []types.Arg{types.Arg(minter)},
 	}
-	str = fmt.Sprintf("[%s]", strings.TrimSuffix(str, ","))
-	return []byte(str), nil
+	bz, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	res, _, err := vm.Query(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		gasMeter,
+		10000,
+		types.StdAddress,
+		bz,
+	)
+
+	require.NoError(t, err)
+
+	num := types.DeserializeUint64(res)
+	require.Equal(t, mintAmount, num)
+
+	// TODO uncomment when usedGas properly passed
+	// require.NotZero(t, usedGas)
 }

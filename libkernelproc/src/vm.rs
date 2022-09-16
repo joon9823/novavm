@@ -113,10 +113,6 @@ fn execute_entry(
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
-    // "{\"module\":{\"address\":\"00000000000000000000000000000001\",\"name\":\"BasicCoin\"},\"function\":\"mint\",\"ty_args\":[],\"args\":[[100,0,0,0,0,0,0,0]]}"
-    // "{\"module\":{\"address\":\"00000000000000000000000000000001\",\"name\":\"BasicCoin\"},\"function\":\"mint\",\"ty_args\":[],\"args\":[[100,0,0,0,0,0,0,0]]}"
-    
-    println!("SIBONG - {:?}", std::str::from_utf8(payload.as_slice()).unwrap());
     let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
     let message: Message = Message::new_entry_function(sender, entry);
 
@@ -127,7 +123,6 @@ fn execute_entry(
     let (status, output, retval) =
         unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
 
-    println!("{:?}", status);
     match status {
         VMStatus::Executed => {
             if is_read_only {
@@ -138,7 +133,9 @@ fn execute_entry(
                         if Vec::len(&val.mutable_reference_outputs) == 0
                             && Vec::len(&val.return_values) == 1
                         {
-                            let (blob, _) = val.return_values.first().unwrap();
+                            // ignore _move_type_layout
+                            // a client should handle deserialize
+                            let (blob, _move_type_layout) = val.return_values.first().unwrap();
                             Ok(blob.to_vec())
                         } else {
                             Err(Error::vm_err("only one value is allowed to be returned."))

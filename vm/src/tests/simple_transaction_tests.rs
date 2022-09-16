@@ -8,13 +8,17 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-use move_deps::{move_core_types::{
-    account_address::AccountAddress,
-    effects::{ChangeSet, Op},
-    identifier::Identifier,
-    language_storage::ModuleId,
-    vm_status::{StatusCode, VMStatus},
-}, move_binary_format::CompiledModule};
+use move_deps::{
+    move_binary_format::CompiledModule,
+    move_core_types::{
+        account_address::AccountAddress,
+        effects::{ChangeSet, Op},
+        identifier::Identifier,
+        language_storage::{ModuleId, TypeTag},
+        parser::parse_struct_tag,
+        vm_status::{StatusCode, VMStatus},
+    },
+};
 
 use crate::asset::{compile_move_nursery_modules, compile_move_stdlib_modules};
 
@@ -75,9 +79,6 @@ fn test_simple_transaction() {
 
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
-    
-    println!("SIBONG - {:?}", serde_json::to_string(&EntryFunction::mint(100)));
-
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (
             // publish module
@@ -190,7 +191,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -199,7 +202,9 @@ impl EntryFunction {
         Self::new(
             ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -217,7 +222,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("get").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -226,7 +233,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("getCoin").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -237,7 +246,10 @@ impl Script {
     fn mint_200() -> Self {
         Self::new(
             include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
-            vec![],
+            vec![
+                TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Kernel").unwrap()),
+                TypeTag::Bool,
+            ],
             vec![],
         )
     }
