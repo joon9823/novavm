@@ -22,7 +22,7 @@ func DeserializeUint64(bz []byte) uint64 {
 	return binary.LittleEndian.Uint64(bz)
 }
 
-// AccountAddressLen - TODO should be increased
+// AccountAddressLen address bytes length
 const AccountAddressLen = 20
 
 // AccountAddress account address bytes
