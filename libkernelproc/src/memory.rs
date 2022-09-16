@@ -1,7 +1,7 @@
 use std::mem;
 use std::slice;
 
-// It is a copy of the one from cosmwasm/libwasmvm. We owe them a lot!
+// It is a copy of the one from cosmwasm/lib crate. We owe them a lot!
 
 /// A view into an externally owned byte slice (Go `[]byte`).
 /// Use this for the current call only. A view cannot be copied for safety reasons.
@@ -122,7 +122,7 @@ impl U8SliceView {
 /// Transferring ownership from Rust to Go using return values of FFI calls:
 ///
 /// ```
-/// # use wasmvm::{cache_t, ByteSliceView, UnmanagedVector};
+/// # use crate::{cache_t, ByteSliceView, UnmanagedVector};
 /// #[no_mangle]
 /// pub extern "C" fn save_wasm_to_cache(
 ///     cache: *mut cache_t,
@@ -139,8 +139,8 @@ impl U8SliceView {
 /// Transferring ownership from Go to Rust using return value pointers:
 ///
 /// ```rust
-/// # use cosmwasm_vm::{BackendResult, GasInfo};
-/// # use wasmvm::{Db, GoError, U8SliceView, UnmanagedVector};
+/// # use kernelvm::BackendResult;
+/// # use crate::{Db, GoError, U8SliceView, UnmanagedVector};
 /// fn db_read(db: &Db, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
 ///
 ///     // Create a None vector in order to reserve memory for the result
@@ -148,12 +148,9 @@ impl U8SliceView {
 ///
 ///     // …
 ///     # let mut error_msg = UnmanagedVector::default();
-///     # let mut used_gas = 0_u64;
 ///
 ///     let go_error: GoError = (db.vtable.read_db)(
 ///         db.state,
-///         db.gas_meter,
-///         &mut used_gas as *mut u64,
 ///         U8SliceView::new(Some(key)),
 ///         // Go will create a new UnmanagedVector and override this address
 ///         &mut output as *mut UnmanagedVector,
@@ -164,10 +161,7 @@ impl U8SliceView {
 ///     // We now own the new UnmanagedVector written to the pointer and must destroy it
 ///     let value = output.consume();
 ///
-///     // Some gas processing and error handling
-///     # let gas_info = GasInfo::free();
-///
-///     (Ok(value), gas_info)
+///     Ok(value)
 /// }
 /// ```
 ///
@@ -175,7 +169,7 @@ impl U8SliceView {
 /// If you want to mutate data, you need to comsume the vector and create a new one:
 ///
 /// ```rust
-/// # use wasmvm::{UnmanagedVector};
+/// # use crate::{UnmanagedVector};
 /// # let input = UnmanagedVector::new(Some(vec![0xAA]));
 /// let mut mutable: Vec<u8> = input.consume().unwrap_or_default();
 /// assert_eq!(mutable, vec![0xAA]);

@@ -4,7 +4,6 @@
 mod api;
 mod db;
 mod error;
-mod gas_meter;
 mod interface;
 mod memory;
 mod querier;

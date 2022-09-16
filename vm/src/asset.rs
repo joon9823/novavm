@@ -1,8 +1,8 @@
+use std::collections::BTreeMap;
+
 use move_deps::move_stdlib;
 use move_deps::move_binary_format::CompiledModule;
-use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
-use move_deps::move_compiler::shared::NumericalAddress;
-use std::{collections::BTreeMap, path::PathBuf};
+use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler, shared::NumericalAddress};
 use move_deps::move_command_line_common::files::{extension_equals,find_filenames};
 
 pub fn compile_move_stdlib_modules() -> Vec<CompiledModule> {

@@ -1,8 +1,7 @@
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
-use kernelvm::BackendError;
-use kernelvm::backend::{BackendResult, GasInfo, Querier};
+use kernelvm::backend::{BackendResult, Querier};
 
 // this represents something passed in from the caller side of FFI
 #[repr(C)]
@@ -17,8 +16,6 @@ pub struct Querier_vtable {
     // We return errors through the return buffer, but may return non-zero error codes on panic
     pub query_external: extern "C" fn(
         *const querier_t,
-        u64,
-        *mut u64,
         U8SliceView,
         *mut UnmanagedVector, // result output
         *mut UnmanagedVector, // error message output
@@ -39,15 +36,11 @@ impl Querier for GoQuerier {
     fn query_raw(
         &self,
         request: &[u8],
-        gas_limit: u64,
     ) -> BackendResult<Vec<u8>> { /* FIXME: put Vec<u8> as stub */
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
-        let mut used_gas = 0_u64;
         let go_result: GoError = (self.vtable.query_external)(
             self.state,
-            gas_limit,
-            &mut used_gas as *mut u64,
             U8SliceView::new(Some(request)),
             &mut output as *mut UnmanagedVector,
             &mut error_msg as *mut UnmanagedVector,
@@ -55,8 +48,6 @@ impl Querier for GoQuerier {
         .into();
         // We destruct the UnmanagedVector here, no matter if we need the data.
         let output = output.consume();
-
-        let gas_info = GasInfo::with_externally_used(used_gas);
 
         // return complete error message (reading from buffer for GoError::Other)
         let default = || {
@@ -67,7 +58,7 @@ impl Querier for GoQuerier {
         };
         unsafe {
             if let Err(err) = go_result.into_result(error_msg, default) {
-                return (Err(err), gas_info);
+                return Err(err);
             }
         }
 
@@ -83,6 +74,6 @@ impl Querier for GoQuerier {
 		});
 		*/
          });
-        (result, gas_info)
+        result
     }
 }

@@ -3,7 +3,7 @@ use move_deps::{
     move_core_types::{
         account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}}, move_binary_format::CompiledModule,
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
 };
 use std::sync::Arc;
 

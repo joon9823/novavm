@@ -13,7 +13,7 @@ func Initialize(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, is
 	var err error
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -36,7 +36,7 @@ func PublishModule(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter,
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -61,7 +61,7 @@ func ExecuteContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMete
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -86,7 +86,7 @@ func QueryContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter,
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
