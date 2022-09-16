@@ -29,12 +29,12 @@ func (q QueryResponse) MarshalJSON() ([]byte, error) {
 //-------- Querier -----------
 
 type Querier interface {
-	Query(request QueryRequest, gasLimit uint64) ([]byte, error)
+	Query(request QueryRequest) ([]byte, error)
 	GasConsumed() uint64
 }
 
 // this is a thin wrapper around the desired Go API to give us types closer to Rust FFI
-func RustQuery(querier Querier, binRequest []byte, gasLimit uint64) QuerierResult {
+func RustQuery(querier Querier, binRequest []byte) QuerierResult {
 	var request QueryRequest
 	err := json.Unmarshal(binRequest, &request)
 	if err != nil {
@@ -47,7 +47,7 @@ func RustQuery(querier Querier, binRequest []byte, gasLimit uint64) QuerierResul
 			},
 		}
 	}
-	bz, err := querier.Query(request, gasLimit)
+	bz, err := querier.Query(request)
 	return ToQuerierResult(bz, err)
 }
 
@@ -81,7 +81,6 @@ func ToQuerierResult(response []byte, err error) QuerierResult {
 // QueryRequest is an rust enum and only (exactly) one of the fields should be set
 // Should we do a cleaner approach in Go? (type/data?)
 type QueryRequest struct {
-	Contract *ContractQuery `json:"contract,omitempty"`
 	/* TODO: unblock them after PoC
 	Bank     *BankQuery      `json:"bank,omitempty"`
 	Custom   json.RawMessage `json:"custom,omitempty"`
@@ -90,15 +89,6 @@ type QueryRequest struct {
 	Stargate *StargateQuery  `json:"stargate,omitempty"`
 	Wasm     *WasmQuery      `json:"wasm,omitempty"`
 	*/
-}
-
-type ContractQuery struct {
-	Raw *RawQuery `json:"raw,omitempty"`
-	// TODO: query for contract info
-}
-
-type RawQuery struct {
-	AccessPath []byte `json:"access_path"`
 }
 
 /* TODO: unblock them after PoC
