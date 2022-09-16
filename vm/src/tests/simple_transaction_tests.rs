@@ -8,15 +8,21 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-use move_deps::{move_core_types::{
-    account_address::AccountAddress,
-    effects::{ChangeSet, Op},
-    identifier::Identifier,
-    language_storage::ModuleId,
-    vm_status::{StatusCode, VMStatus},
-}, move_binary_format::CompiledModule};
+use move_deps::{
+    move_binary_format::CompiledModule,
+    move_core_types::{
+        account_address::AccountAddress,
+        effects::{ChangeSet, Op},
+        identifier::Identifier,
+        language_storage::{ModuleId, TypeTag},
+        parser::parse_struct_tag,
+        vm_status::{StatusCode, VMStatus},
+    },
+};
 
-use crate::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
+use crate::asset::{
+    compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
+};
 
 //faking chain db
 struct MockDB {
@@ -85,7 +91,7 @@ impl Module {
 
 #[cfg(test)]
 impl EntryFunction {
-    fn print_number(number: u64) -> Self{
+    fn print_number(number: u64) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("print_number").unwrap(),
@@ -94,7 +100,7 @@ impl EntryFunction {
         )
     }
 
-    fn balance(addr: AccountAddress) -> Self{
+    fn balance(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("balance").unwrap(),
@@ -102,8 +108,8 @@ impl EntryFunction {
             vec![addr.to_vec()],
         )
     }
-    
-    fn transfer(from : AccountAddress, to : AccountAddress, amount : u64) -> Self{
+
+    fn transfer(from: AccountAddress, to: AccountAddress, amount: u64) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("transfer").unwrap(),
@@ -116,7 +122,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -125,7 +133,9 @@ impl EntryFunction {
         Self::new(
             ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -143,7 +153,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("get").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -152,7 +164,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("get_coin").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -163,7 +177,10 @@ impl Script {
     fn mint_200() -> Self {
         Self::new(
             include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
-            vec![],
+            vec![
+                TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Kernel").unwrap()),
+                TypeTag::Bool,
+            ],
             vec![],
         )
     }
@@ -173,20 +190,17 @@ struct ExpectedOutput {
     vm_status: VMStatus,
     changed_accounts: usize,
     result_bytes: Option<Vec<u8>>,
-    gas_used: u64
 }
 impl ExpectedOutput {
     pub fn new(
         vm_status: VMStatus,
         changed_accounts: usize,
         result_bytes : Option<Vec<u8>>,
-        gas_used : u64
     ) -> Self {
         ExpectedOutput {
             vm_status,
             changed_accounts,
             result_bytes,
-            gas_used,
         }
     }
     pub fn vm_status(&self) -> &VMStatus {
@@ -197,9 +211,6 @@ impl ExpectedOutput {
     }
     pub fn result_bytes(&self) -> &Option<Vec<u8>> {
         &self.result_bytes
-    }
-    pub fn gas_used(&self) -> u64 {
-        self.gas_used
     }
 }
 
@@ -229,9 +240,9 @@ fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
     for (msg, exp_output) in testcases {
         let resolver = DataViewResolver::new(&db);
         let (status, output, result) = vm.execute_message(msg, &resolver, gas_limit);
+
         assert!(status == *exp_output.vm_status());
         assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
-        assert!(output.gas_used() == exp_output.gas_used());
 
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
         assert!(result_bytes == *exp_output.result_bytes());
@@ -242,13 +253,11 @@ fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
         // apply output into db
         db.push_write_set(output.change_set().clone());
     }
-
-    
 }
 
 #[cfg(test)]
 #[test]
-fn test_deps_transaction(){
+fn test_deps_transaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
     let account_three =
@@ -265,7 +274,6 @@ fn test_deps_transaction(){
                 VMStatus::Executed,
                 1,
                 None,
-                0
             )
         ),
         (
@@ -277,7 +285,6 @@ fn test_deps_transaction(){
                 VMStatus::Executed,
                 0,
                 Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
-                14
             )            
         ),
         (
@@ -289,13 +296,11 @@ fn test_deps_transaction(){
                 VMStatus::Executed,
                 0,
                 Some(vec![]),
-                18
             )
         )
     ];
     run_transaction(testcases);
 }
-
 
 #[cfg(test)]
 #[test]
@@ -314,7 +319,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 1,
                 None,
-                0
             )
         ),
         (
@@ -327,7 +331,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 1,
                 Some(vec![]),
-                25
             )
         ),
         (
@@ -340,7 +343,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 1,
                 Some(vec![]),
-                19
             )
         ),
         (
@@ -353,7 +355,6 @@ fn test_simple_trasaction() {
                 VMStatus::Error(StatusCode::LINKER_ERROR),
                 0,
                 None,
-                0
             )
         ),
         (
@@ -366,7 +367,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 0,
                 Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
-                2
             )
         ),
         (
@@ -379,7 +379,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 0,
                 Some(vec![200, 0, 0, 0, 0, 0, 0, 0]),
-                34
             )
         ),
         (
@@ -392,7 +391,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 0,
                 Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
-                34
             )
         ),
         (
@@ -405,7 +403,6 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 0,
                 Some(vec![100, 0, 0, 0, 0, 0, 0, 0, 1]),
-                40
             )
         ),
     ];

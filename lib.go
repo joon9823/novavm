@@ -2,6 +2,7 @@ package kernel
 
 import (
 	"github.com/Kernel-Labs/kernelvm/api"
+	"github.com/Kernel-Labs/kernelvm/types"
 )
 
 // VM struct is the core of kernelvm.
@@ -18,9 +19,19 @@ func CreateVM(
 	gasMeter api.GasMeter,
 	printDebug bool,
 	moduleBundle []byte,
-) error {
-	_, err := api.Initialize(kvStore, goApi, querier, gasMeter, printDebug, moduleBundle)
-	return err
+) (VM, error) {
+	_, err := api.Initialize(
+		kvStore,
+		goApi,
+		querier,
+		gasMeter,
+		printDebug,
+		moduleBundle,
+	)
+
+	return VM{
+		printDebug,
+	}, err
 }
 
 // VM Destroyer
@@ -29,12 +40,72 @@ func (vm *VM) Destroy() {}
 
 // PublishModule will publish a given module.
 // TODO: add params and returns
-func (vm *VM) PublishModule() {}
+func (vm *VM) PublishModule(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasMeter api.GasMeter,
+	gasLimit uint64,
+	sender types.AccountAddress,
+	message []byte,
+) (uint64, error) {
+	_, usedGas, err := api.PublishModule(
+		kvStore,
+		goApi,
+		querier,
+		gasMeter,
+		vm.printDebug,
+		gasLimit,
+		sender,
+		message,
+	)
+
+	return usedGas, err
+}
 
 // Query will do a query request to VM
 // TODO: add params and returns
-func (vm *VM) Query() {}
+func (vm *VM) Query(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasMeter api.GasMeter,
+	gasLimit uint64,
+	sender types.AccountAddress,
+	message []byte,
+) ([]byte, uint64, error) {
+	return api.QueryContract(
+		kvStore,
+		goApi,
+		querier,
+		gasMeter,
+		vm.printDebug,
+		gasLimit,
+		sender,
+		message,
+	)
+}
 
 // Execute calls a given contract.
 // TODO: add params and returns
-func (vm *VM) Execute() {}
+func (vm *VM) Execute(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasMeter api.GasMeter,
+	gasLimit uint64,
+	sender types.AccountAddress,
+	message []byte,
+) (uint64, error) {
+	_, usedGas, err := api.ExecuteContract(
+		kvStore,
+		goApi,
+		querier,
+		gasMeter,
+		vm.printDebug,
+		gasLimit,
+		sender,
+		message,
+	)
+	return usedGas, err
+}

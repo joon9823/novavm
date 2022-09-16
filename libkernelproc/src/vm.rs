@@ -4,14 +4,17 @@ use crate::Db;
 use crate::GoStorage;
 
 use kernelvm::access_path::AccessPath;
+use kernelvm::asset::{
+    compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
+};
 use kernelvm::gas_meter::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::BackendError;
 use kernelvm::BackendResult;
 use kernelvm::EntryFunction;
 use kernelvm::GasInfo;
 use kernelvm::KernelVM;
 use kernelvm::Message;
+use kernelvm::Module;
 use kernelvm::ModuleBundle;
 
 use move_deps::move_core_types::account_address::AccountAddress;
@@ -27,22 +30,35 @@ static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec<u8>, Error> {
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
-    let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, _retval) =
-        unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
-    // let gas_used: u64 = 0;
-
-    match status {
-        VMStatus::Executed => {
-            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
-            // TODO: deduct gas
-            res?;
-
-            Ok(Vec::from(status.to_string()))
-        }
-        _ => Err(Error::vm_err("failed to initialize")),
+    // initialize stdlib
+    let mut module_bundles: Vec<Vec<u8>> = vec![];
+    let mut modules = compile_move_stdlib_modules();
+    modules.append(&mut compile_move_nursery_modules());
+    modules.append(&mut compile_kernel_stdlib_modules());
+    for module in modules {
+        let mut mod_blob = vec![];
+        module.serialize(&mut mod_blob).unwrap();
+        module_bundles.push(mod_blob);
     }
+
+    module_bundles.push(module_bundle);
+
+    for module_bundle in module_bundles {
+        let data_view = DataViewResolver::new(&storage);
+        let (status, output, _retval) =
+            unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
+
+        match status {
+            VMStatus::Executed => {
+                let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
+                res?;
+            }
+            _ => Err(Error::vm_err("failed to initialize"))?,
+        }
+    }
+
+    Ok(Vec::from("ok"))
 }
 
 pub(crate) fn publish_module(
@@ -53,7 +69,7 @@ pub(crate) fn publish_module(
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
-    let module: ModuleBundle = serde_json::from_slice(payload.as_slice()).unwrap();
+    let module: ModuleBundle = ModuleBundle::from(Module::new(payload));
     let message: Message = Message::new_module(sender, module);
 
     //let cv = CosmosView::new(&db_handle);
@@ -72,7 +88,7 @@ pub(crate) fn publish_module(
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
         }
-        _ => Err(Error::vm_err("failed to initialize")),
+        _ => Err(Error::vm_err("failed to publish")),
     }
 }
 
@@ -129,9 +145,17 @@ fn execute_entry(
                 return match retval {
                     // FIXME: retval or output?
                     Some(val) => {
-                        Ok(Vec::from(
-                            "FIXME: some SerializedReturnValues are out there.",
-                        )) // FIXME need to define query result format
+                        // allow only single return values
+                        if Vec::len(&val.mutable_reference_outputs) == 0
+                            && Vec::len(&val.return_values) == 1
+                        {
+                            // ignore _move_type_layout
+                            // a client should handle deserialize
+                            let (blob, _move_type_layout) = val.return_values.first().unwrap();
+                            Ok(blob.to_vec())
+                        } else {
+                            Err(Error::vm_err("only one value is allowed to be returned."))
+                        }
                     }
                     None => Ok(Vec::from("no data")),
                 };
@@ -144,7 +168,7 @@ fn execute_entry(
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
         }
-        _ => Err(Error::vm_err("failed to initialize")),
+        _ => Err(Error::vm_err("failed to execute")),
     }
 }
 

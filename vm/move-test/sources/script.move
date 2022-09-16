@@ -1,7 +1,7 @@
 script {
-    use 0x1::BasicCoin;
+    use std::BasicCoin;
 
-    fun main(me: signer) {
-        BasicCoin::mint(me, 200);
+    fun main<CoinType, T>(me: signer) {
+        BasicCoin::mint<CoinType>(me, 200);
     }
 }

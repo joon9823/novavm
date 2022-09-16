@@ -9,7 +9,14 @@ import (
 	"syscall"
 )
 
-func Initialize(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, isVerbose bool, module_bundle []byte) ([]byte, error) {
+func Initialize(
+	store KVStore,
+	api GoAPI,
+	querier Querier,
+	gasMeter GasMeter,
+	isVerbose bool,
+	module_bundle []byte,
+) ([]byte, error) {
 	var err error
 
 	dbState := buildDBState(store)
@@ -31,7 +38,16 @@ func Initialize(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, is
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func PublishModule(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, isVerbose bool, gasLimit uint64, sender string, module []byte) ([]byte, uint64, error) {
+func PublishModule(
+	store KVStore,
+	api GoAPI,
+	querier Querier,
+	gasMeter GasMeter,
+	isVerbose bool,
+	gasLimit uint64,
+	sender []byte,
+	module []byte,
+) ([]byte, uint64, error) {
 	var err error
 	var gasUsed cu64
 
@@ -56,7 +72,16 @@ func PublishModule(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter,
 	return copyAndDestroyUnmanagedVector(res), uint64(gasUsed), err
 }
 
-func ExecuteContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, isVerbose bool, gasLimit uint64, sender string, message []byte) ([]byte, uint64, error) {
+func ExecuteContract(
+	store KVStore,
+	api GoAPI,
+	querier Querier,
+	gasMeter GasMeter,
+	isVerbose bool,
+	gasLimit uint64,
+	sender []byte,
+	message []byte,
+) ([]byte, uint64, error) {
 	var err error
 	var gasUsed cu64
 
@@ -67,7 +92,7 @@ func ExecuteContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMete
 
 	msg := makeView(message)
 	defer runtime.KeepAlive(msg)
-	senderView := makeView([]byte(sender))
+	senderView := makeView(sender)
 	defer runtime.KeepAlive(senderView)
 
 	errmsg := newUnmanagedVector(nil)
@@ -81,7 +106,16 @@ func ExecuteContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMete
 	return copyAndDestroyUnmanagedVector(res), uint64(gasUsed), err
 }
 
-func QueryContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter, isVerbose bool, gasLimit uint64, sender string, message []byte) ([]byte, uint64, error) {
+func QueryContract(
+	store KVStore,
+	api GoAPI,
+	querier Querier,
+	gasMeter GasMeter,
+	isVerbose bool,
+	gasLimit uint64,
+	sender []byte,
+	message []byte,
+) ([]byte, uint64, error) {
 	var err error
 	var gasUsed cu64
 
@@ -92,7 +126,7 @@ func QueryContract(store KVStore, api GoAPI, querier Querier, gasMeter GasMeter,
 
 	msg := makeView(message)
 	defer runtime.KeepAlive(msg)
-	senderView := makeView([]byte(sender))
+	senderView := makeView(sender)
 	defer runtime.KeepAlive(senderView)
 
 	errmsg := newUnmanagedVector(nil)
