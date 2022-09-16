@@ -8,12 +8,8 @@ package api
 GoError cSet(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cGet(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 GoError cDelete(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
-GoError cScan(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
-// imports (iterator)
-GoError cNext(iterator_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut);
 // imports (api)
-GoError cHumanAddress(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
-GoError cCanonicalAddress(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas);
+GoError cBankTransfer(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
 // imports (querier)
 GoError cQueryExternal(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
 
@@ -27,21 +23,10 @@ GoError cSet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceV
 GoError cDelete_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut) {
 	return cDelete(ptr, gas_meter, used_gas, key, errOut);
 }
-GoError cScan_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut) {
-	return cScan(ptr, gas_meter, used_gas, start, end, order, out, errOut);
-}
-
-// Gateway functions (iterator)
-GoError cNext_cgo(iterator_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, UnmanagedVector *key, UnmanagedVector *val, UnmanagedVector *errOut) {
-	return cNext(ptr, gas_meter, used_gas, key, val, errOut);
-}
 
 // Gateway functions (api)
-GoError cCanonicalAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas) {
-    return cCanonicalAddress(ptr, src, dest, errOut, used_gas);
-}
-GoError cHumanAddress_cgo(api_t *ptr, U8SliceView src, UnmanagedVector *dest, UnmanagedVector *errOut, uint64_t *used_gas) {
-    return cHumanAddress(ptr, src, dest, errOut, used_gas);
+GoError cBankTransfer_cgo(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas) {
+    return cBankTransfer(ptr, recipient, denom, amount, errOut, used_gas);
 }
 
 // Gateway functions (querier)

@@ -24,8 +24,9 @@ test-filenames:
 	echo $(SHARED_LIB_SRC)
 
 
-test: test-rust
-	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
+test: test-rust test-go
+
+test-go: 
 	RUST_BACKTRACE=1 go test -v -count=1 ./...
 
 test-safety:
@@ -57,7 +58,7 @@ update-bindings:
 # In order to use "--features backtraces" here we need a Rust nightly toolchain, which we don't have by default
 build-rust-debug:
 	(cd libkernelproc && cargo build)
-	cp libkernelproc/target/debug/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
+	cp -fp libkernelproc/target/debug/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
 	make update-bindings
 
 # use release build to actually ship - smaller and much faster
@@ -66,7 +67,7 @@ build-rust-debug:
 # enable stripping through cargo (if that is desired).
 build-rust-release:
 	(cd libkernelproc && cargo build --release)
-	cp libkernelproc/target/release/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
+	cp -fp libkernelproc/target/release/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
 	make update-bindings
 	@ #this pulls out ELF symbols, 80% size reduction!
 
