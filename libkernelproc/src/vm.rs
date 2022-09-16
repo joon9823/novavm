@@ -6,7 +6,6 @@ use crate::GoStorage;
 use kernelvm::access_path::AccessPath;
 use kernelvm::gas_meter::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::BackendError;
 use kernelvm::BackendResult;
 use kernelvm::EntryFunction;
 use kernelvm::GasInfo;

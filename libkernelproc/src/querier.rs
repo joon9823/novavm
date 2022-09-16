@@ -1,7 +1,6 @@
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
-use kernelvm::BackendError;
 use kernelvm::backend::{BackendResult, GasInfo, Querier};
 
 // this represents something passed in from the caller side of FFI
