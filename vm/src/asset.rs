@@ -2,6 +2,7 @@ use move_deps::move_stdlib;
 use move_deps::move_binary_format::CompiledModule;
 use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
 use move_deps::move_compiler::shared::NumericalAddress;
+use std::env;
 use std::{collections::BTreeMap, path::PathBuf};
 use move_deps::move_command_line_common::files::{extension_equals,find_filenames};
 
@@ -50,10 +51,19 @@ fn compile_modules(src_files : Vec<String>, deps_files :Vec<String>, name_addres
         .collect()
 }
 
+const MODULES_DIR: &str = "src/kernel_stdlib/sources";
 
 fn move_kernel_stdlib_files() -> Vec<String> {
     // TODO : Make path configurable or const 
-    let path = std::path::PathBuf::from("src/kernel_stdlib/sources");
+    let path = path_in_crate(MODULES_DIR);
     find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
 }
 
+pub fn path_in_crate<S>(relative: S) -> PathBuf
+where
+    S: Into<String>,
+{
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push(relative.into());
+    path
+}

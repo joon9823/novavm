@@ -3,8 +3,10 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
-use kernelvm::Module;
 use kernelvm::access_path::AccessPath;
+use kernelvm::asset::{
+    compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
+};
 use kernelvm::gas_meter::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
 use kernelvm::BackendResult;
@@ -12,6 +14,7 @@ use kernelvm::EntryFunction;
 use kernelvm::GasInfo;
 use kernelvm::KernelVM;
 use kernelvm::Message;
+use kernelvm::Module;
 use kernelvm::ModuleBundle;
 
 use move_deps::move_core_types::account_address::AccountAddress;
@@ -27,22 +30,35 @@ static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec<u8>, Error> {
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
-    let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, _retval) =
-        unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
-    // let gas_used: u64 = 0;
-
-    match status {
-        VMStatus::Executed => {
-            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
-            // TODO: deduct gas
-            res?;
-
-            Ok(Vec::from(status.to_string()))
-        }
-        _ => Err(Error::vm_err("failed to initialize")),
+    // initialize stdlib
+    let mut module_bundles: Vec<Vec<u8>> = vec![];
+    let mut modules = compile_move_stdlib_modules();
+    modules.append(&mut compile_move_nursery_modules());
+    modules.append(&mut compile_kernel_stdlib_modules());
+    for module in modules {
+        let mut mod_blob = vec![];
+        module.serialize(&mut mod_blob).unwrap();
+        module_bundles.push(mod_blob);
     }
+
+    module_bundles.push(module_bundle);
+
+    for module_bundle in module_bundles {
+        let data_view = DataViewResolver::new(&storage);
+        let (status, output, _retval) =
+            unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
+
+        match status {
+            VMStatus::Executed => {
+                let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
+                res?;
+            }
+            _ => Err(Error::vm_err("failed to initialize"))?,
+        }
+    }
+
+    Ok(Vec::from("ok"))
 }
 
 pub(crate) fn publish_module(
