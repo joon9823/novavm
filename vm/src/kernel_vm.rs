@@ -1,13 +1,12 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, gas_algebra::GasQuantity, 
+        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}}, move_binary_format::CompiledModule,
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
+    move_vm_types::gas::UnmeteredGasMeter,
 };
 use std::sync::Arc;
-
-
 use move_deps::{
     move_stdlib,
     move_core_types::language_storage::CORE_CODE_ADDRESS
@@ -19,25 +18,32 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{kernel_stdlib, gas_meter::GasUnit};
+use crate::{kernel_stdlib, gas::InitialGasSchedule};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
-use crate::gas_meter::{GasStatus, Gas, unit_cost_table};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
+use crate::gas::{
+    KernelGasMeter, KernelGasParameters, Gas, NativeGasParameters,
+};
+
 
 #[derive(Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct KernelVM {
     move_vm: Arc<MoveVM>,
+    gas_params: KernelGasParameters,
 }
 
 impl KernelVM {
     pub fn new() -> Self {
-        // TODO: set gas policy for native functions
+
+        let gas_params = KernelGasParameters::initial();
+        let native_gas_parameters = NativeGasParameters::initial();
+
         let inner = MoveVM::new(
             move_stdlib::natives::all_natives(
             CORE_CODE_ADDRESS,
-            move_stdlib::natives::GasParameters::zeros())
+            native_gas_parameters.move_stdlib)
         .into_iter()
         .chain(
             move_stdlib::natives::nursery_natives(
@@ -47,13 +53,14 @@ impl KernelVM {
         .chain(
             kernel_stdlib::all_natives(
             CORE_CODE_ADDRESS, 
-            kernel_stdlib::GasParameters::zeros()
+            native_gas_parameters.kernel_stdlib
         )))
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
         Self {
             move_vm: Arc::new(inner),
-        }
+            gas_params
+        }   
     }
 
     pub fn initialize<S: StateView>(
@@ -62,7 +69,7 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-        let mut gas_meter =  GasStatus::new_unmetered();
+        let mut gas_meter = UnmeteredGasMeter;
         session
                 .publish_module(compiled_module, CORE_CODE_ADDRESS, &mut gas_meter)
                 .map_err(|e| {
@@ -81,18 +88,17 @@ impl KernelVM {
     ) -> (VMStatus, MessageOutput, Option<SerializedReturnValues>) {
         let sender = msg.sender();
 
-        let cost_schedule = unit_cost_table();
-        let mut gas_meter =  GasStatus::new(&cost_schedule, gas_limit);
+        let gas_params = self.gas_params.clone();
+        let mut gas_meter = KernelGasMeter::new(gas_params, gas_limit);
+        let gas_before = gas_meter.balance();
 
-        let gas_before = gas_meter.remaining_gas();
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
             MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
         };
-        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
-        println!("gas_used: {:?}", gas_used);
+        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
 
         match result {
             Ok(status_and_output) => status_and_output,
@@ -101,7 +107,7 @@ impl KernelVM {
 
                 let (status, message_output) = match txn_status.is_discarded() {
                     true => discard_error_vm_status(err),
-                    false => self.failed_message_cleanup(err, remote_cache,  gas_used),
+                    false => self.failed_message_cleanup(err, remote_cache, gas_used ),
                 };
                     
                 (status, message_output, None)
@@ -113,22 +119,23 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         modules: &ModuleBundle,
-        gas_meter : &mut GasStatus
+        gas_meter : &mut KernelGasMeter
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
         let module_bin_list = modules.clone().into_inner();
-        let gas_before = gas_meter.remaining_gas();
+        let gas_before = gas_meter.balance();
+
         session
                 .publish_module_bundle(module_bin_list, sender, gas_meter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
-        
+        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
+            
         // after publish the modules, we need to clear loader cache, to make init script function and
         // epilogue use the new modules.
         // session.empty_loader_cache()?;
@@ -142,13 +149,14 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
-        gas_meter : &mut GasStatus
+        gas_meter : &mut KernelGasMeter
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
-        let gas_before = gas_meter.remaining_gas();
+        let gas_before = gas_meter.balance();
+        
         let res = match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
@@ -189,7 +197,7 @@ impl KernelVM {
                     println!("[VM] execute_entry_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
+        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
 
         let (status, output) = self.success_message_cleanup(session,gas_used)?;
         Ok((status, output, res.into()))
@@ -198,7 +206,7 @@ impl KernelVM {
     fn success_message_cleanup<R: MoveResolver>(
         &self,
         session: Session<R>,
-        gas_used: GasQuantity<GasUnit>
+        gas_used: Gas
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         Ok((
             VMStatus::Executed,
@@ -210,7 +218,7 @@ impl KernelVM {
         &self,
         error_code: VMStatus,
         remote_cache: &DataViewResolver<'_, S>,
-        gas_used : GasQuantity<GasUnit>
+        gas_used : Gas
     ) -> (VMStatus, MessageOutput) {
         let session: Session<_> = self.move_vm.new_session(remote_cache).into();
 
@@ -249,7 +257,7 @@ pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, MessageOutput
 
 pub(crate) fn get_message_output<R: MoveResolver>(
     session: Session<R>,
-    gas_used: GasQuantity<GasUnit>,
+    gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {
 

@@ -36,6 +36,7 @@
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
 // use crate::parser::parse_struct_tag;
+use serde::{Deserialize, Serialize};
 use anyhow::{bail, Result};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
@@ -150,7 +151,7 @@ impl DataType {
 
 pub type ModuleName = Identifier;
 
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Serialize, Deserialize,)]
 pub enum DataPath {
     Code(ModuleName),
     Resource(StructTag),
