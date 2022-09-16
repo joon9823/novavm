@@ -44,7 +44,7 @@ line_endings = "LF" # also "CR", "CRLF", "Native"
 
 ############################# Codegen Options ##################################
 
-style = "both"
+style = "type"  # default: both
 sort_by = "Name" # default for `fn.sort_by` and `const.sort_by`
 usize_is_size_t = true
 
@@ -58,7 +58,7 @@ usize_is_size_t = true
 
 [export]
 # FIXME: not sure why they are not exported by default.
-include = ["ByteSliceView", "U8SliceView", "Db", "db_t", "GoError", "ErrnoValue"]
+include = ["ByteSliceView", "U8SliceView", "Db", "db_t", "GoError", "ErrnoValue", "GoApi", "GoQuerier"]
 exclude = []
 # prefix = "CAPI_"
 item_types = []

@@ -28,6 +28,10 @@ hex = {version = "0.4.3", default-features = false}
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_warn"] }
 num_enum = "0.5.7"
 thiserror = "1.0.34"
+bcs = "0.1.3"
+num-derive = "0.3.3"
+num-traits = "0.2.15"
+proptest-derive = { version = "0.3.0", default-features = false, optional = true }
 smallvec = "1.6.1"
 
 [profile.release]

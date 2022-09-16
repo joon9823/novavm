@@ -1,5 +1,4 @@
 use crate::gas_meter::gas_meter_t;
-//use crate::iterator::GoIter;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
 // this represents something passed in from the caller side of FFI
@@ -35,21 +34,6 @@ pub struct Db_vtable {
         U8SliceView,
         *mut UnmanagedVector, // error message output
     ) -> i32,
-    /*
-    // order -> Ascending = 1, Descending = 2
-    // Note: we cannot set gas_meter on the returned GoIter due to cgo memory safety.
-    // Since we have the pointer in rust already, we must set that manually
-    pub scan_db: extern "C" fn(
-        *mut db_t,
-        *mut gas_meter_t,
-        *mut u64,
-        U8SliceView,
-        U8SliceView,
-        i32,
-        *mut GoIter,
-        *mut UnmanagedVector, // error message output
-    ) -> i32,
-    */
 }
 
 #[repr(C)]
