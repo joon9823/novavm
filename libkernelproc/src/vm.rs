@@ -3,10 +3,10 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
+use kernelvm::Module;
 use kernelvm::access_path::AccessPath;
 use kernelvm::gas_meter::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
-use kernelvm::BackendError;
 use kernelvm::BackendResult;
 use kernelvm::EntryFunction;
 use kernelvm::GasInfo;
@@ -53,7 +53,7 @@ pub(crate) fn publish_module(
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
-    let module: ModuleBundle = serde_json::from_slice(payload.as_slice()).unwrap();
+    let module: ModuleBundle = ModuleBundle::from(Module::new(payload));
     let message: Message = Message::new_module(sender, module);
 
     //let cv = CosmosView::new(&db_handle);
@@ -72,7 +72,7 @@ pub(crate) fn publish_module(
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
         }
-        _ => Err(Error::vm_err("failed to initialize")),
+        _ => Err(Error::vm_err("failed to publish")),
     }
 }
 
@@ -113,6 +113,10 @@ fn execute_entry(
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
+    // "{\"module\":{\"address\":\"00000000000000000000000000000001\",\"name\":\"BasicCoin\"},\"function\":\"mint\",\"ty_args\":[],\"args\":[[100,0,0,0,0,0,0,0]]}"
+    // "{\"module\":{\"address\":\"00000000000000000000000000000001\",\"name\":\"BasicCoin\"},\"function\":\"mint\",\"ty_args\":[],\"args\":[[100,0,0,0,0,0,0,0]]}"
+    
+    println!("SIBONG - {:?}", std::str::from_utf8(payload.as_slice()).unwrap());
     let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
     let message: Message = Message::new_entry_function(sender, entry);
 
@@ -123,15 +127,22 @@ fn execute_entry(
     let (status, output, retval) =
         unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
 
+    println!("{:?}", status);
     match status {
         VMStatus::Executed => {
             if is_read_only {
                 return match retval {
                     // FIXME: retval or output?
                     Some(val) => {
-                        Ok(Vec::from(
-                            "FIXME: some SerializedReturnValues are out there.",
-                        )) // FIXME need to define query result format
+                        // allow only single return values
+                        if Vec::len(&val.mutable_reference_outputs) == 0
+                            && Vec::len(&val.return_values) == 1
+                        {
+                            let (blob, _) = val.return_values.first().unwrap();
+                            Ok(blob.to_vec())
+                        } else {
+                            Err(Error::vm_err("only one value is allowed to be returned."))
+                        }
                     }
                     None => Ok(Vec::from("no data")),
                 };
@@ -144,7 +155,7 @@ fn execute_entry(
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
         }
-        _ => Err(Error::vm_err("failed to initialize")),
+        _ => Err(Error::vm_err("failed to execute")),
     }
 }
 

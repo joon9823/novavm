@@ -75,6 +75,8 @@ fn test_simple_transaction() {
 
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
+    
+    println!("SIBONG - {:?}", serde_json::to_string(&EntryFunction::mint(100)));
 
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (

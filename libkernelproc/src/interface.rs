@@ -1,4 +1,5 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::str;
 
 use crate::error::{handle_c_error_binary, Error};
 use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
@@ -39,7 +40,8 @@ pub extern "C" fn publish_module(
     module: ByteSliceView,
 ) -> UnmanagedVector {
     let m = module.to_owned().unwrap();
-    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
+    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
+    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
         vm::publish_module(addr, m, db, gas_limit)
@@ -65,7 +67,8 @@ pub extern "C" fn execute_contract(
     message: ByteSliceView,
 ) -> UnmanagedVector {
     let payload = message.to_owned().unwrap();
-    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
+    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
+    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
         vm::execute_contract(addr, payload, db, gas_limit)
@@ -81,7 +84,8 @@ pub extern "C" fn execute_contract(
 #[no_mangle]
 pub extern "C" fn query_contract(db: Db, api: GoApi, querier: GoQuerier, is_verbose: bool, gas_limit: u64, gas_used: Option<&mut u64>, errmsg: Option<&mut UnmanagedVector>, sender: ByteSliceView, message: ByteSliceView) -> UnmanagedVector {
     let payload = message.to_owned().unwrap();
-    let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
+    let hex_addr = str::from_utf8(sender.read().unwrap()).unwrap();
+    let addr = AccountAddress::from_hex_literal(hex_addr).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe( move || {
         vm::query_contract(addr, payload, db, gas_limit)
