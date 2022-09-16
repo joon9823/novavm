@@ -21,7 +21,7 @@ pub extern "C" fn initialize(
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
-    return UnmanagedVector::new(Some(ret));
+    UnmanagedVector::new(Some(ret))
 }
 
 /// exported function to publish a module
@@ -47,7 +47,7 @@ pub extern "C" fn publish_module(
     .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
-    return UnmanagedVector::new(Some(ret));
+    UnmanagedVector::new(Some(ret))
 }
 
 // exported function to execute (an entrypoint of) contract
@@ -73,7 +73,7 @@ pub extern "C" fn execute_contract(
     .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
-    return UnmanagedVector::new(Some(ret));
+    UnmanagedVector::new(Some(ret))
 }
 
 // exported function to query contract (in smart way)
@@ -99,5 +99,5 @@ pub extern "C" fn query_contract(
     .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
-    return UnmanagedVector::new(Some(ret));
+    UnmanagedVector::new(Some(ret))
 }
