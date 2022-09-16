@@ -52,7 +52,6 @@ impl KernelVM {
         let mut session = self.move_vm.new_session(remote_cache);
         let mut cost_strategy =  GasStatus::new_unmetered();
 
-        let _compiled_module = CompiledModule::deserialize(&compiled_module).unwrap();
         session
                 .publish_module(compiled_module, AccountAddress::ONE, &mut cost_strategy)
                 .map_err(|e| {

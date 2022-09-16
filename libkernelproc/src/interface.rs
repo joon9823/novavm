@@ -68,7 +68,7 @@ pub extern "C" fn execute_contract(
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
-        vm::publish_module(addr, payload, db, gas_limit)
+        vm::execute_contract(addr, payload, db, gas_limit)
     }))
     .unwrap_or_else(|_| Err(Error::panic()));
 

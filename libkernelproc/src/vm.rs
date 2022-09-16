@@ -29,21 +29,16 @@ pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, retval) =
+    let (status, output, _retval) =
         unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
-    let gas_used: u64 = 0;
+    // let gas_used: u64 = 0;
 
     match status {
         VMStatus::Executed => {
-            for (_addr, cset) in output.change_set().accounts() {
-                for (id, module) in cset.modules() {
-                    match module {
-                        Op::New(v) | Op::Modify(v) => storage.set(id.as_bytes(), v.as_ref()),
-                        Op::Delete => storage.remove(id.as_bytes()),
-                    }
-                    .0?;
-                }
-            }
+            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
+            // TODO: deduct gas
+            res?;
+
             Ok(Vec::from(status.to_string()))
         }
         _ => Err(Error::vm_err("failed to initialize")),
@@ -65,21 +60,15 @@ pub(crate) fn publish_module(
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, retval) =
+    let (status, output, _retval) =
         unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
 
     match status {
         VMStatus::Executed => {
-            for (addr, cset) in output.change_set().accounts() {
-                for (id, module) in cset.modules() {
-                    let (res, gas_used) = match module {
-                        Op::New(v) | Op::Modify(v) => storage.set(id.as_bytes(), v.as_ref()),
-                        Op::Delete => storage.remove(id.as_bytes()),
-                    };
-                    // TODO: deduct gas
-                    res?;
-                }
-            }
+            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
+            // TODO: deduct gas
+            res?;
+
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
         }
@@ -137,34 +126,20 @@ fn execute_entry(
     match status {
         VMStatus::Executed => {
             if is_read_only {
-                return match retval { // FIXME: retval or output?
+                return match retval {
+                    // FIXME: retval or output?
                     Some(val) => {
-                        Ok(Vec::from("FIXME: some SerializedReturnValues are out there."))  // FIXME need to define query result format
-                     },
-                    None => { Ok(Vec::from("no data"))}
-                }
-            }
-            for (addr, cset) in output.change_set().accounts() {
-                for (id, module) in cset.modules() {
-                    let (res, gas_used) = match module {
-                        Op::New(v) | Op::Modify(v) => { storage.set(id.as_bytes(), v.as_ref())  },
-                        Op::Delete => { storage.remove(id.as_bytes()) }
-                    };
-                    // TODO: deduct gas
-                    res?;
-                }
-                 for (id, module) in cset.resources() {
-                    let (res, gas_used) = match module {
-                        Op::New(v) | Op::Modify(v) => { storage.set(&Vec::from(id.to_string()), v.as_ref())  },
-                        Op::Delete => { storage.remove(&Vec::from(id.to_string())) }
-                    };
-                    // TODO: deduct gas
-                    res?;
-                }
+                        Ok(Vec::from(
+                            "FIXME: some SerializedReturnValues are out there.",
+                        )) // FIXME need to define query result format
+                    }
+                    None => Ok(Vec::from("no data")),
+                };
             }
 
-            let _res = push_write_set(&mut storage, output.change_set());
-
+            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
+            // TODO: deduct gas
+            res?;
 
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
