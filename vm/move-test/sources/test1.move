@@ -1,4 +1,11 @@
 module 0x1::BasicCoin {
+
+    use std::debug;
+    use std::vector;
+    use kernel_std::bank;
+    use std::string::String;
+    use std::signer;
+
     struct Coin has key, copy {
         value: u64,
         test: bool,
@@ -17,7 +24,19 @@ module 0x1::BasicCoin {
         123
     }
 
-    public entry fun getCoin(addr: address): Coin acquires Coin {
+    public entry fun get_coin(addr: address): Coin acquires Coin {
         *borrow_global<Coin>(addr)
+    }
+
+    public entry fun print_number(number: u64) {
+        debug::print(&number)
+    }
+
+    public entry fun balance(addr: address) : u64 {
+        bank::balance(addr)
+    }
+
+    public entry fun transfer(from: address, to: address, amount: u64) {
+        bank::transfer(from, to, amount)
     }
 }

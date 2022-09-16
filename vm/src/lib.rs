@@ -13,6 +13,7 @@ pub mod backend;
 pub mod gas_meter;
 pub mod message;
 pub mod storage;
+pub mod kernel_stdlib;
 
 mod args_validator;
 mod asset;
