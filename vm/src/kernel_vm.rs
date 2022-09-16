@@ -58,9 +58,9 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
-        let mut cost_strategy =  GasStatus::new_unmetered();
+        let mut gas_meter =  GasStatus::new_unmetered();
         session
-                .publish_module(compiled_module, AccountAddress::ONE, &mut cost_strategy)
+                .publish_module(compiled_module, AccountAddress::ONE, &mut gas_meter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
@@ -78,16 +78,16 @@ impl KernelVM {
         let sender = msg.sender();
 
         let cost_schedule = unit_cost_table();
-        let mut cost_strategy =  GasStatus::new(&cost_schedule, gas_limit);
+        let mut gas_meter =  GasStatus::new(&cost_schedule, gas_limit);
 
-        let gas_before = cost_strategy.remaining_gas();
+        let gas_before = gas_meter.remaining_gas();
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut cost_strategy)
+                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, &mut cost_strategy),
+            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
         };
-        let gas_used = gas_before.checked_sub(cost_strategy.remaining_gas()).unwrap();
+        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
 
         match result {
             Ok(status_and_output) => status_and_output,
@@ -109,21 +109,21 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         modules: &ModuleBundle,
-        cost_strategy : &mut GasStatus
+        gas_meter : &mut GasStatus
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
         let module_bin_list = modules.clone().into_inner();
-        let gas_before = cost_strategy.remaining_gas();
+        let gas_before = gas_meter.remaining_gas();
         session
-                .publish_module_bundle(module_bin_list, sender, cost_strategy)
+                .publish_module_bundle(module_bin_list, sender, gas_meter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(cost_strategy.remaining_gas()).unwrap();
+        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
         
         // after publish the modules, we need to clear loader cache, to make init script function and
         // epilogue use the new modules.
@@ -138,13 +138,13 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
-        cost_strategy : &mut GasStatus
+        gas_meter : &mut GasStatus
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
-        let gas_before = cost_strategy.remaining_gas();
+        let gas_before = gas_meter.remaining_gas();
         let res = match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
@@ -157,7 +157,7 @@ impl KernelVM {
                         script.code().to_vec(),
                         script.ty_args().to_vec(),
                         args,
-                        cost_strategy,
+                        gas_meter,
                     )
                 }
                 MessagePayload::EntryFunction(entry_fn) => {
@@ -173,7 +173,7 @@ impl KernelVM {
                         entry_fn.function(),
                         entry_fn.ty_args().to_vec(),
                         args,
-                        cost_strategy,
+                        gas_meter,
                     )
                 }
                 MessagePayload::ModuleBundle(_) => {
@@ -185,7 +185,7 @@ impl KernelVM {
                     println!("[VM] execute_entry_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(cost_strategy.remaining_gas()).unwrap();
+        let gas_used = gas_before.checked_sub(gas_meter.remaining_gas()).unwrap();
 
         let (status, output) = self.success_message_cleanup(session,gas_used)?;
         Ok((status, output, res.into()))
