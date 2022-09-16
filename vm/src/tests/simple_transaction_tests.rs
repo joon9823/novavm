@@ -1,6 +1,6 @@
 use crate::{
     access_path::AccessPath,
-    gas_meter::Gas,
+    gas::Gas,
     kernel_vm::KernelVM,
     message::{EntryFunction, Message, Module, ModuleBundle, Script},
     storage::data_view_resolver::DataViewResolver,
@@ -169,7 +169,41 @@ impl Script {
     }
 }
 
-fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> ){
+struct ExpectedOutput {
+    vm_status: VMStatus,
+    changed_accounts: usize,
+    result_bytes: Option<Vec<u8>>,
+    gas_used: u64
+}
+impl ExpectedOutput {
+    pub fn new(
+        vm_status: VMStatus,
+        changed_accounts: usize,
+        result_bytes : Option<Vec<u8>>,
+        gas_used : u64
+    ) -> Self {
+        ExpectedOutput {
+            vm_status,
+            changed_accounts,
+            result_bytes,
+            gas_used,
+        }
+    }
+    pub fn vm_status(&self) -> &VMStatus {
+        &self.vm_status
+    }
+    pub fn changed_accounts(&self) -> usize {
+        self.changed_accounts
+    }
+    pub fn result_bytes(&self) -> &Option<Vec<u8>> {
+        &self.result_bytes
+    }
+    pub fn gas_used(&self) -> u64 {
+        self.gas_used
+    }
+}
+
+fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
@@ -191,15 +225,16 @@ fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> 
         db.push_write_set(output.change_set().clone());
     }
 
-    let gas_left = Gas::new(100_000u64);
-    for (tx, exp_status, exp_changed_accounts, exp_result) in testcases {
+    let gas_limit = Gas::new(100_000u64);
+    for (msg, exp_output) in testcases {
         let resolver = DataViewResolver::new(&db);
-        let (status, output, result) = vm.execute_message(tx, &resolver, gas_left);
-        assert!(status == exp_status);
-        assert!(output.change_set().accounts().len() == exp_changed_accounts);
+        let (status, output, result) = vm.execute_message(msg, &resolver, gas_limit);
+        assert!(status == *exp_output.vm_status());
+        assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
+        assert!(output.gas_used() == exp_output.gas_used());
 
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-        assert!(result_bytes == exp_result);
+        assert!(result_bytes == *exp_output.result_bytes());
 
         if output.status().is_discarded() {
             continue;
@@ -219,34 +254,43 @@ fn test_deps_transaction(){
     let account_three =
         AccountAddress::from_hex_literal("0x3").expect("0x3 account should be created");
 
-    let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
+    let testcases: Vec<(Message, ExpectedOutput)> = vec![
         (
             // publish module
             Message::new_module(
                 AccountAddress::ONE,
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
-            VMStatus::Executed,
-            1,
-            None,
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                None,
+                0
+            )
         ),
         (
             // bank module : balance
             Message::new_entry_function(
                 AccountAddress::ONE, 
                 EntryFunction::balance(account_two)),
-            VMStatus::Executed,
-            0,
-            Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
+                14
+            )            
         ),
         (
             // bank module : transfer
             Message::new_entry_function(
                 AccountAddress::ONE, 
                 EntryFunction::transfer(account_two, account_three, 100)),
-            VMStatus::Executed,
-            0,
-            Some(vec![]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![]),
+                18
+            )
         )
     ];
     run_transaction(testcases);
@@ -259,30 +303,45 @@ fn test_simple_trasaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
 
-    let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
+    let testcases: Vec<(Message, ExpectedOutput)> = vec![
         (
             // publish module
             Message::new_module(
                 AccountAddress::ONE,
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
-            VMStatus::Executed,
-            1,
-            None,
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                None,
+                0
+            )
         ),
         (
             // mint with script
-            Message::new_script(AccountAddress::ONE, Script::mint_200()),
-            VMStatus::Executed,
-            1,
-            Some(vec![]),
+            Message::new_script(
+                AccountAddress::ONE,
+                Script::mint_200()
+            ),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                Some(vec![]),
+                25
+            )
         ),
         (
             // mint with entry function
-            Message::new_entry_function(account_two, EntryFunction::mint(100)),
-            VMStatus::Executed,
-            1,
-            Some(vec![]),
+            Message::new_entry_function(
+                account_two,
+                EntryFunction::mint(100)
+            ),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                Some(vec![]),
+                19
+            )
         ),
         (
             // linker error
@@ -290,16 +349,25 @@ fn test_simple_trasaction() {
                 AccountAddress::ZERO,
                 EntryFunction::mint_with_wrong_module_address(100),
             ),
-            VMStatus::Error(StatusCode::LINKER_ERROR),
-            0,
-            None,
+            ExpectedOutput::new(
+                VMStatus::Error(StatusCode::LINKER_ERROR),
+                0,
+                None,
+                0
+            )
         ),
         (
             // get 123
-            Message::new_entry_function(AccountAddress::ZERO, EntryFunction::number()),
-            VMStatus::Executed,
-            0,
-            Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
+            Message::new_entry_function(
+                AccountAddress::ZERO,
+                EntryFunction::number()
+            ),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
+                2
+            )
         ),
         (
             // get coin amount for 0x1
@@ -307,16 +375,25 @@ fn test_simple_trasaction() {
                 AccountAddress::ZERO,
                 EntryFunction::get(AccountAddress::ONE),
             ),
-            VMStatus::Executed,
-            0,
-            Some(vec![200, 0, 0, 0, 0, 0, 0, 0]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![200, 0, 0, 0, 0, 0, 0, 0]),
+                34
+            )
         ),
         (
             // get coin amount for 0x0
-            Message::new_entry_function(AccountAddress::ZERO, EntryFunction::get(account_two)),
-            VMStatus::Executed,
-            0,
-            Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
+            Message::new_entry_function(
+                AccountAddress::ZERO, 
+                EntryFunction::get(account_two)
+            ),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
+                34
+            )
         ),
         (
             // get Coin structure
@@ -324,9 +401,12 @@ fn test_simple_trasaction() {
                 AccountAddress::ZERO,
                 EntryFunction::get_coin_struct(account_two),
             ),
-            VMStatus::Executed,
-            0,
-            Some(vec![100, 0, 0, 0, 0, 0, 0, 0, 1]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![100, 0, 0, 0, 0, 0, 0, 0, 1]),
+                40
+            )
         ),
     ];
 
