@@ -2,9 +2,8 @@ pub mod bank;
 mod helpers;
 
 use move_deps::{
-    move_core_types::{account_address::AccountAddress, identifier::Identifier},
+    move_core_types::account_address::AccountAddress,
     move_vm_runtime::native_functions::{make_table_from_iter, NativeFunctionTable},
-    move_vm_types::values::Value,
     move_core_types::gas_algebra::GasQuantity
 };
 

@@ -1,4 +1,3 @@
-use crate::gas_meter::gas_meter_t;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
 // this represents something passed in from the caller side of FFI
@@ -13,24 +12,18 @@ pub struct db_t {
 pub struct Db_vtable {
     pub read_db: extern "C" fn(
         *mut db_t,
-        *mut gas_meter_t,
-        *mut u64,
         U8SliceView,
         *mut UnmanagedVector, // result output
         *mut UnmanagedVector, // error message output
     ) -> i32,
     pub write_db: extern "C" fn(
         *mut db_t,
-        *mut gas_meter_t,
-        *mut u64,
         U8SliceView,
         U8SliceView,
         *mut UnmanagedVector, // error message output
     ) -> i32,
     pub remove_db: extern "C" fn(
         *mut db_t,
-        *mut gas_meter_t,
-        *mut u64,
         U8SliceView,
         *mut UnmanagedVector, // error message output
     ) -> i32,
@@ -38,7 +31,6 @@ pub struct Db_vtable {
 
 #[repr(C)]
 pub struct Db {
-    pub gas_meter: *mut gas_meter_t,
     pub state: *mut db_t,
     pub vtable: Db_vtable,
 }

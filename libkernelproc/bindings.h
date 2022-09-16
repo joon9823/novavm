@@ -101,7 +101,7 @@ typedef int32_t GoError;
  * Transferring ownership from Rust to Go using return values of FFI calls:
  *
  * ```
- * # use wasmvm::{cache_t, ByteSliceView, UnmanagedVector};
+ * # use crate::{cache_t, ByteSliceView, UnmanagedVector};
  * #[no_mangle]
  * pub extern "C" fn save_wasm_to_cache(
  *     cache: *mut cache_t,
@@ -118,8 +118,8 @@ typedef int32_t GoError;
  * Transferring ownership from Go to Rust using return value pointers:
  *
  * ```rust
- * # use cosmwasm_vm::{BackendResult, GasInfo};
- * # use wasmvm::{Db, GoError, U8SliceView, UnmanagedVector};
+ * # use kernelvm::BackendResult;
+ * # use crate::{Db, GoError, U8SliceView, UnmanagedVector};
  * fn db_read(db: &Db, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
  *
  *     // Create a None vector in order to reserve memory for the result
@@ -127,12 +127,9 @@ typedef int32_t GoError;
  *
  *     // …
  *     # let mut error_msg = UnmanagedVector::default();
- *     # let mut used_gas = 0_u64;
  *
  *     let go_error: GoError = (db.vtable.read_db)(
  *         db.state,
- *         db.gas_meter,
- *         &mut used_gas as *mut u64,
  *         U8SliceView::new(Some(key)),
  *         // Go will create a new UnmanagedVector and override this address
  *         &mut output as *mut UnmanagedVector,
@@ -143,10 +140,7 @@ typedef int32_t GoError;
  *     // We now own the new UnmanagedVector written to the pointer and must destroy it
  *     let value = output.consume();
  *
- *     // Some gas processing and error handling
- *     # let gas_info = GasInfo::free();
- *
- *     (Ok(value), gas_info)
+ *     Ok(value)
  * }
  * ```
  *
@@ -154,7 +148,7 @@ typedef int32_t GoError;
  * If you want to mutate data, you need to comsume the vector and create a new one:
  *
  * ```rust
- * # use wasmvm::{UnmanagedVector};
+ * # use crate::{UnmanagedVector};
  * # let input = UnmanagedVector::new(Some(vec![0xAA]));
  * let mut mutable: Vec<u8> = input.consume().unwrap_or_default();
  * assert_eq!(mutable, vec![0xAA]);
@@ -182,13 +176,6 @@ typedef struct {
   size_t cap;
 } UnmanagedVector;
 
-/**
- * An opaque type. `*gas_meter_t` represents a pointer to Go memory holding the gas meter.
- */
-typedef struct {
-  uint8_t _private[0];
-} gas_meter_t;
-
 typedef struct {
   uint8_t _private[0];
 } db_t;
@@ -208,13 +195,12 @@ typedef struct {
 } U8SliceView;
 
 typedef struct {
-  int32_t (*read_db)(db_t*, gas_meter_t*, uint64_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
-  int32_t (*write_db)(db_t*, gas_meter_t*, uint64_t*, U8SliceView, U8SliceView, UnmanagedVector*);
-  int32_t (*remove_db)(db_t*, gas_meter_t*, uint64_t*, U8SliceView, UnmanagedVector*);
+  int32_t (*read_db)(db_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
+  int32_t (*write_db)(db_t*, U8SliceView, U8SliceView, UnmanagedVector*);
+  int32_t (*remove_db)(db_t*, U8SliceView, UnmanagedVector*);
 } Db_vtable;
 
 typedef struct {
-  gas_meter_t *gas_meter;
   db_t *state;
   Db_vtable vtable;
 } Db;
@@ -224,7 +210,7 @@ typedef struct {
 } api_t;
 
 typedef struct {
-  int32_t (*bank_transfer)(const api_t*, U8SliceView, U8SliceView, U8SliceView, UnmanagedVector*, uint64_t*);
+  int32_t (*bank_transfer)(const api_t*, U8SliceView, U8SliceView, U8SliceView, UnmanagedVector*);
 } GoApi_vtable;
 
 typedef struct {
@@ -237,7 +223,7 @@ typedef struct {
 } querier_t;
 
 typedef struct {
-  int32_t (*query_external)(const querier_t*, uint64_t, uint64_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
+  int32_t (*query_external)(const querier_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
 } Querier_vtable;
 
 typedef struct {

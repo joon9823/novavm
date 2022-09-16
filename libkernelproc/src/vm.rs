@@ -11,7 +11,6 @@ use kernelvm::gas_meter::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
 use kernelvm::BackendResult;
 use kernelvm::EntryFunction;
-use kernelvm::GasInfo;
 use kernelvm::KernelVM;
 use kernelvm::Message;
 use kernelvm::Module;
@@ -51,8 +50,7 @@ pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec
 
         match status {
             VMStatus::Executed => {
-                let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
-                res?;
+                push_write_set(&mut storage, output.change_set())?;
             }
             _ => Err(Error::vm_err("failed to initialize"))?,
         }
@@ -81,9 +79,7 @@ pub(crate) fn publish_module(
 
     match status {
         VMStatus::Executed => {
-            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
-            // TODO: deduct gas
-            res?;
+            push_write_set(&mut storage, output.change_set())?;
 
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
@@ -161,9 +157,7 @@ fn execute_entry(
                 };
             }
 
-            let (res, _gas_info) = push_write_set(&mut storage, output.change_set());
-            // TODO: deduct gas
-            res?;
+            push_write_set(&mut storage, output.change_set())?;
 
             // FIXME: TBD whether return retval or not
             Ok(Vec::from(status.to_string()))
@@ -184,28 +178,16 @@ fn write_op(
 }
 
 pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> BackendResult<()> {
-    let mut used_gas = 0u64;
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
             let ap = AccessPath::resource_access_path(addr.clone(), struct_tag.clone());
-            let (res, gas_info) = write_op(go_storage, &ap, &blob_opt);
-            if res.is_err() {
-                return (res, gas_info);
-            }
-
-            used_gas += gas_info.externally_used
+            write_op(go_storage, &ap, &blob_opt)?;
         }
 
         for (name, blob_opt) in account_changeset.modules() {
             let ap = AccessPath::from(&ModuleId::new(addr.clone(), name.clone()));
-            let (res, gas_info) = write_op(go_storage, &ap, &blob_opt);
-            if res.is_err() {
-                return (res, gas_info);
-            }
-
-            used_gas += gas_info.externally_used
+            write_op(go_storage, &ap, &blob_opt)?;
         }
     }
-
-    (Ok(()), GasInfo::with_externally_used(used_gas))
+    Ok(())
 }

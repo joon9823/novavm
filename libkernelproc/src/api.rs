@@ -1,7 +1,6 @@
-//use cosmwasm_vm::{BackendApi, BackendError, BackendResult, GasInfo};
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
-use kernelvm::backend::{BackendApi, BackendResult, GasInfo};
+use kernelvm::backend::{BackendApi, BackendResult};
 
 // this represents something passed in from the caller side of FFI
 // in this case a struct with go function pointers
@@ -21,7 +20,6 @@ pub struct GoApi_vtable {
         U8SliceView,
         U8SliceView,
         *mut UnmanagedVector, // error message output
-        *mut u64,
     ) -> i32,
 }
 
@@ -42,27 +40,23 @@ unsafe impl Send for GoApi {}
 impl BackendApi for GoApi {
     fn bank_transfer(&self, recipient: &[u8], denom: &str, amount: &str) -> BackendResult<()> {
         let mut error_msg = UnmanagedVector::default();
-        let mut used_gas = 0_u64;
         let go_error: GoError = (self.vtable.bank_transfer)(
             self.state,
             U8SliceView::new(Some(recipient)),
             U8SliceView::new(Some(denom.as_bytes())),
             U8SliceView::new(Some(amount.as_bytes())),
             &mut error_msg as *mut UnmanagedVector,
-            &mut used_gas as *mut u64,
         )
         .into();
-
-        let gas_info = GasInfo::with_cost(used_gas);
 
         // return complete error message (reading from buffer for GoError::Other)
         let default = || format!("Failed to transfer coin to the address: {:?}", recipient);
         unsafe {
             if let Err(err) = go_error.into_result(error_msg, default) {
-                return (Err(err), gas_info);
+                return Err(err);
             }
         }
 
-        (Ok(()), gas_info)
+        Ok(())
     }
 }

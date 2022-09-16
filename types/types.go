@@ -23,7 +23,7 @@ func DeserializeUint64(bz []byte) uint64 {
 }
 
 // AccountAddressLen - TODO should be increased
-const AccountAddressLen = 16
+const AccountAddressLen = 20
 
 // AccountAddress account address bytes
 type AccountAddress []byte
