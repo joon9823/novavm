@@ -1,15 +1,179 @@
 package types
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 )
 
-// HumanAddress is a printable (typically bech32 encoded) address string. Just use it as a label for developers.
-type HumanAddress = string
+// SerializeUint64 serialize num to bytes for VM
+func SerializeUint64(num uint64) []byte {
+	bz := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bz, num)
+	return bz
+}
 
-// CanonicalAddress uses standard base64 encoding, just use it as a label for developers
-type CanonicalAddress = []byte
+// DeserializeUint64 deserialize bytes to num
+func DeserializeUint64(bz []byte) uint64 {
+	return binary.LittleEndian.Uint64(bz)
+}
+
+// AccountAddressLen address bytes length
+const AccountAddressLen = 20
+
+// AccountAddress account address bytes
+type AccountAddress []byte
+
+var StdAddress AccountAddress
+
+// initialize StdAddress
+func init() {
+	var err error
+	StdAddress, err = NewAccountAddress("0x1")
+	if err != nil {
+		panic(err)
+	}
+}
+
+// NewAccountAddress return AccountAddress from the hex string
+func NewAccountAddress(hexAddr string) (AccountAddress, error) {
+	hexStr := strings.TrimPrefix(hexAddr, "0x")
+	lengthDiff := AccountAddressLen*2 - len(hexStr)
+	if lengthDiff > 0 {
+		hexStr = strings.Repeat("0", lengthDiff) + hexStr
+	} else if lengthDiff < 0 {
+		return nil, errors.New("Invalid length of address")
+	}
+
+	sender, err := hex.DecodeString(hexStr)
+	return AccountAddress(sender), err
+}
+
+func (addr *AccountAddress) UnmarshalJSON(data []byte) error {
+	str := string(data)
+	str = strings.TrimPrefix(str, "\"")
+	str = strings.TrimSuffix(str, "\"")
+	bz, err := hex.DecodeString(str)
+	*addr = bz
+	return err
+}
+
+func (addr AccountAddress) MarshalJSON() ([]byte, error) {
+	hexStr := hex.EncodeToString(addr)
+	return []byte(fmt.Sprintf("\"%s\"", hexStr)), nil
+}
+
+func (addr AccountAddress) String() string {
+	return fmt.Sprintf("0x%s", hex.EncodeToString(addr))
+}
+
+// Identifier normally represent function name of entry function
+type Identifier string
+
+// TypeTag represent type argument
+type TypeTag string
+
+type StructTagWrapper struct {
+	Struct StructTag `json:"struct"`
+}
+
+type StructTag struct {
+	Address  AccountAddress `json:"address"`
+	Module   string         `json:"module"`
+	Name     string         `json:"name"`
+	TypeArgs []TypeTag      `json:"type_args"`
+}
+
+func (tt *TypeTag) UnmarshalJSON(data []byte) error {
+	var structTagWrapper StructTagWrapper
+	if err := json.Unmarshal(data, &structTagWrapper); err != nil {
+		*tt = TypeTag(data)
+	}
+
+	*tt = TypeTag(
+		fmt.Sprintf("%s::%s::%s",
+			structTagWrapper.Struct.Address.String(),
+			structTagWrapper.Struct.Module,
+			structTagWrapper.Struct.Name,
+		))
+
+	return nil
+}
+
+func (tt TypeTag) MarshalJSON() ([]byte, error) {
+	switch tt {
+	case Bool, U8, U64, U128, Address, Signer:
+		return []byte(fmt.Sprintf("\"%s\"", tt)), nil
+	default:
+		strArr := strings.Split(string(tt), "::")
+		addr, err := NewAccountAddress(strArr[0])
+		if err != nil {
+			return nil, err
+		}
+
+		return json.Marshal(StructTagWrapper{
+			Struct: StructTag{
+				Address:  addr,
+				Module:   strArr[1],
+				Name:     strArr[2],
+				TypeArgs: []TypeTag{},
+			},
+		})
+	}
+}
+
+const (
+	Bool    = TypeTag("bool")
+	U8      = TypeTag("u8")
+	U64     = TypeTag("u64")
+	U128    = TypeTag("u128")
+	Address = TypeTag("address")
+	Signer  = TypeTag("signer")
+)
+
+type ModuleId struct {
+	Address AccountAddress `json:"address"`
+	Name    Identifier     `json:"name"`
+}
+
+type EntryFunction struct {
+	Module   ModuleId   `json:"module"`
+	Function Identifier `json:"function"`
+	TyArgs   []TypeTag  `json:"ty_args"`
+	Args     []Arg      `json:"args"`
+}
+
+type Arg []byte
+
+func (arg *Arg) UnmarshalJSON(data []byte) error {
+	str := string(data)
+	str = strings.TrimPrefix(str, "[")
+	str = strings.TrimSuffix(str, "]")
+	strArr := strings.Split(str, ",")
+	*arg = make([]byte, len(strArr))
+	for i, s := range strArr {
+		b, err := strconv.ParseUint(s, 10, 8)
+		if err != nil {
+			return err
+		}
+
+		(*arg)[i] = uint8(b)
+	}
+	return nil
+}
+
+func (arg Arg) MarshalJSON() ([]byte, error) {
+	str := ""
+	for _, b := range arg {
+		str += fmt.Sprintf("%d,", b)
+	}
+	str = fmt.Sprintf("[%s]", strings.TrimSuffix(str, ","))
+	return []byte(str), nil
+}
 
 // Coin is a string representation of the sdk.Coin type (more portable than sdk.Int)
 type Coin struct {
@@ -57,27 +221,3 @@ var _ error = OutOfGasError{}
 func (o OutOfGasError) Error() string {
 	return "Out of gas"
 }
-
-/* FIXME: update move-flavoured AnalysisReport and Metrics
-// Contains static analysis info of the contract (the Wasm code to be precise).
-// This type is returned by VM.AnalyzeCode().
-type AnalysisReport struct {
-	HasIBCEntryPoints bool
-	// Deprecated, use RequiredCapabilities. For now both fields contain the same value.
-	RequiredFeatures     string
-	RequiredCapabilities string
-}
-
-type Metrics struct {
-	HitsPinnedMemoryCache     uint32
-	HitsMemoryCache           uint32
-	HitsFsCache               uint32
-	Misses                    uint32
-	ElementsPinnedMemoryCache uint64
-	ElementsMemoryCache       uint64
-	// Cumulative size of all elements in pinned memory cache (in bytes)
-	SizePinnedMemoryCache uint64
-	// Cumulative size of all elements in memory cache (in bytes)
-	SizeMemoryCache uint64
-}
-*/

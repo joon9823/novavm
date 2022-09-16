@@ -14,9 +14,9 @@ pub mod gas_meter;
 pub mod message;
 pub mod storage;
 pub mod kernel_stdlib;
+pub mod asset;
 
 mod args_validator;
-mod asset;
 mod errors;
 mod kernel_vm;
 

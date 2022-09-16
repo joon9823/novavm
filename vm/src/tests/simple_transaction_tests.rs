@@ -8,15 +8,21 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-use move_deps::{move_core_types::{
-    account_address::AccountAddress,
-    effects::{ChangeSet, Op},
-    identifier::Identifier,
-    language_storage::ModuleId,
-    vm_status::{StatusCode, VMStatus},
-}, move_binary_format::CompiledModule};
+use move_deps::{
+    move_binary_format::CompiledModule,
+    move_core_types::{
+        account_address::AccountAddress,
+        effects::{ChangeSet, Op},
+        identifier::Identifier,
+        language_storage::{ModuleId, TypeTag},
+        parser::parse_struct_tag,
+        vm_status::{StatusCode, VMStatus},
+    },
+};
 
-use crate::asset::{compile_move_stdlib_modules, compile_move_nursery_modules, compile_kernel_stdlib_modules};
+use crate::asset::{
+    compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
+};
 
 //faking chain db
 struct MockDB {
@@ -85,7 +91,7 @@ impl Module {
 
 #[cfg(test)]
 impl EntryFunction {
-    fn print_number(number: u64) -> Self{
+    fn print_number(number: u64) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("print_number").unwrap(),
@@ -94,7 +100,7 @@ impl EntryFunction {
         )
     }
 
-    fn balance(addr: AccountAddress) -> Self{
+    fn balance(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("balance").unwrap(),
@@ -102,8 +108,8 @@ impl EntryFunction {
             vec![addr.to_vec()],
         )
     }
-    
-    fn transfer(from : AccountAddress, to : AccountAddress, amount : u64) -> Self{
+
+    fn transfer(from: AccountAddress, to: AccountAddress, amount: u64) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("transfer").unwrap(),
@@ -116,7 +122,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -125,7 +133,9 @@ impl EntryFunction {
         Self::new(
             ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
             Identifier::new("mint").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![amount.to_le_bytes().to_vec()],
         )
     }
@@ -143,7 +153,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("get").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -152,7 +164,9 @@ impl EntryFunction {
         Self::new(
             Module::get_basic_coin_module_id(),
             Identifier::new("get_coin").unwrap(),
-            vec![],
+            vec![TypeTag::Struct(
+                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+            )],
             vec![addr.to_vec()],
         )
     }
@@ -163,13 +177,16 @@ impl Script {
     fn mint_200() -> Self {
         Self::new(
             include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
-            vec![],
+            vec![
+                TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Kernel").unwrap()),
+                TypeTag::Bool,
+            ],
             vec![],
         )
     }
 }
 
-fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> ){
+fn run_transaction(testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)>) {
     let mut db = MockDB::new();
     let mut vm = KernelVM::new();
 
@@ -207,13 +224,11 @@ fn run_transaction(testcases : Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> 
         // apply output into db
         db.push_write_set(output.change_set().clone());
     }
-
-    
 }
 
 #[cfg(test)]
 #[test]
-fn test_deps_transaction(){
+fn test_deps_transaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
     let account_three =
@@ -232,9 +247,7 @@ fn test_deps_transaction(){
         ),
         (
             // bank module : balance
-            Message::new_entry_function(
-                AccountAddress::ONE, 
-                EntryFunction::balance(account_two)),
+            Message::new_entry_function(AccountAddress::ONE, EntryFunction::balance(account_two)),
             VMStatus::Executed,
             0,
             Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
@@ -242,23 +255,22 @@ fn test_deps_transaction(){
         (
             // bank module : transfer
             Message::new_entry_function(
-                AccountAddress::ONE, 
-                EntryFunction::transfer(account_two, account_three, 100)),
+                AccountAddress::ONE,
+                EntryFunction::transfer(account_two, account_three, 100),
+            ),
             VMStatus::Executed,
             0,
             Some(vec![]),
-        )
+        ),
     ];
     run_transaction(testcases);
 }
-
 
 #[cfg(test)]
 #[test]
 fn test_simple_trasaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
-
     let testcases: Vec<(Message, VMStatus, usize, Option<Vec<u8>>)> = vec![
         (
             // publish module
