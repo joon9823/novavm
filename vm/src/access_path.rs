@@ -48,7 +48,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use std::fmt;
 use std::str::FromStr;
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct AccessPath {
     pub address: AccountAddress,
     pub path: DataPath,

@@ -7,6 +7,7 @@ use move_deps::move_core_types::gas_algebra::{
     InternalGas, InternalGasPerArg, InternalGasPerByte, InternalGasUnit, NumArgs, NumBytes,
     ToUnitFractionalWithParams, ToUnitWithParams,
 };
+use crate::types::{state_key::StateKey, write_set::WriteOp};
 
 crate::gas::params::define_gas_parameters!(
     TransactionGasParameters,
@@ -120,51 +121,50 @@ impl TransactionGasParameters {
         }
     }
 
-    // TODO : calculate write set gas
-    // pub fn calculate_write_set_gas<'a>(
-    //     &self,
-    //     ops: impl IntoIterator<Item = (&'a StateKey, &'a WriteOp)>,
-    // ) -> InternalGas {
-    //     use WriteOp::*;
+    pub fn calculate_write_set_gas<'a>(
+        &self,
+        ops: impl IntoIterator<Item = (&'a StateKey, &'a WriteOp)>,
+    ) -> InternalGas {
+        use WriteOp::*;
 
-    //     // Counting
-    //     let mut num_ops = NumArgs::zero();
-    //     let mut num_new_items = NumArgs::zero();
-    //     let mut num_bytes_key = NumBytes::zero();
-    //     let mut num_bytes_val = NumBytes::zero();
+        // Counting
+        let mut num_ops = NumArgs::zero();
+        let mut num_new_items = NumArgs::zero();
+        let mut num_bytes_key = NumBytes::zero();
+        let mut num_bytes_val = NumBytes::zero();
 
-    //     for (key, op) in ops.into_iter() {
-    //         num_ops += 1.into();
+        for (key, op) in ops.into_iter() {
+            num_ops += 1.into();
 
-    //         if self.write_data_per_byte_in_key > 0.into() {
-    //             // TODO(Gas): Are we supposed to panic here?
-    //             num_bytes_key += NumBytes::new(
-    //                 key.encode()
-    //                     .expect("Should be able to serialize state key")
-    //                     .len() as u64,
-    //             );
-    //         }
+            if self.write_data_per_byte_in_key > 0.into() {
+                // TODO(Gas): Are we supposed to panic here?
+                num_bytes_key += NumBytes::new(
+                    key.encode()
+                        .expect("Should be able to serialize state key")
+                        .len() as u64,
+                );
+            }
 
-    //         match op {
-    //             Creation(data) => {
-    //                 num_new_items += 1.into();
-    //                 num_bytes_val += NumBytes::new(data.len() as u64);
-    //             }
-    //             Modification(data) => {
-    //                 num_bytes_val += NumBytes::new(data.len() as u64);
-    //             }
-    //             Deletion => (),
-    //         }
-    //     }
+            match op {
+                Creation(data) => {
+                    num_new_items += 1.into();
+                    num_bytes_val += NumBytes::new(data.len() as u64);
+                }
+                Modification(data) => {
+                    num_bytes_val += NumBytes::new(data.len() as u64);
+                }
+                Deletion => (),
+            }
+        }
 
-    //     // Calculate the costs
-    //     let cost_ops = self.write_data_per_op * num_ops;
-    //     let cost_new_items = self.write_data_per_new_item * num_new_items;
-    //     let cost_bytes = self.write_data_per_byte_in_key * num_bytes_key
-    //         + self.write_data_per_byte_in_val * num_bytes_val;
+        // Calculate the costs
+        let cost_ops = self.write_data_per_op * num_ops;
+        let cost_new_items = self.write_data_per_new_item * num_new_items;
+        let cost_bytes = self.write_data_per_byte_in_key * num_bytes_key
+            + self.write_data_per_byte_in_val * num_bytes_val;
 
-    //     cost_ops + cost_new_items + cost_bytes
-    // }
+        cost_ops + cost_new_items + cost_bytes
+    }
 }
 
 impl ToUnitWithParams<InternalGasUnit> for GasUnit {
