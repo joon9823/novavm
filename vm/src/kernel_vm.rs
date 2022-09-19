@@ -213,7 +213,7 @@ impl KernelVM {
         // TODO: refactor duplicate gas_used
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
         let (status, mut output) = self.success_message_cleanup(session,gas_used)?;
-        gas_meter.charge_write_set_gas(output.change_set().accounts())?;
+        gas_meter.charge_change_set_gas(output.change_set().accounts())?;
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
         output.set_gas_used(gas_used.into());
 

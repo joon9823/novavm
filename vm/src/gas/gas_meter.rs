@@ -484,11 +484,11 @@ impl KernelGasMeter {
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))
     }
     
-    pub fn charge_write_set_gas<'a>(
+    pub fn charge_change_set_gas<'a>(
         &mut self,
         ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>,
     ) -> VMResult<()> {
-        let cost = self.gas_params.txn.calculate_write_set_gas(ops);
+        let cost = self.gas_params.txn.calculate_change_set_gas(ops);
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))
     }
 }
