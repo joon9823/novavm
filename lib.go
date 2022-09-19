@@ -48,8 +48,8 @@ func (vm *VM) PublishModule(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	moduleBytes []byte,
-) error {
-	_, err := api.PublishModule(
+) (uint64, error) {
+	res, err := api.PublishModule(
 		kvStore,
 		vm.printDebug,
 		gasLimit,
@@ -57,10 +57,13 @@ func (vm *VM) PublishModule(
 		moduleBytes,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return err
+	var execRes types.ExecutionResult
+	err = json.Unmarshal(res, &execRes)
+
+	return execRes.GasUsed, err
 
 }
 

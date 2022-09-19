@@ -40,13 +40,14 @@ func publishModule(
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
-	err = vm.PublishModule(
+	usedGas, err := vm.PublishModule(
 		kvStore,
 		10000,
 		types.StdAddress,
 		f,
 	)
 	require.NoError(t, err)
+	require.NotZero(t, usedGas)
 }
 
 func mintCoin(
