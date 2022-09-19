@@ -146,7 +146,7 @@ impl KernelVM {
 
     fn execute_script_or_entry_function<S: StateView>(
         &self,
-        sender: AccountAddress,
+        sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         gas_meter : &mut KernelGasMeter
@@ -154,6 +154,11 @@ impl KernelVM {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
+
+        let senders = match sender {
+            Some(s) => vec![s],
+            None => vec![]
+        };
 
         let gas_before = gas_meter.balance();
         
@@ -163,7 +168,7 @@ impl KernelVM {
                     // let Ok(s) = CompiledScript::deserialize(script.code());
                     let loaded_func =
                         session.load_script(script.code(), script.ty_args().to_vec())?;
-                    let args = validate_combine_signer_and_txn_args(&session, vec![sender], script.args().to_vec(), &loaded_func)?;
+                    let args = validate_combine_signer_and_txn_args(&session, senders, script.args().to_vec(), &loaded_func)?;
 
                     session.execute_script(
                         script.code().to_vec(),
@@ -178,7 +183,7 @@ impl KernelVM {
                         entry_fn.function(),
                         entry_fn.ty_args(),
                     )?;
-                    let args = validate_combine_signer_and_txn_args(&session,vec![sender], entry_fn.args().to_vec(), &function)?;
+                    let args = validate_combine_signer_and_txn_args(&session,senders, entry_fn.args().to_vec(), &function)?;
                     
                     session.execute_entry_function(
                         entry_fn.module(),

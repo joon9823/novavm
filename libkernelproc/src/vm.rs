@@ -68,7 +68,7 @@ pub(crate) fn publish_module(
     let gas_limit = Gas::new(gas);
 
     let module: ModuleBundle = ModuleBundle::from(Module::new(payload));
-    let message: Message = Message::new_module(sender, module);
+    let message: Message = Message::new_module(Some(sender), module);
 
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
@@ -94,7 +94,7 @@ pub(crate) fn execute_script(
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(sender, payload, db_handle, gas, false)
+    execute_entry(Some(sender), payload, db_handle, gas, false)
 }
 
 pub(crate) fn execute_contract(
@@ -103,26 +103,29 @@ pub(crate) fn execute_contract(
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(sender, payload, db_handle, gas, false)
+    execute_entry(Some(sender), payload, db_handle, gas, false)
 }
 
 // works as smart query
 pub(crate) fn query_contract(
-    sender: AccountAddress,
     payload: Vec<u8>,
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(sender, payload, db_handle, gas, true)
+    execute_entry(None, payload, db_handle, gas, true)
 }
 
 fn execute_entry(
-    sender: AccountAddress,
+    sender: Option<AccountAddress>,
     payload: Vec<u8>,
     db_handle: Db,
     gas: u64,
-    is_read_only: bool,
+    is_query: bool,
 ) -> Result<Vec<u8>, Error> {
+    if !is_query && sender.is_none() {
+        return Err(Error::vm_err("sender is unset"));
+    }
+
     let gas_limit = Gas::new(gas);
 
     let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
@@ -137,7 +140,7 @@ fn execute_entry(
 
     match status {
         VMStatus::Executed => {
-            if is_read_only {
+            if is_query {
                 return match retval {
                     // FIXME: retval or output?
                     Some(val) => {

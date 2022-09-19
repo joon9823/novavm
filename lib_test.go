@@ -122,7 +122,6 @@ func Test_QueryContract(t *testing.T) {
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		10000,
-		types.StdAddress,
 		bz,
 	)
 

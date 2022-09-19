@@ -286,7 +286,7 @@ UnmanagedVector publish_module(Db db,
                                ByteSliceView module);
 
 /**
- * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
+ * TODO: after PoC: make Context contextual information
  */
 UnmanagedVector query_contract(Db db,
                                GoApi api,
@@ -295,7 +295,6 @@ UnmanagedVector query_contract(Db db,
                                uint64_t gas_limit,
                                uint64_t *gas_used,
                                UnmanagedVector *errmsg,
-                               ByteSliceView sender,
                                ByteSliceView message);
 
 /**

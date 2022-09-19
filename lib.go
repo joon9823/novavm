@@ -66,7 +66,6 @@ func (vm *VM) Query(
 	goApi api.GoAPI,
 	querier api.Querier,
 	gasLimit uint64,
-	sender types.AccountAddress,
 	message []byte,
 ) ([]byte, uint64, error) {
 	return api.QueryContract(
@@ -75,7 +74,6 @@ func (vm *VM) Query(
 		querier,
 		vm.printDebug,
 		gasLimit,
-		sender,
 		message,
 	)
 }
