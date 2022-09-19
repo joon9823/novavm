@@ -16,7 +16,7 @@ default = []
 backtraces = []
 
 [dependencies]
-move-deps = { path = "../move-deps" }
+move-deps = { path = "../move-deps", features = ["address20"] }
 
 serde = {version = "1.0.130", default-features = false, features = ["derive", "alloc"]}
 serde_bytes = "0.11.5"

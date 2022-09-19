@@ -13,14 +13,13 @@ func Initialize(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	gasMeter GasMeter,
 	isVerbose bool,
 	module_bundle []byte,
 ) ([]byte, error) {
 	var err error
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -42,7 +41,6 @@ func PublishModule(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	gasMeter GasMeter,
 	isVerbose bool,
 	gasLimit uint64,
 	sender []byte,
@@ -52,7 +50,7 @@ func PublishModule(
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -76,7 +74,6 @@ func ExecuteContract(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	gasMeter GasMeter,
 	isVerbose bool,
 	gasLimit uint64,
 	sender []byte,
@@ -86,7 +83,7 @@ func ExecuteContract(
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
@@ -110,7 +107,6 @@ func QueryContract(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	gasMeter GasMeter,
 	isVerbose bool,
 	gasLimit uint64,
 	sender []byte,
@@ -120,7 +116,7 @@ func QueryContract(
 	var gasUsed cu64
 
 	dbState := buildDBState(store)
-	db := buildDB(&dbState, &gasMeter)
+	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 

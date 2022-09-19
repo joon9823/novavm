@@ -15,13 +15,11 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
-	gasMeter := api.NewMockGasMeter(100000000)
-	kvStore := api.NewLookup(gasMeter)
+	kvStore := api.NewLookup()
 	vm, err := vm.CreateVM(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
-		gasMeter,
 		true,
 		f,
 	)
@@ -36,7 +34,6 @@ func mintCoin(
 	minter types.AccountAddress,
 	amount uint64,
 ) {
-	gasMeter := api.NewMockGasMeter(100000000)
 
 	std, err := types.NewAccountAddress("0x1")
 	require.NoError(t, err)
@@ -57,7 +54,6 @@ func mintCoin(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
-		gasMeter,
 		10000,
 		minter,
 		bz,
@@ -75,14 +71,12 @@ func Test_CrateVM(t *testing.T) {
 func Test_PublishModule(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 
-	gasMeter := api.NewMockGasMeter(100000000)
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 
 	_, err = vm.PublishModule(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
-		gasMeter,
 		10000,
 		types.StdAddress,
 		f,
@@ -111,7 +105,6 @@ func Test_QueryContract(t *testing.T) {
 	mintAmount := uint64(100)
 	mintCoin(t, vm, kvStore, minter, mintAmount)
 
-	gasMeter := api.NewMockGasMeter(100000000)
 	payload := types.EntryFunction{
 		Module: types.ModuleId{
 			Address: types.StdAddress,
@@ -128,7 +121,6 @@ func Test_QueryContract(t *testing.T) {
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
-		gasMeter,
 		10000,
 		types.StdAddress,
 		bz,

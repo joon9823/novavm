@@ -1,10 +1,10 @@
-use move_deps::move_stdlib;
 use move_deps::move_binary_format::CompiledModule;
-use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
+use move_deps::move_command_line_common::files::{extension_equals, find_filenames};
 use move_deps::move_compiler::shared::NumericalAddress;
-use std::env;
-use std::{collections::BTreeMap, path::PathBuf};
-use move_deps::move_command_line_common::files::{extension_equals,find_filenames};
+use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
+use move_deps::move_stdlib;
+
+use std::{env, collections::BTreeMap, path::PathBuf};
 
 pub fn compile_move_stdlib_modules() -> Vec<CompiledModule> {
     let src_files = move_stdlib::move_stdlib_files();
@@ -32,14 +32,14 @@ pub fn compile_kernel_stdlib_modules() -> Vec<CompiledModule> {
     compile_modules(src_files, deps_files, name_address_map)
 }
 
-fn compile_modules(src_files : Vec<String>, deps_files :Vec<String>, name_address_map : BTreeMap<String, NumericalAddress> ) -> Vec<CompiledModule> {
-    let (_files, compiled_units) = Compiler::from_files(
-        src_files,
-        deps_files,
-        name_address_map,
-    )
-    .build_and_report()
-    .expect("Error compiling...");
+fn compile_modules(
+    src_files: Vec<String>,
+    deps_files: Vec<String>,
+    name_address_map: BTreeMap<String, NumericalAddress>,
+) -> Vec<CompiledModule> {
+    let (_files, compiled_units) = Compiler::from_files(src_files, deps_files, name_address_map)
+        .build_and_report()
+        .expect("Error compiling...");
     compiled_units
         .into_iter()
         .map(|unit| match unit {

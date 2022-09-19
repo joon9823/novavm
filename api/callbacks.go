@@ -7,21 +7,21 @@ package api
 #include "bindings.h"
 
 // typedefs for _cgo functions (db)
-typedef GoError (*read_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
-typedef GoError (*write_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
-typedef GoError (*remove_db_fn)(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
+typedef GoError (*read_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
+typedef GoError (*write_db_fn)(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
+typedef GoError (*remove_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
 // and api
 typedef GoError (*bank_transfer_fn)(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
-typedef GoError (*query_external_fn)(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
+typedef GoError (*query_external_fn)(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
 
 // forward declarations (db)
-GoError cGet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
-GoError cSet_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
-GoError cDelete_cgo(db_t *ptr, gas_meter_t *gas_meter, uint64_t *used_gas, U8SliceView key, UnmanagedVector *errOut);
+GoError cGet_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
+GoError cSet_cgo(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
+GoError cDelete_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
 // api
 GoError cBankTransfer_cgo(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
 // and querier
-GoError cQueryExternal_cgo(querier_t *ptr, uint64_t gas_limit, uint64_t *used_gas, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
+GoError cQueryExternal_cgo(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
 
 
 */
@@ -125,19 +125,18 @@ func buildDBState(kv KVStore) DBState {
 
 // contract: original pointer/struct referenced must live longer than C.Db struct
 // since this is only used internally, we can verify the code that this is the case
-func buildDB(state *DBState, gm *GasMeter) C.Db {
+func buildDB(state *DBState) C.Db {
 	return C.Db{
-		gas_meter: (*C.gas_meter_t)(unsafe.Pointer(gm)),
-		state:     (*C.db_t)(unsafe.Pointer(state)),
-		vtable:    db_vtable,
+		state:  (*C.db_t)(unsafe.Pointer(state)),
+		vtable: db_vtable,
 	}
 }
 
 //export cGet
-func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView, val *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
+func cGet(ptr *C.db_t, key C.U8SliceView, val *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
-	if ptr == nil || gasMeter == nil || usedGas == nil || val == nil || errOut == nil {
+	if ptr == nil || val == nil || errOut == nil {
 		// we received an invalid pointer
 		return C.GoError_BadArgument
 	}
@@ -145,14 +144,10 @@ func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView
 		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
 	}
 
-	gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
 	kv := *(*KVStore)(unsafe.Pointer(ptr))
 	k := copyU8Slice(key)
 
-	gasBefore := gm.GasConsumed()
 	v := kv.Get(k)
-	gasAfter := gm.GasConsumed()
-	*usedGas = (cu64)(gasAfter - gasBefore)
 
 	// v will equal nil when the key is missing
 	// https://github.com/cosmos/cosmos-sdk/blob/1083fa948e347135861f88e07ec76b0314296832/store/types/store.go#L174
@@ -162,10 +157,10 @@ func cGet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *cu64, key C.U8SliceView
 }
 
 //export cSet
-func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, val C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
+func cSet(ptr *C.db_t, key C.U8SliceView, val C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
-	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
+	if ptr == nil || errOut == nil {
 		// we received an invalid pointer
 		return C.GoError_BadArgument
 	}
@@ -173,24 +168,20 @@ func cSet(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8Sli
 		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
 	}
 
-	gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
 	kv := *(*KVStore)(unsafe.Pointer(ptr))
 	k := copyU8Slice(key)
 	v := copyU8Slice(val)
 
-	gasBefore := gm.GasConsumed()
 	kv.Set(k, v)
-	gasAfter := gm.GasConsumed()
-	*usedGas = (C.uint64_t)(gasAfter - gasBefore)
 
 	return C.GoError_None
 }
 
 //export cDelete
-func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
+func cDelete(ptr *C.db_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
-	if ptr == nil || gasMeter == nil || usedGas == nil || errOut == nil {
+	if ptr == nil || errOut == nil {
 		// we received an invalid pointer
 		return C.GoError_BadArgument
 	}
@@ -198,14 +189,10 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
 	}
 
-	gm := *(*GasMeter)(unsafe.Pointer(gasMeter))
 	kv := *(*KVStore)(unsafe.Pointer(ptr))
 	k := copyU8Slice(key)
 
-	gasBefore := gm.GasConsumed()
 	kv.Delete(k)
-	gasAfter := gm.GasConsumed()
-	*usedGas = (C.uint64_t)(gasAfter - gasBefore)
 
 	return C.GoError_None
 }
@@ -213,7 +200,7 @@ func cDelete(ptr *C.db_t, gasMeter *C.gas_meter_t, usedGas *C.uint64_t, key C.U8
 /***** GoAPI *******/
 
 type GoAPI interface {
-	BankTransfer([]byte, types.Coin) (uint64, error)
+	BankTransfer([]byte, types.Coin) error
 }
 
 var api_vtable = C.GoApi_vtable{
@@ -230,7 +217,7 @@ func buildAPI(api *GoAPI) C.GoApi {
 }
 
 //export cBankTransfer
-func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, amount C.U8SliceView, errOut *C.UnmanagedVector, used_gas *cu64) (ret C.GoError) {
+func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, amount C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
 	if errOut == nil {
@@ -245,8 +232,7 @@ func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, a
 	d := string(copyU8Slice(denom))
 	a := string(copyU8Slice(denom))
 
-	cost, err := api.BankTransfer(r, types.Coin{Denom: d, Amount: a})
-	*used_gas = cu64(cost)
+	err := api.BankTransfer(r, types.Coin{Denom: d, Amount: a})
 	if err != nil {
 		// store the actual error message in the return buffer
 		*errOut = newUnmanagedVector([]byte(err.Error()))
@@ -272,10 +258,10 @@ func buildQuerier(q *Querier) C.GoQuerier {
 }
 
 //export cQueryExternal
-func cQueryExternal(ptr *C.querier_t, gasLimit C.uint64_t, usedGas *C.uint64_t, request C.U8SliceView, result *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
+func cQueryExternal(ptr *C.querier_t, request C.U8SliceView, result *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
-	if ptr == nil || usedGas == nil || result == nil || errOut == nil {
+	if ptr == nil || result == nil || errOut == nil {
 		// we received an invalid pointer
 		return C.GoError_BadArgument
 	}
@@ -287,10 +273,7 @@ func cQueryExternal(ptr *C.querier_t, gasLimit C.uint64_t, usedGas *C.uint64_t, 
 	querier := *(*Querier)(unsafe.Pointer(ptr))
 	req := copyU8Slice(request)
 
-	gasBefore := querier.GasConsumed()
-	res := types.RustQuery(querier, req, uint64(gasLimit))
-	gasAfter := querier.GasConsumed()
-	*usedGas = (C.uint64_t)(gasAfter - gasBefore)
+	res := types.RustQuery(querier, req)
 
 	// serialize the response
 	bz, err := json.Marshal(res)
