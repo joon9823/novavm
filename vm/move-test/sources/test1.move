@@ -1,4 +1,7 @@
 module std::BasicCoin {
+    use std::signer;
+    use std::event::{Self, EventHandle};
+
     struct Kernel {}
 
     struct Coin<phantom CoinType> has key, copy {
@@ -6,11 +9,37 @@ module std::BasicCoin {
         test: bool,
     }
 
+    struct TestEvents<phantom CoinType> has key {
+        mint_events: EventHandle<MintEvent>,
+    }
+
+    /// Event emitted when some amount of coins are withdrawn from an Collateral.
+    struct MintEvent has drop, store {
+        amount: u64,
+    }
+
     use std::debug;
     use kernel_std::bank;
 
-    public entry fun mint<CoinType>(account: signer, value: u64) {
-        move_to(&account, Coin<CoinType> { value, test: true })
+    public entry fun mint<CoinType>(account: signer, value: u64) acquires TestEvents {
+        move_to(&account, Coin<CoinType> { value, test: true });
+
+        let account_addr = signer::address_of(&account);
+        if (!exists<TestEvents<CoinType>>(account_addr)) {
+            move_to(&account, TestEvents<CoinType> {
+                mint_events: event::new_event_handle<MintEvent>(&account),
+            });
+        };
+
+        let test_events = borrow_global_mut<TestEvents<CoinType>>(account_addr);
+        
+        // emit event
+        event::emit_event<MintEvent>(
+            &mut test_events.mint_events,
+            MintEvent {
+                amount: value,
+            }
+        );
     }
 
     public entry fun get<CoinType>(account: address): u64 acquires Coin{
