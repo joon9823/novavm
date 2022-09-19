@@ -96,7 +96,8 @@ impl KernelVM {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
+            // FIXME: is it okay to use expect() here?
+            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter),
         };
         let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
 

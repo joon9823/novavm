@@ -279,9 +279,11 @@ fn test_deps_transaction() {
         (
             // bank module : balance
             Message::new_entry_function(Some(AccountAddress::ONE), EntryFunction::balance(account_two)),
-            VMStatus::Executed,
-            0,
-            Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
+            )
         ),
         (
             // bank module : transfer
@@ -289,9 +291,11 @@ fn test_deps_transaction() {
                 Some(AccountAddress::ONE),
                 EntryFunction::transfer(account_two, account_three, 100),
             ),
-            VMStatus::Executed,
-            0,
-            Some(vec![]),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![]),
+            )
         ),
     ];
     run_transaction(testcases);
@@ -318,17 +322,25 @@ fn test_simple_trasaction() {
         ),
         (
             // mint with script
-            Message::new_script(Some(AccountAddress::ONE), Script::mint_200()),
-            VMStatus::Executed,
-            1,
-            Some(vec![]),
+            Message::new_script(
+                Some(AccountAddress::ONE), 
+                Script::mint_200()),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                Some(vec![]),
+            )
         ),
         (
             // mint with entry function
-            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
-            VMStatus::Executed,
-            1,
-            Some(vec![]),
+            Message::new_entry_function(
+                Some(account_two), 
+                EntryFunction::mint(100)),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                1,
+                Some(vec![]),
+            )
         ),
         (
             // linker error
@@ -344,10 +356,14 @@ fn test_simple_trasaction() {
         ),
         (
             // get 123
-            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
-            VMStatus::Executed,
-            0,
-            Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
+            Message::new_entry_function(
+                Some(AccountAddress::ZERO), 
+                EntryFunction::number()),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
+            )
         ),
         (
             // get coin amount for 0x1
@@ -363,10 +379,14 @@ fn test_simple_trasaction() {
         ),
         (
             // get coin amount for 0x0
-            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::get(account_two)),
-            VMStatus::Executed,
-            0,
-            Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
+            Message::new_entry_function(
+                Some(AccountAddress::ZERO), 
+                EntryFunction::get(account_two)),
+            ExpectedOutput::new(
+                VMStatus::Executed,
+                0,
+                Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
+            )
         ),
         (
             // get Coin structure
