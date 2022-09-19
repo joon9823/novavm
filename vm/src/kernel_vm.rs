@@ -1,12 +1,12 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, gas_algebra::NumBytes, 
+        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode 
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
     move_vm_types::gas::UnmeteredGasMeter,
 };
-use std::{sync::Arc, ops::AddAssign};
+use std::{sync::Arc};
 use move_deps::{
     move_stdlib,
     move_core_types::language_storage::CORE_CODE_ADDRESS
@@ -18,7 +18,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{kernel_stdlib, gas::{InitialGasSchedule, self}};
+use crate::{kernel_stdlib, gas::{InitialGasSchedule}};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -76,7 +76,12 @@ impl KernelVM {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let (status,output) = self.success_message_cleanup(session, Gas::zero())?;
+
+        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
+        let (status,output) = (
+            VMStatus::Executed,
+            get_message_output(session_output, Gas::zero(), KeptVMStatus::Executed)?,
+        );
         Ok((status, output, None))
     }
 
@@ -141,13 +146,13 @@ impl KernelVM {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
             
         // after publish the modules, we need to clear loader cache, to make init script function and
         // epilogue use the new modules.
         // session.empty_loader_cache()?;
-
-        let (status,output) = self.success_message_cleanup(session, gas_used)?;
+        
+        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
+        let (status,output) = self.success_message_cleanup(session_output, gas_limit, gas_meter)?;
         Ok((status, output, None))
     }
 
@@ -210,24 +215,23 @@ impl KernelVM {
                 })?;
 
         // Charge for change set
-        // TODO: refactor duplicate gas_used
-        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
-        let (status, mut output) = self.success_message_cleanup(session,gas_used)?;
-        gas_meter.charge_change_set_gas(output.change_set().accounts())?;
-        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
-        output.set_gas_used(gas_used.into());
-
+        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
+        gas_meter.charge_change_set_gas(session_output.0.accounts())?;
+        let (status, output) = self.success_message_cleanup(session_output,gas_limit,gas_meter)?;
+        
         Ok((status, output, res.into()))
     }
 
-    fn success_message_cleanup<R: MoveResolver>(
+    fn success_message_cleanup(
         &self,
-        session: Session<R>,
-        gas_used: Gas
+        session_output : (ChangeSet, Vec<Event>),// session: Session<R>,
+        gas_limit: Gas,
+        gas_meter: &mut KernelGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
+        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
         Ok((
             VMStatus::Executed,
-            get_message_output(session, gas_used, KeptVMStatus::Executed)?,
+            get_message_output(session_output, gas_used, KeptVMStatus::Executed)?,
         ))
     }
 
@@ -238,11 +242,11 @@ impl KernelVM {
         gas_used : Gas
     ) -> (VMStatus, MessageOutput) {
         let session: Session<_> = self.move_vm.new_session(remote_cache).into();
-
+        let session_output = session.finish().map_err(|e| e.into_vm_status()).unwrap();
         // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
-                let txn_output = get_message_output(session, gas_used, status)
+                let txn_output = get_message_output(session_output, gas_used, status)
                     .unwrap_or_else(|e| discard_error_vm_status(e, gas_used).1);
                 (error_code, txn_output)
             }
@@ -272,13 +276,12 @@ pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used : Gas) -> (VMStatu
     (vm_status, discard_error_output(error_code, gas_used))
 }
 
-pub(crate) fn get_message_output<R: MoveResolver>(
-    session: Session<R>,
+pub(crate) fn get_message_output(
+    session_output : (ChangeSet, Vec<Event>),
     gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {
-
-    let (changeset, events) = session.finish().map_err(|e| e.into_vm_status())?;
+    let (changeset, events) = session_output;
 
     Ok(MessageOutput::new(
         changeset,

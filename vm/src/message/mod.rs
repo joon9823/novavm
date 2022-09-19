@@ -212,10 +212,6 @@ impl MessageOutput {
         }
     }
 
-    pub fn set_gas_used(&mut self, gas_used: u64) {
-        self.gas_used = gas_used;
-    }
-
     pub fn change_set(&self) -> &ChangeSet {
         &self.change_set
     }

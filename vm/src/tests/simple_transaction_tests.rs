@@ -35,7 +35,7 @@ impl MockDB {
             map: BTreeMap::new(),
         }
     }
-
+    
     fn write_op(&mut self, ref ap: AccessPath, ref blob_opt: Op<Vec<u8>>) {
         match blob_opt {
             Op::New(blob) | Op::Modify(blob) => {
@@ -91,15 +91,6 @@ impl Module {
 
 #[cfg(test)]
 impl EntryFunction {
-    fn print_number(number: u64) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("print_number").unwrap(),
-            vec![],
-            vec![number.to_le_bytes().to_vec()],
-        )
-    }
-
     fn balance(addr: AccountAddress) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
@@ -243,7 +234,7 @@ fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
 
         assert!(status == *exp_output.vm_status());
         assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
-        println!("gas used : {:?}", output.gas_used());
+
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
         assert!(result_bytes == *exp_output.result_bytes());
 
