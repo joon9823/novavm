@@ -238,7 +238,7 @@ fn test_deps_transaction() {
         (
             // publish module
             Message::new_module(
-                AccountAddress::ONE,
+                Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
             VMStatus::Executed,
@@ -247,7 +247,7 @@ fn test_deps_transaction() {
         ),
         (
             // bank module : balance
-            Message::new_entry_function(AccountAddress::ONE, EntryFunction::balance(account_two)),
+            Message::new_entry_function(Some(AccountAddress::ONE), EntryFunction::balance(account_two)),
             VMStatus::Executed,
             0,
             Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
@@ -255,7 +255,7 @@ fn test_deps_transaction() {
         (
             // bank module : transfer
             Message::new_entry_function(
-                AccountAddress::ONE,
+                Some(AccountAddress::ONE),
                 EntryFunction::transfer(account_two, account_three, 100),
             ),
             VMStatus::Executed,
@@ -275,7 +275,7 @@ fn test_simple_trasaction() {
         (
             // publish module
             Message::new_module(
-                AccountAddress::ONE,
+                Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
             VMStatus::Executed,
@@ -284,14 +284,14 @@ fn test_simple_trasaction() {
         ),
         (
             // mint with script
-            Message::new_script(AccountAddress::ONE, Script::mint_200()),
+            Message::new_script(Some(AccountAddress::ONE), Script::mint_200()),
             VMStatus::Executed,
             1,
             Some(vec![]),
         ),
         (
             // mint with entry function
-            Message::new_entry_function(account_two, EntryFunction::mint(100)),
+            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
             VMStatus::Executed,
             1,
             Some(vec![]),
@@ -299,7 +299,7 @@ fn test_simple_trasaction() {
         (
             // linker error
             Message::new_entry_function(
-                AccountAddress::ZERO,
+                Some(AccountAddress::ZERO),
                 EntryFunction::mint_with_wrong_module_address(100),
             ),
             VMStatus::Error(StatusCode::LINKER_ERROR),
@@ -308,7 +308,7 @@ fn test_simple_trasaction() {
         ),
         (
             // get 123
-            Message::new_entry_function(AccountAddress::ZERO, EntryFunction::number()),
+            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
             VMStatus::Executed,
             0,
             Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
@@ -316,7 +316,7 @@ fn test_simple_trasaction() {
         (
             // get coin amount for 0x1
             Message::new_entry_function(
-                AccountAddress::ZERO,
+                Some(AccountAddress::ZERO),
                 EntryFunction::get(AccountAddress::ONE),
             ),
             VMStatus::Executed,
@@ -325,7 +325,7 @@ fn test_simple_trasaction() {
         ),
         (
             // get coin amount for 0x0
-            Message::new_entry_function(AccountAddress::ZERO, EntryFunction::get(account_two)),
+            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::get(account_two)),
             VMStatus::Executed,
             0,
             Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
@@ -333,7 +333,7 @@ fn test_simple_trasaction() {
         (
             // get Coin structure
             Message::new_entry_function(
-                AccountAddress::ZERO,
+                Some(AccountAddress::ZERO),
                 EntryFunction::get_coin_struct(account_two),
             ),
             VMStatus::Executed,

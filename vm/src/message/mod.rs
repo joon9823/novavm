@@ -24,7 +24,7 @@ mod script;
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     /// Sender's address.
-    sender: AccountAddress,
+    sender: Option<AccountAddress>,
     // The message script to execute.
     payload: MessagePayload,
 }
@@ -33,18 +33,18 @@ impl Message {
     /// Create a new `Message` with a payload.
     ///
     /// It can be either to publish a module, to execute a script
-    pub fn new(sender: AccountAddress, payload: MessagePayload) -> Self {
+    pub fn new(sender: Option<AccountAddress>, payload: MessagePayload) -> Self {
         Message { sender, payload }
     }
 
-    pub fn new_with_default_gas_token(sender: AccountAddress, payload: MessagePayload) -> Self {
+    pub fn new_with_default_gas_token(sender: Option<AccountAddress>, payload: MessagePayload) -> Self {
         Message { sender, payload }
     }
 
     /// Create a new `Message` with a script.
     ///
     /// A script message contains only code to execute. No publishing is allowed in scripts.
-    pub fn new_script(sender: AccountAddress, script: Script) -> Self {
+    pub fn new_script(sender: Option<AccountAddress>, script: Script) -> Self {
         Message {
             sender,
             payload: MessagePayload::Script(script),
@@ -54,7 +54,7 @@ impl Message {
     /// Create a new `Message` with a script function.
     ///
     /// A script message contains only code to execute. No publishing is allowed in scripts.
-    pub fn new_entry_function(sender: AccountAddress, entry_function: EntryFunction) -> Self {
+    pub fn new_entry_function(sender: Option<AccountAddress>, entry_function: EntryFunction) -> Self {
         Message {
             sender,
             payload: MessagePayload::EntryFunction(entry_function),
@@ -64,7 +64,7 @@ impl Message {
     /// Create a new `Message` with a module to publish.
     ///
     /// A module message is the only way to publish code.
-    pub fn new_module(sender: AccountAddress, modules: ModuleBundle) -> Self {
+    pub fn new_module(sender: Option<AccountAddress>, modules: ModuleBundle) -> Self {
         Message {
             sender,
             payload: MessagePayload::ModuleBundle(modules),
@@ -76,7 +76,7 @@ impl Message {
     }
 
     /// Return the sender of this message.
-    pub fn sender(&self) -> AccountAddress {
+    pub fn sender(&self) -> Option<AccountAddress> {
         self.sender
     }
 
@@ -90,14 +90,14 @@ impl Message {
 
     pub fn mock_by_sender(sender: AccountAddress) -> Self {
         Self::new_with_default_gas_token(
-            sender,
+            Some(sender),
             MessagePayload::Script(Script::new(vec![], vec![], vec![])),
         )
     }
 
     pub fn mock_from(compiled_script: Vec<u8>) -> Self {
         Self::new_with_default_gas_token(
-            AccountAddress::ZERO,
+            None,
             MessagePayload::Script(Script::new(compiled_script, vec![], vec![])),
         )
     }
@@ -119,16 +119,6 @@ pub enum MessagePayloadType {
     Script = 0,
     ModuleBundle = 1,
     EntryFunction = 2,
-}
-
-impl MessagePayload {
-    pub fn payload_type(&self) -> MessagePayloadType {
-        match self {
-            MessagePayload::Script(_) => MessagePayloadType::Script,
-            MessagePayload::ModuleBundle(_) => MessagePayloadType::ModuleBundle,
-            MessagePayload::EntryFunction(_) => MessagePayloadType::EntryFunction,
-        }
-    }
 }
 
 impl TryFrom<u8> for MessagePayloadType {

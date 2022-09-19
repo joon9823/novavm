@@ -1,4 +1,5 @@
 # API for cosmos-sdk-based chains
 
 ## TODOs: after PoC
-- iterator
+- queriers to other module
+- APIs to other module

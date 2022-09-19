@@ -85,7 +85,9 @@ impl KernelVM {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, cost_strategy)
             }
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender, remote_cache, m, cost_strategy),
+            MessagePayload::ModuleBundle(m) => {
+                self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, cost_strategy) // FIXME: is it okay to use expect() here?
+            },
         };
 
         match result {
@@ -131,7 +133,7 @@ impl KernelVM {
 
     fn execute_script_or_entry_function<S: StateView>(
         &self,
-        sender: AccountAddress,
+        sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         mut cost_strategy : GasStatus
@@ -140,13 +142,18 @@ impl KernelVM {
 
         // TODO: verification
 
+        let senders = match sender {
+            Some(s) => vec![s],
+            None => vec![]
+        };
+
         let res = match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
                     // let Ok(s) = CompiledScript::deserialize(script.code());
                     let loaded_func =
                         session.load_script(script.code(), script.ty_args().to_vec())?;
-                    let args = validate_combine_signer_and_txn_args(&session, vec![sender], script.args().to_vec(), &loaded_func)?;
+                    let args = validate_combine_signer_and_txn_args(&session, senders, script.args().to_vec(), &loaded_func)?;
 
                     session.execute_script(
                         script.code().to_vec(),
@@ -161,7 +168,7 @@ impl KernelVM {
                         entry_fn.function(),
                         entry_fn.ty_args(),
                     )?;
-                    let args = validate_combine_signer_and_txn_args(&session,vec![sender], entry_fn.args().to_vec(), &function)?;
+                    let args = validate_combine_signer_and_txn_args(&session,senders, entry_fn.args().to_vec(), &function)?;
                     
                     session.execute_entry_function(
                         entry_fn.module(),
