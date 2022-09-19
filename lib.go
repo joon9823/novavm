@@ -48,14 +48,20 @@ func (vm *VM) PublishModule(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	moduleBytes []byte,
-) ([]byte, error) {
-	return api.PublishModule(
+) error {
+	_, err := api.PublishModule(
 		kvStore,
 		vm.printDebug,
 		gasLimit,
 		sender,
 		moduleBytes,
 	)
+	if err != nil {
+		return err
+	}
+
+	return err
+
 }
 
 // Query will do a query request to VM
@@ -71,7 +77,6 @@ func (vm *VM) QueryEntryFunction(
 		return nil, err
 	}
 
-	// TODO - remove used gas output from query
 	res, err := api.QueryContract(
 		kvStore,
 		goApi,
@@ -81,7 +86,14 @@ func (vm *VM) QueryEntryFunction(
 		bz,
 	)
 
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+
+	var execRes types.ExecutionResult
+	err = json.Unmarshal(res, &execRes)
+
+	return execRes.Result, err
 }
 
 // Execute calls a given contract.
@@ -93,10 +105,10 @@ func (vm *VM) ExecuteEntryFunction(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	payload types.ExecuteEntryFunctionPayload,
-) ([]byte, error) {
+) (uint64, []types.Event, error) {
 	bz, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	res, err := api.ExecuteContract(
@@ -108,7 +120,14 @@ func (vm *VM) ExecuteEntryFunction(
 		sender,
 		bz,
 	)
-	return res, err
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	var execRes types.ExecutionResult
+	err = json.Unmarshal(res, &execRes)
+	return execRes.GasUsed, execRes.Events, err
 }
 
 // Execute calls a given contract.
@@ -120,7 +139,7 @@ func (vm *VM) ExecuteScript(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	payload types.ExecuteScriptPayload,
-) (uint64, error) {
+) (uint64, []types.Event, error) {
 	// _, usedGas, err := api.ExecuteContract(
 	// 	kvStore,
 	// 	goApi,
@@ -130,7 +149,7 @@ func (vm *VM) ExecuteScript(
 	// 	sender,
 	// 	message,
 	// )
-	return 0, nil
+	return 0, nil, nil
 }
 
 // Query will do a query request to VM
