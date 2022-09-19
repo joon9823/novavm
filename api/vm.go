@@ -11,24 +11,20 @@ import (
 
 func Initialize(
 	store KVStore,
-	api GoAPI,
-	querier Querier,
 	isVerbose bool,
-	module_bundle []byte,
+	moduleBundle []byte,
 ) ([]byte, error) {
 	var err error
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
-	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
-	mb := makeView(module_bundle)
+	mb := makeView(moduleBundle)
 	defer runtime.KeepAlive(mb)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.initialize(db, _api, _querier, cbool(isVerbose), &errmsg, mb)
+	res, err := C.initialize(db, cbool(isVerbose), &errmsg, mb)
 	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -39,8 +35,6 @@ func Initialize(
 
 func PublishModule(
 	store KVStore,
-	api GoAPI,
-	querier Querier,
 	isVerbose bool,
 	gasLimit uint64,
 	sender []byte,
@@ -51,8 +45,6 @@ func PublishModule(
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
-	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	mb := makeView(module)
 	defer runtime.KeepAlive(mb)
@@ -61,7 +53,7 @@ func PublishModule(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.publish_module(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &gasUsed, &errmsg, senderView, mb)
+	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &gasUsed, &errmsg, senderView, mb)
 	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, uint64(gasUsed), errorWithMessage(err, errmsg)
