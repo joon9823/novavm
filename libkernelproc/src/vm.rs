@@ -7,7 +7,7 @@ use kernelvm::access_path::AccessPath;
 use kernelvm::asset::{
     compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
 };
-use kernelvm::gas_meter::Gas;
+use kernelvm::gas::Gas;
 use kernelvm::storage::data_view_resolver::DataViewResolver;
 use kernelvm::BackendResult;
 use kernelvm::EntryFunction;
