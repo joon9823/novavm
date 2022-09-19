@@ -262,3 +262,16 @@ var _ error = OutOfGasError{}
 func (o OutOfGasError) Error() string {
 	return "Out of gas"
 }
+
+type Event struct {
+	Key     []byte  `json:"key"`
+	SeqNum  uint64  `json:"sequence_number"`
+	TypeTag TypeTag `json:"type_tag"`
+	Data    []byte  `json:"event_data"`
+}
+
+type ExecutionResult struct {
+	Result  []byte  `json:"result"`
+	Events  []Event `json:"events"`
+	GasUsed uint64  `json:"gas_used"`
+}

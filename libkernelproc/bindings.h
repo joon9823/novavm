@@ -257,7 +257,6 @@ UnmanagedVector execute_contract(Db db,
                                  GoQuerier querier,
                                  bool is_verbose,
                                  uint64_t gas_limit,
-                                 uint64_t *gas_used,
                                  UnmanagedVector *errmsg,
                                  ByteSliceView sender,
                                  ByteSliceView message);
@@ -276,7 +275,6 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
 UnmanagedVector publish_module(Db db,
                                bool is_verbose,
                                uint64_t gas_limit,
-                               uint64_t *gas_used,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
                                ByteSliceView module);
@@ -289,7 +287,6 @@ UnmanagedVector query_contract(Db db,
                                GoQuerier querier,
                                bool is_verbose,
                                uint64_t gas_limit,
-                               uint64_t *gas_used,
                                UnmanagedVector *errmsg,
                                ByteSliceView message);
 

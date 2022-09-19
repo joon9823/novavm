@@ -48,16 +48,14 @@ func (vm *VM) PublishModule(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	moduleBytes []byte,
-) (uint64, error) {
-	_, usedGas, err := api.PublishModule(
+) ([]byte, error) {
+	return api.PublishModule(
 		kvStore,
 		vm.printDebug,
 		gasLimit,
 		sender,
 		moduleBytes,
 	)
-
-	return usedGas, err
 }
 
 // Query will do a query request to VM
@@ -74,7 +72,7 @@ func (vm *VM) QueryEntryFunction(
 	}
 
 	// TODO - remove used gas output from query
-	res, _, err := api.QueryContract(
+	res, err := api.QueryContract(
 		kvStore,
 		goApi,
 		querier,
@@ -95,13 +93,13 @@ func (vm *VM) ExecuteEntryFunction(
 	gasLimit uint64,
 	sender types.AccountAddress,
 	payload types.ExecuteEntryFunctionPayload,
-) (uint64, error) {
+) ([]byte, error) {
 	bz, err := json.Marshal(payload)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	_, usedGas, err := api.ExecuteContract(
+	res, err := api.ExecuteContract(
 		kvStore,
 		goApi,
 		querier,
@@ -110,7 +108,7 @@ func (vm *VM) ExecuteEntryFunction(
 		sender,
 		bz,
 	)
-	return usedGas, err
+	return res, err
 }
 
 // Execute calls a given contract.

@@ -18,7 +18,7 @@ backtraces = []
 [dependencies]
 move-deps = { path = "../move-deps", features = ["address20"] }
 
-serde = {version = "1.0.130", default-features = false, features = ["derive", "alloc"]}
+serde = { version = "1.0.130", default-features = false, features = ["derive", "alloc"] }
 serde_bytes = "0.11.5"
 serde_json = {version = "1.0", features = ["arbitrary_precision"]}
 anyhow = "1.0.41"
