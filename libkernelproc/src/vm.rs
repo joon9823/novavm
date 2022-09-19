@@ -26,27 +26,30 @@ use once_cell::sync::Lazy;
 
 static mut INSTANCE: Lazy<KernelVM> = Lazy::new(|| KernelVM::new());
 
-pub(crate) fn initialize_vm(module_bundle: Vec<u8>, db_handle: Db) -> Result<Vec<u8>, Error> {
+pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, Error> {
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
 
     // initialize stdlib
-    let mut module_bundles: Vec<Vec<u8>> = vec![];
+    let mut module_bundle: Vec<Vec<u8>> = vec![];
     let mut modules = compile_move_stdlib_modules();
     modules.append(&mut compile_move_nursery_modules());
     modules.append(&mut compile_kernel_stdlib_modules());
     for module in modules {
         let mut mod_blob = vec![];
         module.serialize(&mut mod_blob).unwrap();
-        module_bundles.push(mod_blob);
+        module_bundle.push(mod_blob);
     }
 
-    module_bundles.push(module_bundle);
+    // add passed custom module bundles
+    let custom_module_bundle: ModuleBundle =
+        serde_json::from_slice(payload.as_slice()).unwrap();
+    module_bundle.extend(custom_module_bundle.into_inner());
 
-    for module_bundle in module_bundles {
+    for module in module_bundle {
         let data_view = DataViewResolver::new(&storage);
         let (status, output, _retval) =
-            unsafe { INSTANCE.initialize(module_bundle, &data_view) }.unwrap();
+            unsafe { INSTANCE.initialize(module, &data_view) }.unwrap();
 
         match status {
             VMStatus::Executed => {

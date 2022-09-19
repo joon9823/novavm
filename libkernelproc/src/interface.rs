@@ -9,16 +9,15 @@ use move_deps::move_core_types::account_address::AccountAddress;
 #[no_mangle]
 pub extern "C" fn initialize(
     db: Db,
-    api: GoApi,
-    querier: GoQuerier,
     is_verbose: bool,
     errmsg: Option<&mut UnmanagedVector>,
     module_bundle: ByteSliceView,
 ) -> UnmanagedVector {
-    let mb = module_bundle.to_owned().unwrap();
-
-    let res = catch_unwind(AssertUnwindSafe(move || vm::initialize_vm(mb, db)))
-        .unwrap_or_else(|_| Err(Error::panic()));
+    let module_bundle = module_bundle.to_owned().unwrap();
+    let res = catch_unwind(AssertUnwindSafe(move || {
+        vm::initialize_vm(db, module_bundle)
+    }))
+    .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
@@ -29,8 +28,6 @@ pub extern "C" fn initialize(
 #[no_mangle]
 pub extern "C" fn publish_module(
     db: Db,
-    api: GoApi,
-    querier: GoQuerier,
     is_verbose: bool,
     gas_limit: u64,
     gas_used: Option<&mut u64>,

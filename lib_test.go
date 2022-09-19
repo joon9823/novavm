@@ -1,7 +1,6 @@
 package kernel_test
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"testing"
 
@@ -16,15 +15,40 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	require.NoError(t, err)
 
 	kvStore := api.NewLookup()
-	vm, err := vm.CreateVM(
+	vm := vm.NewVM(true)
+
+	err = vm.Initialize(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
-		true,
+		types.ModuleBundle{
+			Codes: []types.Module{
+				{
+					Code: f,
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	return vm, kvStore
+}
+
+func publishModule(
+	t *testing.T,
+	vm vm.VM,
+	kvStore *api.Lookup,
+) {
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
+	require.NoError(t, err)
+
+	_, err = vm.PublishModule(
+		kvStore,
+		10000,
+		types.StdAddress,
 		f,
 	)
 
-	return vm, kvStore
+	// TODO uncomment when usedGas properly passed
+	// require.NotZero(t, usedGas)
 }
 
 func mintCoin(
@@ -34,29 +58,26 @@ func mintCoin(
 	minter types.AccountAddress,
 	amount uint64,
 ) {
-
 	std, err := types.NewAccountAddress("0x1")
 	require.NoError(t, err)
 
-	payload := types.EntryFunction{
+	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
 			Address: std,
 			Name:    "BasicCoin",
 		},
 		Function: "mint",
 		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
-		Args:     []types.Arg{types.SerializeUint64(amount)},
+		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
-	bz, err := json.Marshal(payload)
-	require.NoError(t, err)
 
-	_, err = vm.Execute(
+	_, err = vm.ExecuteEntryFunction(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		10000,
 		minter,
-		bz,
+		payload,
 	)
 
 	require.NoError(t, err)
@@ -64,31 +85,19 @@ func mintCoin(
 	// require.NotZero(t, usedGas)
 }
 
-func Test_CrateVM(t *testing.T) {
+func Test_InitializeVM(t *testing.T) {
 	_, _ = initializeVM(t)
 }
 
 func Test_PublishModule(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
-
-	_, err = vm.PublishModule(
-		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
-		10000,
-		types.StdAddress,
-		f,
-	)
-
-	require.NoError(t, err)
-	// TODO uncomment when usedGas properly passed
-	// require.NotZero(t, usedGas)
+	publishModule(t, vm, kvStore)
 }
 
 func Test_ExecuteContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
 
 	minter, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -98,6 +107,7 @@ func Test_ExecuteContract(t *testing.T) {
 
 func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
 
 	minter, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -105,24 +115,22 @@ func Test_QueryContract(t *testing.T) {
 	mintAmount := uint64(100)
 	mintCoin(t, vm, kvStore, minter, mintAmount)
 
-	payload := types.EntryFunction{
+	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
 			Address: types.StdAddress,
 			Name:    "BasicCoin",
 		},
 		Function: "get",
 		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
-		Args:     []types.Arg{types.Arg(minter)},
+		Args:     []types.Bytes{types.Bytes(minter)},
 	}
-	bz, err := json.Marshal(payload)
-	require.NoError(t, err)
 
-	res, _, err := vm.Query(
+	res, err := vm.QueryEntryFunction(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		10000,
-		bz,
+		payload,
 	)
 
 	require.NoError(t, err)

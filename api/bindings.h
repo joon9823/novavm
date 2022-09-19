@@ -263,8 +263,6 @@ UnmanagedVector execute_contract(Db db,
                                  ByteSliceView message);
 
 UnmanagedVector initialize(Db db,
-                           GoApi api,
-                           GoQuerier querier,
                            bool is_verbose,
                            UnmanagedVector *errmsg,
                            ByteSliceView module_bundle);
@@ -276,8 +274,6 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
  * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
  */
 UnmanagedVector publish_module(Db db,
-                               GoApi api,
-                               GoQuerier querier,
                                bool is_verbose,
                                uint64_t gas_limit,
                                uint64_t *gas_used,

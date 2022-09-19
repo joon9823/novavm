@@ -1,6 +1,8 @@
 package kernel
 
 import (
+	"encoding/json"
+
 	"github.com/Kernel-Labs/kernelvm/api"
 	"github.com/Kernel-Labs/kernelvm/types"
 )
@@ -10,26 +12,29 @@ type VM struct {
 	printDebug bool
 }
 
-// CreateVM creates a new VM.
-// TODO: add params and returns
-func CreateVM(
+// NewVm return VM instance
+func NewVM(printDebug bool) VM {
+	return VM{printDebug}
+}
+
+// Initialize deploys std libs and move libs
+// for bootstrapping genesis
+func (vm *VM) Initialize(
 	kvStore api.KVStore,
-	goApi api.GoAPI,
-	querier api.Querier,
-	printDebug bool,
-	moduleBundle []byte,
-) (VM, error) {
-	_, err := api.Initialize(
+	moduleBundle types.ModuleBundle,
+) error {
+	bz, err := json.Marshal(moduleBundle)
+	if err != nil {
+		return err
+	}
+
+	_, err = api.Initialize(
 		kvStore,
-		goApi,
-		querier,
-		printDebug,
-		moduleBundle,
+		vm.printDebug,
+		bz,
 	)
 
-	return VM{
-		printDebug,
-	}, err
+	return err
 }
 
 // VM Destroyer
@@ -40,54 +45,62 @@ func (vm *VM) Destroy() {}
 // TODO: add params and returns
 func (vm *VM) PublishModule(
 	kvStore api.KVStore,
-	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	sender types.AccountAddress,
-	message []byte,
+	moduleBytes []byte,
 ) (uint64, error) {
 	_, usedGas, err := api.PublishModule(
 		kvStore,
-		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		sender,
-		message,
+		moduleBytes,
 	)
 
 	return usedGas, err
 }
 
 // Query will do a query request to VM
-// TODO: add params and returns
-func (vm *VM) Query(
+func (vm *VM) QueryEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
 	querier api.Querier,
 	gasLimit uint64,
-	message []byte,
-) ([]byte, uint64, error) {
-	return api.QueryContract(
+	payload types.ExecuteEntryFunctionPayload,
+) ([]byte, error) {
+	bz, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO - remove used gas output from query
+	res, _, err := api.QueryContract(
 		kvStore,
 		goApi,
 		querier,
 		vm.printDebug,
 		gasLimit,
-		message,
+		bz,
 	)
+
+	return res, err
 }
 
 // Execute calls a given contract.
 // TODO: add params and returns
-func (vm *VM) Execute(
+func (vm *VM) ExecuteEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
 	querier api.Querier,
 	gasLimit uint64,
 	sender types.AccountAddress,
-	message []byte,
+	payload types.ExecuteEntryFunctionPayload,
 ) (uint64, error) {
+	bz, err := json.Marshal(payload)
+	if err != nil {
+		return 0, err
+	}
+
 	_, usedGas, err := api.ExecuteContract(
 		kvStore,
 		goApi,
@@ -95,7 +108,56 @@ func (vm *VM) Execute(
 		vm.printDebug,
 		gasLimit,
 		sender,
-		message,
+		bz,
 	)
 	return usedGas, err
+}
+
+// Execute calls a given contract.
+// TODO: add params and returns
+func (vm *VM) ExecuteScript(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasLimit uint64,
+	sender types.AccountAddress,
+	payload types.ExecuteScriptPayload,
+) (uint64, error) {
+	// _, usedGas, err := api.ExecuteContract(
+	// 	kvStore,
+	// 	goApi,
+	// 	querier,
+	// 	vm.printDebug,
+	// 	gasLimit,
+	// 	sender,
+	// 	message,
+	// )
+	return 0, nil
+}
+
+// Query will do a query request to VM
+func (vm *VM) QueryScript(
+	kvStore api.KVStore,
+	goApi api.GoAPI,
+	querier api.Querier,
+	gasLimit uint64,
+	payload types.ExecuteScriptPayload,
+) ([]byte, error) {
+	// bz, err := json.Marshal(payload)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// TODO - remove used gas output from query
+	// res, _, err := api.QueryContract(
+	// 	kvStore,
+	// 	goApi,
+	// 	querier,
+	// 	vm.printDebug,
+	// 	gasLimit,
+	// 	sender,
+	// 	bz,
+	// )
+
+	return nil, nil
 }

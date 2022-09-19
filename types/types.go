@@ -10,6 +10,34 @@ import (
 	"strings"
 )
 
+// Module defines contract code bytes
+type Module struct {
+	Code Bytes `json:"code"`
+}
+
+// NewModule return module instance
+func NewModule(code []byte) Module {
+	if code == nil {
+		code = []byte{}
+	}
+
+	return Module{Bytes(code)}
+}
+
+// ModuleBundle bundle of Modules
+type ModuleBundle struct {
+	Codes []Module `json:"codes"`
+}
+
+// NewModuleBundle return module bundle
+func NewModuleBundle(modules ...Module) ModuleBundle {
+	if modules == nil {
+		modules = []Module{}
+	}
+
+	return ModuleBundle{modules}
+}
+
 // SerializeUint64 serialize num to bytes for VM
 func SerializeUint64(num uint64) []byte {
 	bz := make([]byte, 8)
@@ -77,6 +105,9 @@ type Identifier string
 // TypeTag represent type argument
 type TypeTag string
 
+// TypeTags represent array of TypeTag
+type TypeTags []TypeTag
+
 type StructTagWrapper struct {
 	Struct StructTag `json:"struct"`
 }
@@ -140,35 +171,45 @@ type ModuleId struct {
 	Name    Identifier     `json:"name"`
 }
 
-type EntryFunction struct {
+type ExecuteEntryFunctionPayload struct {
 	Module   ModuleId   `json:"module"`
 	Function Identifier `json:"function"`
 	TyArgs   []TypeTag  `json:"ty_args"`
-	Args     []Arg      `json:"args"`
+	Args     []Bytes    `json:"args"`
 }
 
-type Arg []byte
+type ExecuteScriptPayload struct {
+	Code   Bytes     `json:"code"`
+	TyArgs []TypeTag `json:"ty_args"`
+	Args   []Bytes   `json:"args"`
+}
 
-func (arg *Arg) UnmarshalJSON(data []byte) error {
+// Arg represent argument of function or script
+type Bytes []byte
+
+// Args represent array of Arg
+type Args []Bytes
+
+func (bytes *Bytes) UnmarshalJSON(data []byte) error {
 	str := string(data)
 	str = strings.TrimPrefix(str, "[")
 	str = strings.TrimSuffix(str, "]")
 	strArr := strings.Split(str, ",")
-	*arg = make([]byte, len(strArr))
+	*bytes = make([]byte, len(strArr))
 	for i, s := range strArr {
 		b, err := strconv.ParseUint(s, 10, 8)
 		if err != nil {
 			return err
 		}
 
-		(*arg)[i] = uint8(b)
+		(*bytes)[i] = uint8(b)
 	}
 	return nil
 }
 
-func (arg Arg) MarshalJSON() ([]byte, error) {
+func (bytes Bytes) MarshalJSON() ([]byte, error) {
 	str := ""
-	for _, b := range arg {
+	for _, b := range bytes {
 		str += fmt.Sprintf("%d,", b)
 	}
 	str = fmt.Sprintf("[%s]", strings.TrimSuffix(str, ","))
