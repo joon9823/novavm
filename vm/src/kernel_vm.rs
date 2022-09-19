@@ -1,12 +1,12 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, 
+        account_address::AccountAddress, effects::ChangeSet, vm_status::StatusCode, gas_algebra::NumBytes, 
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
     move_vm_types::gas::UnmeteredGasMeter,
 };
-use std::sync::Arc;
+use std::{sync::Arc, ops::AddAssign};
 use move_deps::{
     move_stdlib,
     move_core_types::language_storage::CORE_CODE_ADDRESS
@@ -18,7 +18,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{kernel_stdlib, gas::InitialGasSchedule};
+use crate::{kernel_stdlib, gas::{InitialGasSchedule, self}};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -90,16 +90,22 @@ impl KernelVM {
 
         let gas_params = self.gas_params.clone();
         let mut gas_meter = KernelGasMeter::new(gas_params, gas_limit);
-        let gas_before = gas_meter.balance();
 
+        // Charge for msg byte size
+        gas_meter
+            .charge_intrinsic_gas_for_transaction((msg.size() as u64).into())
+            .map_err(|e| e.into_vm_status()).unwrap();
+        
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
+                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter, gas_limit)
             }
             // FIXME: is it okay to use expect() here?
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter),
+            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter, gas_limit),
         };
-        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
+
+        // Charge for err msg
+        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
 
         match result {
             Ok(status_and_output) => status_and_output,
@@ -107,7 +113,7 @@ impl KernelVM {
                 let txn_status = MessageStatus::from(err.clone());
 
                 let (status, message_output) = match txn_status.is_discarded() {
-                    true => discard_error_vm_status(err),
+                    true => discard_error_vm_status(err, gas_used),
                     false => self.failed_message_cleanup(err, remote_cache, gas_used ),
                 };
                     
@@ -120,14 +126,14 @@ impl KernelVM {
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         modules: &ModuleBundle,
-        gas_meter : &mut KernelGasMeter
+        gas_meter : &mut KernelGasMeter,
+        gas_limit : Gas
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
         let module_bin_list = modules.clone().into_inner();
-        let gas_before = gas_meter.balance();
 
         session
                 .publish_module_bundle(module_bin_list, sender, gas_meter)
@@ -135,7 +141,7 @@ impl KernelVM {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
+        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
             
         // after publish the modules, we need to clear loader cache, to make init script function and
         // epilogue use the new modules.
@@ -150,7 +156,8 @@ impl KernelVM {
         sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
-        gas_meter : &mut KernelGasMeter
+        gas_meter : &mut KernelGasMeter,
+        gas_limit : Gas
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
@@ -161,8 +168,6 @@ impl KernelVM {
             None => vec![]
         };
 
-        let gas_before = gas_meter.balance();
-        
         let res = match payload {
                 MessagePayload::Script(script) => {
                     // we only use the ok path, let move vm handle the wrong path.
@@ -203,9 +208,15 @@ impl KernelVM {
                     println!("[VM] execute_entry_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
-        let gas_used = gas_before.checked_sub(gas_meter.balance()).unwrap();
 
-        let (status, output) = self.success_message_cleanup(session,gas_used)?;
+        // Charge for change set
+        // TODO: refactor duplicate gas_used
+        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
+        let (status, mut output) = self.success_message_cleanup(session,gas_used)?;
+        gas_meter.charge_write_set_gas(output.change_set().accounts())?;
+        let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
+        output.set_gas_used(gas_used.into());
+
         Ok((status, output, res.into()))
     }
 
@@ -232,23 +243,23 @@ impl KernelVM {
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
                 let txn_output = get_message_output(session, gas_used, status)
-                    .unwrap_or_else(|e| discard_error_vm_status(e).1);
+                    .unwrap_or_else(|e| discard_error_vm_status(e, gas_used).1);
                 (error_code, txn_output)
             }
             MessageStatus::Discard(status) => {
-                (VMStatus::Error(status), discard_error_output(status))
+                (VMStatus::Error(status), discard_error_output(status, gas_used))
             }
         }
     }
 }
 
-pub(crate) fn discard_error_output(err: StatusCode) -> MessageOutput {
+pub(crate) fn discard_error_output(err: StatusCode, gas_used : Gas) -> MessageOutput {
     info!("discard error output: {:?}", err);
     // Since this message will be discarded, no writeset will be included.
-    MessageOutput::new(ChangeSet::new(), vec![], 0, MessageStatus::Discard(err))
+    MessageOutput::new(ChangeSet::new(), vec![], gas_used.into(), MessageStatus::Discard(err))
 }
 
-pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, MessageOutput) {
+pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used : Gas) -> (VMStatus, MessageOutput) {
     info!("discard error vm_status output: {:?}", err);
     let vm_status = err.clone();
     let error_code = match err.keep_or_discard() {
@@ -258,7 +269,7 @@ pub(crate) fn discard_error_vm_status(err: VMStatus) -> (VMStatus, MessageOutput
         }
         Err(code) => code,
     };
-    (vm_status, discard_error_output(error_code))
+    (vm_status, discard_error_output(error_code, gas_used))
 }
 
 pub(crate) fn get_message_output<R: MoveResolver>(

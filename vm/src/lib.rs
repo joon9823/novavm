@@ -15,7 +15,6 @@ pub mod message;
 pub mod storage;
 pub mod kernel_stdlib;
 pub mod asset;
-pub mod types;
 
 mod args_validator;
 mod errors;

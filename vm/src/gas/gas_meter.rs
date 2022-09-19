@@ -1,16 +1,21 @@
 //! This module contains the official gas meter implementation, along with some top-level gas
 //! parameters and traits to help manipulate them.
 
+use crate::access_path::AccessPath;
 use crate::gas::{
     algebra::Gas, instr::InstructionGasParameters, misc::MiscGasParameters,
     transaction::TransactionGasParameters,
 };
-use crate::types::{state_key::StateKey, write_set::WriteOp};
+
 use move_deps::move_binary_format::errors::{Location, PartialVMError, PartialVMResult, VMResult};
 use move_deps::move_core_types::{
     gas_algebra::{InternalGas, NumArgs, NumBytes},
     language_storage::ModuleId,
     vm_status::StatusCode,
+    effects::{
+        AccountChangeSet
+    },
+    account_address::AccountAddress
 };
 use move_deps::move_vm_types::{
     gas::{GasMeter, SimpleInstruction},
@@ -481,7 +486,7 @@ impl KernelGasMeter {
     
     pub fn charge_write_set_gas<'a>(
         &mut self,
-        ops: impl IntoIterator<Item = (&'a StateKey, &'a WriteOp)>,
+        ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>,
     ) -> VMResult<()> {
         let cost = self.gas_params.txn.calculate_write_set_gas(ops);
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))

@@ -243,7 +243,7 @@ fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
 
         assert!(status == *exp_output.vm_status());
         assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
-
+        println!("gas used : {:?}", output.gas_used());
         let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
         assert!(result_bytes == *exp_output.result_bytes());
 
