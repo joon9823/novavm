@@ -162,7 +162,7 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         gas_meter : &mut KernelGasMeter,
-        gas_limit : Gas
+        gas_limit : Gas // TODO: remove this param
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 

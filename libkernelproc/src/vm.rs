@@ -152,7 +152,7 @@ fn execute_entry(
             let res = generate_result(status, output, retval, is_query)?;
             to_vec(&res)
         }
-        _ => Err(Error::vm_err("failed to execute")),
+        _ => Err(Error::vm_err("failed to execute")), // TODO : add out_of_gas err
     }
 }
 

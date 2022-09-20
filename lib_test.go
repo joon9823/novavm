@@ -74,7 +74,7 @@ func mintCoin(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
-		10000,
+		100000000,
 		minter,
 		payload,
 	)
