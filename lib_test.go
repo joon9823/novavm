@@ -1,7 +1,6 @@
 package kernel_test
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"testing"
 
@@ -41,14 +40,14 @@ func publishModule(
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
-	_, err = vm.PublishModule(
+	usedGas, err := vm.PublishModule(
 		kvStore,
 		10000,
 		types.StdAddress,
 		f,
 	)
-
 	require.NoError(t, err)
+	require.NotZero(t, usedGas)
 }
 
 func mintCoin(
@@ -71,7 +70,7 @@ func mintCoin(
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
-	res, err := vm.ExecuteEntryFunction(
+	usedGas, events, err := vm.ExecuteEntryFunction(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
@@ -80,17 +79,11 @@ func mintCoin(
 		payload,
 	)
 	require.NoError(t, err)
+	require.Len(t, events, 1)
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
-	require.NoError(t, err)
-
-	require.Len(t, execRes.Events, 1)
-
-	num := types.DeserializeUint64(execRes.Events[0].Data)
+	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, amount, num)
-
-	require.NotZero(t, execRes.GasUsed)
+	require.NotZero(t, usedGas)
 }
 
 func Test_InitializeVM(t *testing.T) {
@@ -143,12 +136,6 @@ func Test_QueryContract(t *testing.T) {
 
 	require.NoError(t, err)
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
-	require.NoError(t, err)
-
-	num := types.DeserializeUint64(execRes.Result)
+	num := types.DeserializeUint64(res)
 	require.Equal(t, mintAmount, num)
-
-	require.NotZero(t, execRes.GasUsed)
 }
