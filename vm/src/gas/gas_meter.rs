@@ -22,6 +22,7 @@ use move_deps::move_vm_types::{
     views::{TypeView, ValueView},
 };
 use move_deps::move_stdlib;
+use syn::token::In;
 use std::collections::BTreeMap;
 
 use crate::kernel_stdlib;
@@ -158,15 +159,17 @@ impl InitialGasSchedule for KernelGasParameters {
 pub struct KernelGasMeter {
     gas_params: KernelGasParameters,
     balance: InternalGas,
+    gas_limit: InternalGas,
 }
 
 impl KernelGasMeter {
     pub fn new(gas_params: KernelGasParameters, balance: impl Into<Gas>) -> Self {
         let balance = balance.into().to_unit_with_params(&gas_params.txn);
-
+        let gas_limit = balance.clone();
         Self {
             gas_params,
             balance,
+            gas_limit
         }
     }
 
@@ -175,6 +178,10 @@ impl KernelGasMeter {
             .to_unit_round_down_with_params(&self.gas_params.txn)
     }
 
+    pub fn gas_limit(&self) -> Gas {
+        self.gas_limit
+            .to_unit_round_down_with_params(&self.gas_params.txn)
+    }
     #[inline]
     fn charge(&mut self, amount: InternalGas) -> PartialVMResult<()> {
         match self.balance.checked_sub(amount) {

@@ -103,13 +103,13 @@ impl KernelVM {
         
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter, gas_limit)
+                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
             // FIXME: is it okay to use expect() here?
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter, gas_limit),
+            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter),
         };
 
-        // Charge for err msg
+        // Charge for err msg        
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
 
         match result {
@@ -132,14 +132,12 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
         modules: &ModuleBundle,
         gas_meter : &mut KernelGasMeter,
-        gas_limit : Gas
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
         // TODO: verification
 
         let module_bin_list = modules.clone().into_inner();
-
         session
                 .publish_module_bundle(module_bin_list, sender, gas_meter)
                 .map_err(|e| {
@@ -150,9 +148,9 @@ impl KernelVM {
         // after publish the modules, we need to clear loader cache, to make init script function and
         // epilogue use the new modules.
         // session.empty_loader_cache()?;
-        
+
         let session_output = session.finish().map_err(|e| e.into_vm_status())?;
-        let (status,output) = self.success_message_cleanup(session_output, gas_limit, gas_meter)?;
+        let (status,output) = self.success_message_cleanup(session_output, gas_meter)?;
         Ok((status, output, None))
     }
 
@@ -162,7 +160,6 @@ impl KernelVM {
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         gas_meter : &mut KernelGasMeter,
-        gas_limit : Gas // TODO: remove this param
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.move_vm.new_session(remote_cache);
 
@@ -217,7 +214,7 @@ impl KernelVM {
         // Charge for change set
         let session_output = session.finish().map_err(|e| e.into_vm_status())?;
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
-        let (status, output) = self.success_message_cleanup(session_output,gas_limit,gas_meter)?;
+        let (status, output) = self.success_message_cleanup(session_output, gas_meter)?;
         
         Ok((status, output, res.into()))
     }
@@ -225,9 +222,9 @@ impl KernelVM {
     fn success_message_cleanup(
         &self,
         session_output : (ChangeSet, Vec<Event>),// session: Session<R>,
-        gas_limit: Gas,
         gas_meter: &mut KernelGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
+        let gas_limit = gas_meter.gas_limit();
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
         Ok((
             VMStatus::Executed,
