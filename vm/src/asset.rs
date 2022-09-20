@@ -20,10 +20,10 @@ pub fn compile_move_nursery_modules() -> Vec<CompiledModule> {
     compile_modules(src_files, deps_files, name_address_map)
 }
 
-pub fn compile_kernel_stdlib_modules() -> Vec<CompiledModule> {
-    let src_files = move_kernel_stdlib_files();
+pub fn compile_nova_stdlib_modules() -> Vec<CompiledModule> {
+    let src_files = move_nova_stdlib_files();
     let deps_files = vec![];
-    let mapping = [("kernel_std", "0x1")];
+    let mapping = [("nova_std", "0x1")];
     let name_address_map = mapping
         .iter()
         .map(|(name, addr)| (name.to_string(), NumericalAddress::parse_str(addr).unwrap()))
@@ -51,9 +51,9 @@ fn compile_modules(
         .collect()
 }
 
-const MODULES_DIR: &str = "src/kernel_stdlib/sources";
+const MODULES_DIR: &str = "src/nova_stdlib/sources";
 
-fn move_kernel_stdlib_files() -> Vec<String> {
+fn move_nova_stdlib_files() -> Vec<String> {
     let path = path_in_crate(MODULES_DIR);
     find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
 }

@@ -1,11 +1,11 @@
 [package]
-name = "kernelvm"
+name = "novavm"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
 description = "VM bindings to run kernel-move contracts"
 homepage = "https://www.kernellabs.co"
-repository = "https://github.com/Kernel-Labs/kernelvm/tree/main/vm"
+repository = "https://github.com/Kernel-Labs/novavm/tree/main/vm"
 license = "Apache-2.0"
 authors = ["Geoff Lee <geoff@kernellabs.co>", "Jeff Woo <jeff@kernellabs.co>", "Harvey Han <harvey@kernellabs.co>"]
 exclude = [".gitignore"]

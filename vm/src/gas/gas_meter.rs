@@ -25,7 +25,7 @@ use move_deps::move_stdlib;
 use syn::token::In;
 use std::collections::BTreeMap;
 
-use crate::kernel_stdlib;
+use crate::nova_stdlib;
 
 // TODO : remove this if we don't need to store gas schedule on chain
 /// A trait for converting from a map representation of the on-chain gas schedule.
@@ -54,7 +54,7 @@ pub trait InitialGasSchedule: Sized {
 #[derive(Debug, Clone)]
 pub struct NativeGasParameters {
     pub move_stdlib: move_stdlib::natives::GasParameters,
-    pub kernel_stdlib: kernel_stdlib::GasParameters,
+    pub nova_stdlib: nova_stdlib::GasParameters,
     
     // TODO : add move_table_extension later
     // pub table: move_table_extension::GasParameters,
@@ -64,7 +64,7 @@ impl FromOnChainGasSchedule for NativeGasParameters {
     fn from_on_chain_gas_schedule(gas_schedule: &BTreeMap<String, u64>) -> Option<Self> {
         Some(Self {
             move_stdlib: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
-            kernel_stdlib: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
+            nova_stdlib: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
 
             // table: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
         })
@@ -74,7 +74,7 @@ impl FromOnChainGasSchedule for NativeGasParameters {
 impl ToOnChainGasSchedule for NativeGasParameters {
     fn to_on_chain_gas_schedule(&self) -> Vec<(String, u64)> {
         let mut entries = self.move_stdlib.to_on_chain_gas_schedule();
-        entries.extend(self.kernel_stdlib.to_on_chain_gas_schedule());
+        entries.extend(self.nova_stdlib.to_on_chain_gas_schedule());
         // entries.extend(self.table.to_on_chain_gas_schedule());
         entries
     }
@@ -84,7 +84,7 @@ impl NativeGasParameters {
     pub fn zeros() -> Self {
         Self {
             move_stdlib: move_stdlib::natives::GasParameters::zeros(),
-            kernel_stdlib: kernel_stdlib::GasParameters::zeros(),
+            nova_stdlib: nova_stdlib::GasParameters::zeros(),
             // table: move_table_extension::GasParameters::zeros(),
         }
     }
@@ -94,23 +94,23 @@ impl InitialGasSchedule for NativeGasParameters {
     fn initial() -> Self {
         Self {
             move_stdlib: InitialGasSchedule::initial(),
-            kernel_stdlib: InitialGasSchedule::initial(),
+            nova_stdlib: InitialGasSchedule::initial(),
             // table: InitialGasSchedule::initial(),
         }
     }
 }
 
-/// Gas parameters for everything that is needed to run the Kernel blockchain, including
+/// Gas parameters for everything that is needed to run the Nova blockchain, including
 /// instructions, transactions and native functions from various packages.
 #[derive(Debug, Clone)]
-pub struct KernelGasParameters {
+pub struct NovaGasParameters {
     pub misc: MiscGasParameters,
     pub instr: InstructionGasParameters,
     pub txn: TransactionGasParameters,
     pub natives: NativeGasParameters,
 }
 
-impl FromOnChainGasSchedule for KernelGasParameters {
+impl FromOnChainGasSchedule for NovaGasParameters {
     fn from_on_chain_gas_schedule(gas_schedule: &BTreeMap<String, u64>) -> Option<Self> {
         Some(Self {
             misc: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
@@ -121,7 +121,7 @@ impl FromOnChainGasSchedule for KernelGasParameters {
     }
 }
 
-impl ToOnChainGasSchedule for KernelGasParameters {
+impl ToOnChainGasSchedule for NovaGasParameters {
     fn to_on_chain_gas_schedule(&self) -> Vec<(String, u64)> {
         let mut entries = self.instr.to_on_chain_gas_schedule();
         entries.extend(self.txn.to_on_chain_gas_schedule());
@@ -131,7 +131,7 @@ impl ToOnChainGasSchedule for KernelGasParameters {
     }
 }
 
-impl KernelGasParameters {
+impl NovaGasParameters {
     pub fn zeros() -> Self {
         Self {
             misc: MiscGasParameters::zeros(),
@@ -142,7 +142,7 @@ impl KernelGasParameters {
     }
 }
 
-impl InitialGasSchedule for KernelGasParameters {
+impl InitialGasSchedule for NovaGasParameters {
     fn initial() -> Self {
         Self {
             misc: InitialGasSchedule::initial(),
@@ -153,17 +153,17 @@ impl InitialGasSchedule for KernelGasParameters {
     }
 }
 
-/// The official gas meter used inside the Kernel VM.
+/// The official gas meter used inside the Nova VM.
 /// It maintains an internal gas counter, measured in internal gas units, and carries an environment
 /// consisting all the gas parameters, which it can lookup when performing gas calcuations.
-pub struct KernelGasMeter {
-    gas_params: KernelGasParameters,
+pub struct NovaGasMeter {
+    gas_params: NovaGasParameters,
     balance: InternalGas,
     gas_limit: InternalGas,
 }
 
-impl KernelGasMeter {
-    pub fn new(gas_params: KernelGasParameters, balance: impl Into<Gas>) -> Self {
+impl NovaGasMeter {
+    pub fn new(gas_params: NovaGasParameters, balance: impl Into<Gas>) -> Self {
         let balance = balance.into().to_unit_with_params(&gas_params.txn);
         let gas_limit = balance.clone();
         Self {
@@ -197,7 +197,7 @@ impl KernelGasMeter {
     }
 }
 
-impl GasMeter for KernelGasMeter {
+impl GasMeter for NovaGasMeter {
     #[inline]
     fn charge_simple_instr(&mut self, instr: SimpleInstruction) -> PartialVMResult<()> {
         let cost = self.gas_params.instr.simple_instr_cost(instr)?;
@@ -485,7 +485,7 @@ impl GasMeter for KernelGasMeter {
     }
 }
 
-impl KernelGasMeter {
+impl NovaGasMeter {
     pub fn charge_intrinsic_gas_for_transaction(&mut self, txn_size: NumBytes) -> VMResult<()> {
         let cost = self.gas_params.txn.calculate_intrinsic_gas(txn_size);
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))

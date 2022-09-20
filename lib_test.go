@@ -1,12 +1,12 @@
-package kernel_test
+package nova_test
 
 import (
 	"io/ioutil"
 	"testing"
 
-	vm "github.com/Kernel-Labs/kernelvm"
-	"github.com/Kernel-Labs/kernelvm/api"
-	"github.com/Kernel-Labs/kernelvm/types"
+	vm "github.com/Kernel-Labs/novavm"
+	"github.com/Kernel-Labs/novavm/api"
+	"github.com/Kernel-Labs/novavm/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,7 +66,7 @@ func mintCoin(
 			Name:    "BasicCoin",
 		},
 		Function: "mint",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
@@ -157,7 +157,7 @@ func Test_QueryContract(t *testing.T) {
 			Name:    "BasicCoin",
 		},
 		Function: "get",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
 		Args:     []types.Bytes{types.Bytes(minter)},
 	}
 

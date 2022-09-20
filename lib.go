@@ -1,13 +1,13 @@
-package kernel
+package nova
 
 import (
 	"encoding/json"
 
-	"github.com/Kernel-Labs/kernelvm/api"
-	"github.com/Kernel-Labs/kernelvm/types"
+	"github.com/Kernel-Labs/novavm/api"
+	"github.com/Kernel-Labs/novavm/types"
 )
 
-// VM struct is the core of kernelvm.
+// VM struct is the core of novavm.
 type VM struct {
 	printDebug bool
 }
