@@ -1,7 +1,9 @@
 use crate::error::Error;
+use crate::result::to_vec;
 use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
+use crate::result::generate_result;
 
 use kernelvm::access_path::AccessPath;
 use kernelvm::asset::{
@@ -77,15 +79,15 @@ pub(crate) fn publish_module(
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, _retval) =
+    let (status, output, retval) =
         unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
 
     match status {
         VMStatus::Executed => {
             push_write_set(&mut storage, output.change_set())?;
 
-            // FIXME: TBD whether return retval or not
-            Ok(Vec::from(status.to_string()))
+            let res = generate_result(status, output, retval, false)?;
+            to_vec(&res)
         }
         _ => Err(Error::vm_err("failed to publish")),
     }
@@ -143,30 +145,12 @@ fn execute_entry(
 
     match status {
         VMStatus::Executed => {
-            if is_query {
-                return match retval {
-                    // FIXME: retval or output?
-                    Some(val) => {
-                        // allow only single return values
-                        if Vec::len(&val.mutable_reference_outputs) == 0
-                            && Vec::len(&val.return_values) == 1
-                        {
-                            // ignore _move_type_layout
-                            // a client should handle deserialize
-                            let (blob, _move_type_layout) = val.return_values.first().unwrap();
-                            Ok(blob.to_vec())
-                        } else {
-                            Err(Error::vm_err("only one value is allowed to be returned."))
-                        }
-                    }
-                    None => Ok(Vec::from("no data")),
-                };
+            if !is_query { 
+                push_write_set(&mut storage, output.change_set())?;
             }
 
-            push_write_set(&mut storage, output.change_set())?;
-
-            // FIXME: TBD whether return retval or not
-            Ok(Vec::from(status.to_string()))
+            let res = generate_result(status, output, retval, is_query)?;
+            to_vec(&res)
         }
         _ => Err(Error::vm_err("failed to execute")),
     }
@@ -197,3 +181,4 @@ pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> Back
     }
     Ok(())
 }
+

@@ -30,7 +30,6 @@ pub extern "C" fn publish_module(
     db: Db,
     is_verbose: bool,
     gas_limit: u64,
-    gas_used: Option<&mut u64>,
     errmsg: Option<&mut UnmanagedVector>,
     sender: ByteSliceView,
     module: ByteSliceView,
@@ -56,7 +55,6 @@ pub extern "C" fn execute_contract(
     querier: GoQuerier,
     is_verbose: bool,
     gas_limit: u64,
-    gas_used: Option<&mut u64>,
     errmsg: Option<&mut UnmanagedVector>,
     sender: ByteSliceView,
     message: ByteSliceView,
@@ -82,7 +80,6 @@ pub extern "C" fn query_contract(
     querier: GoQuerier,
     is_verbose: bool,
     gas_limit: u64,
-    gas_used: Option<&mut u64>,
     errmsg: Option<&mut UnmanagedVector>,
     message: ByteSliceView,
 ) -> UnmanagedVector {

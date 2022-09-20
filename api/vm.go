@@ -39,9 +39,8 @@ func PublishModule(
 	gasLimit uint64,
 	sender []byte,
 	module []byte,
-) ([]byte, uint64, error) {
+) ([]byte, error) {
 	var err error
-	var gasUsed cu64
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
@@ -53,13 +52,13 @@ func PublishModule(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &gasUsed, &errmsg, senderView, mb)
+	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, mb)
 	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, uint64(gasUsed), errorWithMessage(err, errmsg)
+		return nil, errorWithMessage(err, errmsg)
 	}
 
-	return copyAndDestroyUnmanagedVector(res), uint64(gasUsed), err
+	return copyAndDestroyUnmanagedVector(res), err
 }
 
 func ExecuteContract(
@@ -70,9 +69,8 @@ func ExecuteContract(
 	gasLimit uint64,
 	sender []byte,
 	message []byte,
-) ([]byte, uint64, error) {
+) ([]byte, error) {
 	var err error
-	var gasUsed cu64
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
@@ -86,13 +84,12 @@ func ExecuteContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &gasUsed, &errmsg, senderView, msg)
+	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, msg)
 	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, uint64(gasUsed), errorWithMessage(err, errmsg)
+		return nil, errorWithMessage(err, errmsg)
 	}
 
-	return copyAndDestroyUnmanagedVector(res), uint64(gasUsed), err
+	return copyAndDestroyUnmanagedVector(res), err
 }
 
 func QueryContract(
@@ -102,9 +99,8 @@ func QueryContract(
 	isVerbose bool,
 	gasLimit uint64,
 	message []byte,
-) ([]byte, uint64, error) {
+) ([]byte, error) {
 	var err error
-	var gasUsed cu64
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
@@ -116,11 +112,11 @@ func QueryContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.query_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &gasUsed, &errmsg, msg)
+	res, err := C.query_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, msg)
 	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, uint64(gasUsed), errorWithMessage(err, errmsg)
+		return nil, errorWithMessage(err, errmsg)
 	}
 
-	return copyAndDestroyUnmanagedVector(res), uint64(gasUsed), err
+	return copyAndDestroyUnmanagedVector(res), err
 }

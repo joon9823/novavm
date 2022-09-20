@@ -4,9 +4,11 @@
 mod api;
 mod db;
 mod error;
+mod event;
 mod interface;
 mod memory;
 mod querier;
+mod result;
 mod storage;
 mod version;
 mod vm;

@@ -40,15 +40,14 @@ func publishModule(
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
-	_, err = vm.PublishModule(
+	usedGas, err := vm.PublishModule(
 		kvStore,
 		10000,
 		types.StdAddress,
 		f,
 	)
-
-	// TODO uncomment when usedGas properly passed
-	// require.NotZero(t, usedGas)
+	require.NoError(t, err)
+	require.NotZero(t, usedGas)
 }
 
 func mintCoin(
@@ -71,7 +70,7 @@ func mintCoin(
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
-	_, err = vm.ExecuteEntryFunction(
+	usedGas, events, err := vm.ExecuteEntryFunction(
 		kvStore,
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
@@ -79,10 +78,12 @@ func mintCoin(
 		minter,
 		payload,
 	)
-
 	require.NoError(t, err)
-	// TODO uncomment when usedGas properly passed
-	// require.NotZero(t, usedGas)
+	require.Len(t, events, 1)
+
+	num := types.DeserializeUint64(events[0].Data)
+	require.Equal(t, amount, num)
+	require.NotZero(t, usedGas)
 }
 
 func Test_InitializeVM(t *testing.T) {
@@ -137,7 +138,4 @@ func Test_QueryContract(t *testing.T) {
 
 	num := types.DeserializeUint64(res)
 	require.Equal(t, mintAmount, num)
-
-	// TODO uncomment when usedGas properly passed
-	// require.NotZero(t, usedGas)
 }
