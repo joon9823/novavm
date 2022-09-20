@@ -4,7 +4,7 @@ pub mod serde_helper;
 
 pub use crate::errors::BackendError;
 pub use crate::errors::VmError;
-pub use crate::kernel_vm::KernelVM;
+pub use crate::nova_vm::NovaVM;
 pub use crate::message::*;
 pub use crate::backend::*;
 
@@ -13,11 +13,12 @@ pub mod backend;
 pub mod gas;
 pub mod message;
 pub mod storage;
-pub mod kernel_stdlib;
+pub mod nova_stdlib;
 pub mod asset;
 
 mod args_validator;
 mod errors;
-mod kernel_vm;
+mod nova_vm;
+
 #[cfg(test)]
 mod tests;

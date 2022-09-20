@@ -1,7 +1,7 @@
 /* (c) 2022 KernelLabs. Licensed under Apache-2.0 */
 
-#ifndef __LIBKERNELVM__
-#define __LIBKERNELVM__
+#ifndef __LIBNOVAVM__
+#define __LIBNOVAVM__
 
 /* Generated with cbindgen:0.24.3 */
 
@@ -118,7 +118,7 @@ typedef int32_t GoError;
  * Transferring ownership from Go to Rust using return value pointers:
  *
  * ```rust
- * # use kernelvm::BackendResult;
+ * # use novavm::BackendResult;
  * # use crate::{Db, GoError, U8SliceView, UnmanagedVector};
  * fn db_read(db: &Db, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
  *
@@ -293,8 +293,8 @@ UnmanagedVector query_contract(Db db,
 /**
  * Returns a version number of this library as a C string.
  *
- * The string is owned by libkernelproc and must not be mutated or destroyed by the caller.
+ * The string is owned by libnovaproc and must not be mutated or destroyed by the caller.
  */
 const char *version_str(void);
 
-#endif /* __LIBKERNELVM__ */
+#endif /* __LIBNOVAVM__ */

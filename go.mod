@@ -1,4 +1,4 @@
-module github.com/Kernel-Labs/kernelvm
+module github.com/Kernel-Labs/novavm
 
 go 1.19
 

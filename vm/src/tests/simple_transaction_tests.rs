@@ -1,8 +1,8 @@
 use crate::{
     access_path::AccessPath,
     gas::Gas,
-    kernel_vm::KernelVM,
     message::{EntryFunction, Message, Module, ModuleBundle, Script},
+    nova_vm::NovaVM,
     storage::data_view_resolver::DataViewResolver,
     storage::state_view::StateView,
 };
@@ -21,7 +21,7 @@ use move_deps::{
 };
 
 use crate::asset::{
-    compile_kernel_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
+    compile_move_nursery_modules, compile_move_stdlib_modules, compile_nova_stdlib_modules,
 };
 
 //faking chain db
@@ -35,7 +35,7 @@ impl MockDB {
             map: BTreeMap::new(),
         }
     }
-    
+
     fn write_op(&mut self, ref ap: AccessPath, ref blob_opt: Op<Vec<u8>>) {
         match blob_opt {
             Op::New(blob) | Op::Modify(blob) => {
@@ -114,7 +114,7 @@ impl EntryFunction {
             Module::get_basic_coin_module_id(),
             Identifier::new("mint").unwrap(),
             vec![TypeTag::Struct(
-                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+                parse_struct_tag("0x1::BasicCoin::Nova").unwrap(),
             )],
             vec![amount.to_le_bytes().to_vec()],
         )
@@ -125,7 +125,7 @@ impl EntryFunction {
             ModuleId::new(AccountAddress::ZERO, Identifier::new("BasicCoin").unwrap()),
             Identifier::new("mint").unwrap(),
             vec![TypeTag::Struct(
-                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+                parse_struct_tag("0x1::BasicCoin::Nova").unwrap(),
             )],
             vec![amount.to_le_bytes().to_vec()],
         )
@@ -145,7 +145,7 @@ impl EntryFunction {
             Module::get_basic_coin_module_id(),
             Identifier::new("get").unwrap(),
             vec![TypeTag::Struct(
-                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+                parse_struct_tag("0x1::BasicCoin::Nova").unwrap(),
             )],
             vec![addr.to_vec()],
         )
@@ -156,7 +156,7 @@ impl EntryFunction {
             Module::get_basic_coin_module_id(),
             Identifier::new("get_coin").unwrap(),
             vec![TypeTag::Struct(
-                parse_struct_tag("0x1::BasicCoin::Kernel").unwrap(),
+                parse_struct_tag("0x1::BasicCoin::Nova").unwrap(),
             )],
             vec![addr.to_vec()],
         )
@@ -169,7 +169,7 @@ impl Script {
         Self::new(
             include_bytes!("../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
             vec![
-                TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Kernel").unwrap()),
+                TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Nova").unwrap()),
                 TypeTag::Bool,
             ],
             vec![],
@@ -186,7 +186,7 @@ impl ExpectedOutput {
     pub fn new(
         vm_status: VMStatus,
         changed_accounts: usize,
-        result_bytes : Option<Vec<u8>>,
+        result_bytes: Option<Vec<u8>>,
     ) -> Self {
         ExpectedOutput {
             vm_status,
@@ -205,14 +205,14 @@ impl ExpectedOutput {
     }
 }
 
-fn run_transaction(testcases : Vec<(Message, ExpectedOutput)>){
+fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
     let mut db = MockDB::new();
-    let mut vm = KernelVM::new();
+    let mut vm = NovaVM::new();
 
-    // publish move_stdlib and move_nursery and kernel_stdlib modules
+    // publish move_stdlib and move_nursery and nova_stdlib modules
     let mut modules = compile_move_stdlib_modules();
     modules.append(&mut compile_move_nursery_modules());
-    modules.append(&mut compile_kernel_stdlib_modules());
+    modules.append(&mut compile_nova_stdlib_modules());
 
     for module in modules {
         let resolver = DataViewResolver::new(&db);
@@ -261,20 +261,19 @@ fn test_deps_transaction() {
                 Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                1,
-                None,
-            )
+            ExpectedOutput::new(VMStatus::Executed, 1, None),
         ),
         (
             // bank module : balance
-            Message::new_entry_function(Some(AccountAddress::ONE), EntryFunction::balance(account_two)),
+            Message::new_entry_function(
+                Some(AccountAddress::ONE),
+                EntryFunction::balance(account_two),
+            ),
             ExpectedOutput::new(
                 VMStatus::Executed,
                 0,
                 Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
-            )
+            ),
         ),
         (
             // bank module : transfer
@@ -282,11 +281,7 @@ fn test_deps_transaction() {
                 Some(AccountAddress::ONE),
                 EntryFunction::transfer(account_two, account_three, 100),
             ),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                0,
-                Some(vec![]),
-            )
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![])),
         ),
     ];
     run_transaction(testcases);
@@ -305,33 +300,17 @@ fn test_simple_trasaction() {
                 Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                1,
-                None,
-            )
+            ExpectedOutput::new(VMStatus::Executed, 1, None),
         ),
         (
             // mint with script
-            Message::new_script(
-                Some(AccountAddress::ONE), 
-                Script::mint_200()),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                1,
-                Some(vec![]),
-            )
+            Message::new_script(Some(AccountAddress::ONE), Script::mint_200()),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
         (
             // mint with entry function
-            Message::new_entry_function(
-                Some(account_two), 
-                EntryFunction::mint(100)),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                1,
-                Some(vec![]),
-            )
+            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
         (
             // linker error
@@ -339,22 +318,12 @@ fn test_simple_trasaction() {
                 Some(AccountAddress::ZERO),
                 EntryFunction::mint_with_wrong_module_address(100),
             ),
-            ExpectedOutput::new(
-                VMStatus::Error(StatusCode::LINKER_ERROR),
-                0,
-                None,
-            )
+            ExpectedOutput::new(VMStatus::Error(StatusCode::LINKER_ERROR), 0, None),
         ),
         (
             // get 123
-            Message::new_entry_function(
-                Some(AccountAddress::ZERO), 
-                EntryFunction::number()),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                0,
-                Some(vec![123, 0, 0, 0, 0, 0, 0, 0]),
-            )
+            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
         ),
         (
             // get coin amount for 0x1
@@ -362,22 +331,15 @@ fn test_simple_trasaction() {
                 Some(AccountAddress::ZERO),
                 EntryFunction::get(AccountAddress::ONE),
             ),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                0,
-                Some(vec![200, 0, 0, 0, 0, 0, 0, 0]),
-            )
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![200, 0, 0, 0, 0, 0, 0, 0])),
         ),
         (
             // get coin amount for 0x0
             Message::new_entry_function(
-                Some(AccountAddress::ZERO), 
-                EntryFunction::get(account_two)),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                0,
-                Some(vec![100, 0, 0, 0, 0, 0, 0, 0]),
-            )
+                Some(AccountAddress::ZERO),
+                EntryFunction::get(account_two),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![100, 0, 0, 0, 0, 0, 0, 0])),
         ),
         (
             // get Coin structure
@@ -389,7 +351,7 @@ fn test_simple_trasaction() {
                 VMStatus::Executed,
                 0,
                 Some(vec![100, 0, 0, 0, 0, 0, 0, 0, 1]),
-            )
+            ),
         ),
     ];
 

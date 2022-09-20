@@ -1,6 +1,6 @@
-//go:build linux && muslc && !sys_kernelproc
+//go:build linux && muslc && !sys_novaproc
 
 package api
 
-// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lkernelproc_muslc
+// #cgo LDFLAGS: -Wl,-rpath,${SRCDIR} -L${SRCDIR} -lnovaproc_muslc
 import "C"

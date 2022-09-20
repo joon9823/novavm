@@ -1,8 +1,11 @@
 module std::BasicCoin {
+    use std::debug;
     use std::signer;
     use std::event::{Self, EventHandle};
+   
+    use nova_std::bank;
 
-    struct Kernel {}
+    struct Nova {}
 
     struct Coin<phantom CoinType> has key, copy {
         value: u64,
@@ -18,13 +21,16 @@ module std::BasicCoin {
         amount: u64,
     }
 
-    use std::debug;
-    use kernel_std::bank;
 
-    public entry fun mint<CoinType>(account: signer, value: u64) acquires TestEvents {
-        move_to(&account, Coin<CoinType> { value, test: true });
-
+    public entry fun mint<CoinType>(account: signer, value: u64) acquires Coin,TestEvents {
         let account_addr = signer::address_of(&account);
+        if (!exists<Coin<CoinType>>(account_addr)) {
+            move_to(&account, Coin<CoinType> { value, test: true });
+        } else {
+            let coin = borrow_global_mut<Coin<CoinType>>(account_addr);
+            coin.value = coin.value + value;
+        };
+
         if (!exists<TestEvents<CoinType>>(account_addr)) {
             move_to(&account, TestEvents<CoinType> {
                 mint_events: event::new_event_handle<MintEvent>(&account),
