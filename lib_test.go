@@ -139,6 +139,7 @@ func Test_FailOnExecute(t *testing.T) {
 		payload,
 	)
 	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "RESOURCE_ALREADY_EXISTS")
 }
 
 func Test_QueryContract(t *testing.T) {
