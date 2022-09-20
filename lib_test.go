@@ -1,6 +1,7 @@
 package nova_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -104,6 +105,43 @@ func Test_ExecuteContract(t *testing.T) {
 	require.NoError(t, err)
 
 	mintCoin(t, vm, kvStore, minter, 100)
+}
+
+func Test_FailOnExecute(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
+
+	amount := uint64(100)
+
+	minter, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	mintCoin(t, vm, kvStore, minter, amount)
+
+	std, err := types.NewAccountAddress("0x1")
+	require.NoError(t, err)
+
+	payload := types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: std,
+			Name:    "BasicCoin",
+		},
+		Function: "mint2",
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
+		Args:     []types.Bytes{types.SerializeUint64(amount)},
+	}
+
+	_, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		100000000,
+		minter,
+		payload,
+	)
+	require.NotNil(t, err)
+	fmt.Println(err.Error())
+	require.Contains(t, err.Error(), "FUNCTION_RESOLUTION_FAILURE")
 }
 
 func Test_QueryContract(t *testing.T) {

@@ -1,11 +1,15 @@
 use novavm::{VmError, BackendError};
 use errno::{set_errno, Errno};
+use move_deps::move_core_types::vm_status::{VMStatus, StatusCode};
 use thiserror::Error;
 
 use crate::memory::UnmanagedVector;
 
 #[derive(Error, Debug)]
 pub enum RustError {
+    #[error("Success")]
+    Success{
+    },
     #[error("Empty argument: {}", name)]
     EmptyArg {
         name: String,
@@ -25,9 +29,21 @@ pub enum RustError {
     UnsetArg {
         name: String,
     },
-    #[error("Error calling the VM: {}", msg)]
-    VmErr {
+    #[error("VM error: {}", msg)]
+    VmError {
         msg: String,
+    },
+    #[error("VM failure: {}, location={}, function={}, code_offset={}", status, location, function, code_offset)]
+    VmFailure {
+        status: String,
+        location: String,
+        function: u16,
+        code_offset: u16,
+    },
+    #[error("VM aborted: location={}, code={}", location, code)]
+    Aborted {
+        location: String,
+        code: u64,
     },
     #[error("failure occured from backend: {}", msg)]
     BackendFailure {
@@ -36,6 +52,10 @@ pub enum RustError {
 }
 
 impl RustError {
+    pub fn success() -> Self {
+        RustError::Success {  
+        }
+    }
     pub fn empty_arg<T: Into<String>>(name: T) -> Self {
         RustError::EmptyArg {
             name: name.into(),
@@ -60,8 +80,24 @@ impl RustError {
     }
 
     pub fn vm_err<S: ToString>(msg: S) -> Self {
-        RustError::VmErr {
+        RustError::VmError { 
             msg: msg.to_string(),
+        }
+    }
+
+    pub fn vm_failure<S: ToString, T: ToString>(status: &S, location: T, function: u16, code_offset: u16) -> Self {
+        RustError::VmFailure {
+            status: status.to_string(),
+            location: location.to_string(),
+            function, 
+            code_offset,
+        }
+    } 
+    
+    pub fn aborted<S: ToString>(loc: S, code: u64) -> Self {
+        RustError::Aborted {
+            location: loc.to_string(),
+            code
         }
     }
 
@@ -73,6 +109,22 @@ impl RustError {
     pub fn backend_failure<S: ToString>(msg: S) -> Self {
         RustError::BackendFailure {
             msg: msg.to_string(),
+        }
+    }
+}
+
+impl From<VMStatus> for RustError {
+    fn from(source: VMStatus) -> Self {
+        match &source {
+            VMStatus::Executed => RustError::success(),
+            VMStatus::Error(code) => RustError::vm_err(source),
+            VMStatus::MoveAbort(location, code) => RustError::aborted(location, *code),
+            VMStatus::ExecutionFailure { status_code: status, location, function, code_offset } => {
+                match status {
+                    StatusCode::OUT_OF_GAS => RustError::out_of_gas(),
+                    _ => RustError::vm_failure(&source, location, *function, *code_offset)
+                }
+            },
         }
     }
 }

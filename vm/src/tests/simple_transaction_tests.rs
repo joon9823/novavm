@@ -232,6 +232,7 @@ fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
         let resolver = DataViewResolver::new(&db);
         let (status, output, result) = vm.execute_message(msg, &resolver, gas_limit);
         println!("gas used: {}", output.gas_used());
+        println!("got:{}, exp:{}", status, exp_output.vm_status());
         assert!(status == *exp_output.vm_status());
         assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
 
