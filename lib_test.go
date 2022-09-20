@@ -106,6 +106,41 @@ func Test_ExecuteContract(t *testing.T) {
 	mintCoin(t, vm, kvStore, minter, 100)
 }
 
+func Test_FailOnExecute(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
+
+	amount := uint64(100)
+
+	std, err := types.NewAccountAddress("0x1")
+	require.NoError(t, err)
+
+	minter, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	mintCoin(t, vm, kvStore, minter, amount)
+
+	payload := types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: std,
+			Name:    "BasicCoin",
+		},
+		Function: "mint",
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		Args:     []types.Bytes{types.SerializeUint64(amount)},
+	}
+
+	_, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		100000000,
+		minter,
+		payload,
+	)
+	require.NotNil(t, err)
+}
+
 func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)

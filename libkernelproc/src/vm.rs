@@ -56,8 +56,8 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, 
         match status {
             VMStatus::Executed => {
                 push_write_set(&mut storage, output.change_set())?;
-            }
-            _ => Err(Error::vm_err("failed to initialize"))?,
+            },
+            _ => Err(Error::from(status))?
         }
     }
 
@@ -88,8 +88,8 @@ pub(crate) fn publish_module(
 
             let res = generate_result(status, output, retval, false)?;
             to_vec(&res)
-        }
-        _ => Err(Error::vm_err("failed to publish")),
+        },
+        _ => Err(Error::from(status))
     }
 }
 
@@ -128,7 +128,7 @@ fn execute_entry(
     is_query: bool,
 ) -> Result<Vec<u8>, Error> {
     if !is_query && sender.is_none() {
-        return Err(Error::vm_err("sender is unset"));
+        return Err(Error::unset_arg("sender"));
     }
 
     let gas_limit = Gas::new(gas);
@@ -151,8 +151,8 @@ fn execute_entry(
 
             let res = generate_result(status, output, retval, is_query)?;
             to_vec(&res)
-        }
-        _ => Err(Error::vm_err("failed to execute")), // TODO : add out_of_gas err
+        },
+        _ => Err(Error::from(status))
     }
 }
 
