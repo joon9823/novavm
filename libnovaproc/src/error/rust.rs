@@ -33,7 +33,7 @@ pub enum RustError {
     VmError {
         msg: String,
     },
-    #[error("VM failure: status={}, location={}, function={}, code_offset={}", status, location, function, code_offset)]
+    #[error("VM failure: {}, location={}, function={}, code_offset={}", status, location, function, code_offset)]
     VmFailure {
         status: String,
         location: String,
