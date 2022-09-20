@@ -1,6 +1,6 @@
 use novavm::{VmError, BackendError};
 use errno::{set_errno, Errno};
-use move_deps::move_core_types::vm_status::VMStatus;
+use move_deps::move_core_types::vm_status::{VMStatus, StatusCode};
 use thiserror::Error;
 
 use crate::memory::UnmanagedVector;
@@ -119,8 +119,11 @@ impl From<VMStatus> for RustError {
             VMStatus::Executed => RustError::success(),
             VMStatus::Error(code) => RustError::vm_err(code.to_owned().status_type()),
             VMStatus::MoveAbort(location, code) => RustError::aborted(location, *code),
-            VMStatus::ExecutionFailure { status_code: _, location, function, code_offset } => {
-                RustError::vm_failure(&source, location, *function, *code_offset)
+            VMStatus::ExecutionFailure { status_code: status, location, function, code_offset } => {
+                match status {
+                    StatusCode::OUT_OF_GAS => RustError::out_of_gas(),
+                    _ => RustError::vm_failure(&source, location, *function, *code_offset)
+                }
             },
         }
     }
