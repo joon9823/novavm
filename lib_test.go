@@ -1,6 +1,7 @@
 package nova_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -112,21 +113,21 @@ func Test_FailOnExecute(t *testing.T) {
 
 	amount := uint64(100)
 
-	std, err := types.NewAccountAddress("0x1")
-	require.NoError(t, err)
-
 	minter, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
 	mintCoin(t, vm, kvStore, minter, amount)
+
+	std, err := types.NewAccountAddress("0x1")
+	require.NoError(t, err)
 
 	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
 			Address: std,
 			Name:    "BasicCoin",
 		},
-		Function: "mint",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Kernel"},
+		Function: "mint2",
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
@@ -139,7 +140,8 @@ func Test_FailOnExecute(t *testing.T) {
 		payload,
 	)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "RESOURCE_ALREADY_EXISTS")
+	fmt.Println(err.Error())
+	require.Contains(t, err.Error(), "FUNCTION_RESOLUTION_FAILURE")
 }
 
 func Test_QueryContract(t *testing.T) {

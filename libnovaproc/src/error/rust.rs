@@ -117,7 +117,7 @@ impl From<VMStatus> for RustError {
     fn from(source: VMStatus) -> Self {
         match &source {
             VMStatus::Executed => RustError::success(),
-            VMStatus::Error(code) => RustError::vm_err(code.to_owned().status_type()),
+            VMStatus::Error(code) => RustError::vm_err(source),
             VMStatus::MoveAbort(location, code) => RustError::aborted(location, *code),
             VMStatus::ExecutionFailure { status_code: status, location, function, code_offset } => {
                 match status {
