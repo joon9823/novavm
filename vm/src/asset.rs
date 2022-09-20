@@ -54,7 +54,6 @@ fn compile_modules(
 const MODULES_DIR: &str = "src/kernel_stdlib/sources";
 
 fn move_kernel_stdlib_files() -> Vec<String> {
-    // TODO : Make path configurable or const
     let path = path_in_crate(MODULES_DIR);
     find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
 }

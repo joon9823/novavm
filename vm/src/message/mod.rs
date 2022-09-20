@@ -27,6 +27,7 @@ pub struct Message {
     sender: Option<AccountAddress>,
     // The message script to execute.
     payload: MessagePayload,
+
 }
 
 impl Message {
@@ -100,6 +101,15 @@ impl Message {
             None,
             MessagePayload::Script(Script::new(compiled_script, vec![], vec![])),
         )
+    }
+
+    pub fn size(&self) -> usize {
+        bcs::to_bytes(&self.payload())
+            .expect("Unable to serialize payload")
+            .len()
+        + bcs::to_bytes(&self.sender())
+            .expect("Unable to serialize sender")
+            .len()
     }
 }
 

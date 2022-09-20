@@ -36,6 +36,7 @@
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
 // use crate::parser::parse_struct_tag;
+use serde::{Deserialize, Serialize};
 use anyhow::{bail, Result};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
@@ -47,7 +48,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 use std::fmt;
 use std::str::FromStr;
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct AccessPath {
     pub address: AccountAddress,
     pub path: DataPath,
@@ -150,7 +151,7 @@ impl DataType {
 
 pub type ModuleName = Identifier;
 
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Serialize, Deserialize,)]
 pub enum DataPath {
     Code(ModuleName),
     Resource(StructTag),
