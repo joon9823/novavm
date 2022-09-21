@@ -68,7 +68,7 @@ impl NovaVM {
         compiled_module: Vec<u8>,
         remote_cache: &DataViewResolver<'_, S>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
-        let mut session = self.move_vm.new_session(remote_cache);
+        let mut session = self.create_session(remote_cache);
         let mut gas_meter = UnmeteredGasMeter;
         session
                 .publish_module(compiled_module, CORE_CODE_ADDRESS, &mut gas_meter)
@@ -133,7 +133,12 @@ impl NovaVM {
             }
         }
     }
-    
+
+    fn create_session<'r, S: MoveResolver>(&self, remote: &'r S) -> Session<'r, '_, S> {
+        self.move_vm.flush_loader_cache_if_invalidated();
+        self.move_vm.new_session(remote)
+    }
+
     fn publish_module_bundle<S: StateView>(
         &self,
         sender: AccountAddress,
@@ -141,7 +146,7 @@ impl NovaVM {
         modules: &ModuleBundle,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.move_vm.new_session(remote_cache);
+        let mut session = self.create_session(remote_cache);
 
         // TODO: verification
 
@@ -169,7 +174,7 @@ impl NovaVM {
         payload: &MessagePayload,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.move_vm.new_session(remote_cache);
+        let mut session = self.create_session(remote_cache);
 
         // TODO: verification
 
@@ -246,7 +251,7 @@ impl NovaVM {
         remote_cache: &DataViewResolver<'_, S>,
         gas_used : Gas
     ) -> (VMStatus, MessageOutput) {
-        let session: Session<_> = self.move_vm.new_session(remote_cache).into();
+        let session: Session<_> = self.create_session(remote_cache).into();
         let session_output = session.finish().map_err(|e| e.into_vm_status()).unwrap();
         // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
