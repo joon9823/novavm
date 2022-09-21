@@ -44,6 +44,7 @@ test-safety:
 test-rust: test-vm test-lib
 
 test-vm:
+	(cd vm/move-test && make build)
 	(cd vm && cargo test)
 
 test-lib:
