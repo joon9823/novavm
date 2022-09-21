@@ -18,7 +18,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{nova_stdlib, gas::{InitialGasSchedule}};
+use crate::{nova_stdlib, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -67,22 +67,24 @@ impl NovaVM {
         &mut self,
         compiled_module: Vec<u8>,
         remote_cache: &DataViewResolver<'_, S>,
-    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
+    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         let mut session = self.create_session(remote_cache);
         let mut gas_meter = UnmeteredGasMeter;
         session
                 .publish_module(compiled_module, CORE_CODE_ADDRESS, &mut gas_meter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
-                    e.into_vm_status()
+                    NovaVMError::from(e.into_vm_status())
                 })?;
 
-        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
-        let (status,output) = (
-            VMStatus::Executed,
-            get_message_output(session_output, Gas::zero(), KeptVMStatus::Executed)?,
-        );
-        Ok((status, output, None))
+        let session_output = session.finish().map_err(|e| {
+            NovaVMError::from(e.into_vm_status())
+        })?;
+
+        let output = get_message_output(session_output, Gas::zero(), KeptVMStatus::Executed).map_err(|e| {
+            NovaVMError::from(e)
+        })?;
+        Ok((VMStatus::Executed, output, None))
     }
 
     pub fn execute_message<S: StateView>(
@@ -90,7 +92,7 @@ impl NovaVM {
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
         gas_limit : Gas
-    ) -> (VMStatus, MessageOutput, Option<SerializedReturnValues>) {
+    ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         let sender = msg.sender();
 
         let gas_params = self.gas_params.clone();
@@ -99,21 +101,26 @@ impl NovaVM {
         // Charge for msg byte size
         gas_meter
             .charge_intrinsic_gas_for_transaction((msg.size() as u64).into())
-            .map_err(|e| e.into_vm_status()).unwrap();
+            .map_err(|e| NovaVMError::from(e.into_vm_status()))?;
         
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
             // FIXME: is it okay to use expect() here?
-            MessagePayload::ModuleBundle(m) => self.publish_module_bundle(sender.expect("sender is unset"), remote_cache, m, &mut gas_meter),
+            MessagePayload::ModuleBundle(m) => {
+                match sender {
+                    Some(sender) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
+                    None => return Err(NovaVMError::generic_err("sender unset")),
+                }
+            },
         };
 
         // Charge for err msg        
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
 
         match result {
-            Ok(status_and_output) => status_and_output,
+            Ok(status_and_output) => Ok(status_and_output),
             Err(err) => {
                 let txn_status = MessageStatus::from(err.clone());
 
@@ -122,7 +129,7 @@ impl NovaVM {
                     false => self.failed_message_cleanup(err, remote_cache, gas_used ),
                 };
                     
-                (status, message_output, None)
+                Ok((status, message_output, None))
             }
         }
     }

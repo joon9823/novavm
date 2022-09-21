@@ -7,7 +7,7 @@ description = "Nova VM Engine"
 homepage = "https://www.kernellabs.co"
 repository = "https://github.com/Kernel-Labs/novavm"
 license = "Apache-2.0"
-authors = ["Geoff Lee <geoff@kernellabs.co>", "Jeff Woo <jeff@kernellabs.co>", "Harvey Han <harvey@kernellabs.co>"]
+authors = ["Yun Yeo<yun@kernellabs.co>", "Geoff Lee <geoff@kernellabs.co>", "Jeff Woo <jeff@kernellabs.co>", "Harvey Han <harvey@kernellabs.co>"]
 exclude = [".gitignore"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

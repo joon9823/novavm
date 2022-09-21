@@ -1,7 +1,6 @@
 package nova_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -140,8 +139,41 @@ func Test_FailOnExecute(t *testing.T) {
 		payload,
 	)
 	require.NotNil(t, err)
-	fmt.Println(err.Error())
 	require.Contains(t, err.Error(), "FUNCTION_RESOLUTION_FAILURE")
+}
+
+func Test_OutOfGas(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
+
+	amount := uint64(100)
+
+	minter, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	std, err := types.NewAccountAddress("0x1")
+	require.NoError(t, err)
+
+	payload := types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: std,
+			Name:    "BasicCoin",
+		},
+		Function: "mint2",
+		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
+		Args:     []types.Bytes{types.SerializeUint64(amount)},
+	}
+
+	_, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		1,
+		minter,
+		payload,
+	)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "OUT_OF_GAS")
 }
 
 func Test_QueryContract(t *testing.T) {

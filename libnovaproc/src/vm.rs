@@ -80,7 +80,9 @@ pub(crate) fn publish_module(
     let data_view = DataViewResolver::new(&storage);
 
     let (status, output, retval) =
-        unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
+        unsafe { 
+            INSTANCE.execute_message(message, &data_view, gas_limit).map_err(|e| Error::from(e))?
+        };
 
     match status {
         VMStatus::Executed => {
@@ -141,7 +143,9 @@ fn execute_entry(
     let data_view = DataViewResolver::new(&storage);
 
     let (status, output, retval) =
-        unsafe { INSTANCE.execute_message(message, &data_view, gas_limit) };
+        unsafe { 
+            INSTANCE.execute_message(message, &data_view, gas_limit).map_err(|e| Error::from(e))?
+        };
 
     match status {
         VMStatus::Executed => {
