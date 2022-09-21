@@ -288,6 +288,44 @@ fn test_deps_transaction() {
     run_transaction(testcases);
 }
 
+#[test]
+fn test_linker_cache_flush() {
+    let account_two =
+        AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
+
+    let testcases: Vec<(Message, ExpectedOutput)> = vec![
+        (
+            // module have only one function that get number 123
+            Message::new_module(
+                Some(AccountAddress::ONE),
+                ModuleBundle::singleton(hex::decode("a11ceb0b0500000006010002030205050703070a11081b140c2f1000000001000100000103094261736963436f696e066e756d6265720000000000000000000000000000000000000001000104000002067b000000000000000200").expect("ms"))
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, None)
+        ),
+        (
+            // by calling this, loader caches module
+            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
+        ),
+        (
+            // upgrade module
+            Message::new_module(
+                Some(AccountAddress::ONE),
+                ModuleBundle::from(Module::create_basic_coin()),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, None),
+        ),
+        (
+            // mint with entry function
+            // should work with new module
+            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
+        ),
+    ];
+
+    run_transaction(testcases);
+}
+
 #[cfg(test)]
 #[test]
 fn test_simple_trasaction() {
