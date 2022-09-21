@@ -25,7 +25,7 @@ func Initialize(
 	errmsg := newUnmanagedVector(nil)
 
 	res, err := C.initialize(db, cbool(isVerbose), &errmsg, mb)
-	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
 	}
