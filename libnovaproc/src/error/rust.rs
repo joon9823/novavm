@@ -230,7 +230,6 @@ where
             value.into()
         }
         Err(error) => {
-            log::error!("{:?}", error);
             set_error(error, error_msg);
             Vec::new()
         }
