@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cargo/bin/move
-          key: ${{ '0.3.2' }}
+          key: ${{ runner.os }}-mv-cli-${{ '0.3.2' }}
       - name: Install move
         if: steps.cache-mv-cli.outputs.cache-hit != 'true'
         run: |
@@ -29,6 +29,15 @@ jobs:
       - name: Build test contracts
         run: |
           (cd vm/move-test && move build)
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build rust
         run: |
           make build-rust
