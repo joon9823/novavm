@@ -60,9 +60,7 @@ usize_is_size_t = true
 # FIXME: not sure why they are not exported by default.
 include = ["ByteSliceView", "U8SliceView", "Db", "db_t", "GoError", "ErrnoValue", "GoApi", "GoQuerier"]
 exclude = []
-# prefix = "CAPI_"
 item_types = []
-#item_types = ["structs", "constants", "globals", "enums", "unions", "typedefs", "opaque", "functions"]
 renaming_overrides_prefixing = false
 
 

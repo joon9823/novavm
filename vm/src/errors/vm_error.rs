@@ -26,8 +26,9 @@ impl NovaVMError {
     }
 
     pub(crate) fn move_error(status: VMStatus) -> Self {
-        NovaVMError::MoveError{
-            status
+        match &status.status_code() {
+            StatusCode::OUT_OF_GAS => NovaVMError::gas_depletion(),
+            _ => NovaVMError::MoveError { status }
         }
     }
 
@@ -41,16 +42,6 @@ impl NovaVMError {
 
 impl From<VMStatus> for NovaVMError {
     fn from(source: VMStatus) -> Self {
-         match &source{
-            VMStatus::ExecutionFailure { status_code, location, function, code_offset } => {
-                match status_code {
-                    StatusCode::OUT_OF_GAS => {
-                        NovaVMError::gas_depletion()
-                    },
-                    _ => NovaVMError::move_error(source)
-                }
-            },
-            _ => NovaVMError::move_error(source)
-        }
+        NovaVMError::move_error(source)
     }
 }

@@ -24,7 +24,6 @@ pub extern "C" fn initialize(
 }
 
 /// exported function to publish a module
-/// TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
 #[no_mangle]
 pub extern "C" fn publish_module(
     db: Db,
@@ -47,7 +46,6 @@ pub extern "C" fn publish_module(
 }
 
 // exported function to execute (an entrypoint of) contract
-/// TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
 #[no_mangle]
 pub extern "C" fn execute_contract(
     db: Db,
@@ -72,7 +70,6 @@ pub extern "C" fn execute_contract(
 }
 
 // exported function to query contract (in smart way)
-/// TODO: after PoC: make Context contextual information
 #[no_mangle]
 pub extern "C" fn query_contract(
     db: Db,

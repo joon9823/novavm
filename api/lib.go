@@ -3,6 +3,7 @@ package api
 // #include <stdlib.h>
 // #include "bindings.h"
 import "C"
+
 import (
 	"fmt"
 	"syscall"
@@ -28,7 +29,7 @@ type (
 
 func errorWithMessage(err error, b C.UnmanagedVector) error {
 	// this checks for out of gas as a special case
-	if errno, ok := err.(syscall.Errno); ok && int(errno) == 2 {
+	if errno, ok := err.(syscall.Errno); ok && int(errno) == C.ErrnoValue_OutOfGas {
 		return types.OutOfGasError{}
 	}
 	msg := copyAndDestroyUnmanagedVector(b)

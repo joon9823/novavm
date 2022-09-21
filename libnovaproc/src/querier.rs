@@ -1,7 +1,10 @@
 use crate::error::GoError;
 use crate::memory::{U8SliceView, UnmanagedVector};
 
+use novavm::BackendError;
 use novavm::backend::{BackendResult, Querier};
+
+use log::info;
 
 // this represents something passed in from the caller side of FFI
 #[repr(C)]
@@ -36,7 +39,7 @@ impl Querier for GoQuerier {
     fn query_raw(
         &self,
         request: &[u8],
-    ) -> BackendResult<Vec<u8>> { /* FIXME: put Vec<u8> as stub */
+    ) -> BackendResult<Vec<u8>> {
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
         let go_result: GoError = (self.vtable.query_external)(
@@ -64,15 +67,8 @@ impl Querier for GoQuerier {
 
         let bin_result: Vec<u8> = output.unwrap_or_default();
         let result = serde_json::from_slice(&bin_result).or_else(|e| {
-            todo!() 
-		  // FIXME: put it as stub
-			/* original.. remove it after porting  
-			Ok(SystemResult::Err(SystemError::InvalidResponse {
-				error: format!("Parsing Go response: {}", e),
-				response: bin_result.into(),
-			}))
-		});
-		*/
+            info!("failed to deserialize query result: {:?}", e);
+            Err(BackendError::invalid_utf8())
          });
         result
     }
