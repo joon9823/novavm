@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/Kernel-Labs/kernelvm/types"
+	"github.com/Kernel-Labs/novavm/types"
 )
 
 // Value types

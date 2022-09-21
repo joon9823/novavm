@@ -3,7 +3,7 @@ package api
 import (
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/Kernel-Labs/kernelvm/types"
+	"github.com/Kernel-Labs/novavm/types"
 )
 
 /*** Mock KVStore ****/

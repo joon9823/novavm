@@ -1,6 +1,6 @@
-//go:build sys_kernelproc
+//go:build sys_novaproc
 
 package api
 
-// #cgo LDFLAGS: -lkernelproc
+// #cgo LDFLAGS: -lnovaproc
 import "C"

@@ -34,7 +34,7 @@ import (
 	"runtime/debug"
 	"unsafe"
 
-	"github.com/Kernel-Labs/kernelvm/types"
+	"github.com/Kernel-Labs/novavm/types"
 )
 
 type Querier = types.Querier

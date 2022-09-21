@@ -5,7 +5,7 @@ package api
 */
 import "C"
 
-func LibkernelprocVersion() (string, error) {
+func LibnovaprocVersion() (string, error) {
 	version_ptr, err := C.version_str()
 	if err != nil {
 		return "", err

@@ -22,7 +22,7 @@ mod natives;
 mod params;
 
 mod algebra;
-mod kernel_stdlib;
+mod nova_stdlib;
 mod gas_meter;
 mod instr;
 mod misc;
@@ -31,7 +31,7 @@ mod gas_algebra_ext;
 mod transaction;
 pub use algebra::*;
 pub use gas_meter::{
-    KernelGasMeter, KernelGasParameters, FromOnChainGasSchedule, InitialGasSchedule,
+    NovaGasMeter, NovaGasParameters, FromOnChainGasSchedule, InitialGasSchedule,
     NativeGasParameters, ToOnChainGasSchedule,
 };
 pub use instr::InstructionGasParameters;
