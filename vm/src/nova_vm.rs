@@ -87,6 +87,14 @@ impl NovaVM {
         Ok((VMStatus::Executed, output, None))
     }
 
+    /// Allows the adapter to announce to the VM that the code loading cache should be considered
+    /// outdated. This can happen if the adapter executed a particular code publishing transaction
+    /// but decided to not commit the result to the data store. Because the code cache currently
+    /// does not support deletion, the cache will, incorrectly, still contain this module.
+    pub fn invalidate_loader_cache(self) {
+        self.move_vm.mark_loader_cache_as_invalid();
+    }
+
     pub fn execute_message<S: StateView>(
         &mut self,
         msg: Message,
@@ -107,7 +115,6 @@ impl NovaVM {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
             }
-            // FIXME: is it okay to use expect() here?
             MessagePayload::ModuleBundle(m) => {
                 match sender {
                     Some(sender) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
