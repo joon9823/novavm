@@ -12,8 +12,6 @@ pub enum BackendError {
     BadArgument {},
     #[error("VM received invalid UTF-8 data from backend")]
     InvalidUtf8 {},
-    #[error("Iterator with ID {id} does not exist")]
-    IteratorDoesNotExist { id: u32 },
     #[error("Ran out of gas during call into backend")]
     OutOfGas {},
     #[error("Unimplemented")]
@@ -34,9 +32,10 @@ impl BackendError {
         BackendError::BadArgument {}
     }
 
-    pub fn iterator_does_not_exist(iterator_id: u32) -> Self {
-        BackendError::IteratorDoesNotExist { id: iterator_id }
+    pub fn invalid_utf8() -> Self {
+        BackendError::InvalidUtf8 {}
     }
+
 
     pub fn out_of_gas() -> Self {
         BackendError::OutOfGas {}
