@@ -173,7 +173,7 @@ func Test_OutOfGas(t *testing.T) {
 		payload,
 	)
 	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "OUT_OF_GAS")
+	require.ErrorIs(t, err, types.OutOfGasError{})
 }
 
 func Test_QueryContract(t *testing.T) {

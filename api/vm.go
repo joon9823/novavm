@@ -53,7 +53,7 @@ func PublishModule(
 	errmsg := newUnmanagedVector(nil)
 
 	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, mb)
-	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -85,7 +85,7 @@ func ExecuteContract(
 	errmsg := newUnmanagedVector(nil)
 
 	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, msg)
-	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
 
@@ -113,7 +113,7 @@ func QueryContract(
 	errmsg := newUnmanagedVector(nil)
 
 	res, err := C.query_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, msg)
-	if err != nil && err.(syscall.Errno) != syscall.Errno(0) /* FIXME: originally it was C.ErrnoValue_Success*/ {
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
 	}

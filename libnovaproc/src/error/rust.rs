@@ -223,12 +223,14 @@ pub fn handle_c_error_binary<T>(
 where
     T: Into<Vec<u8>>,
 {
+    // TODO remove this logger
     match result {
         Ok(value) => {
             clear_error();
             value.into()
         }
         Err(error) => {
+            log::error!("{:?}", error);
             set_error(error, error_msg);
             Vec::new()
         }
