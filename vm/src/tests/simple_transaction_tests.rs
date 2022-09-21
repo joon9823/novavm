@@ -3,6 +3,7 @@ use crate::{
     message::{EntryFunction, Message, Module, ModuleBundle, Script},
     nova_vm::NovaVM,
     storage::data_view_resolver::DataViewResolver,
+    MessagePayload,
 };
 
 use move_deps::{
@@ -157,12 +158,17 @@ fn run_transaction(testcases: Vec<MockTx>) {
     } in testcases
     {
         let mut state = chain.create_state();
+        let mut module_published = false;
 
         for (msg, exp_output) in test_msgs {
+            if matches!(msg.payload(), MessagePayload::ModuleBundle(_)) {
+                module_published = true;
+            }
             let resolver = DataViewResolver::new(&state);
             let (status, output, result) = vm
                 .execute_message(msg, &resolver, gas_limit)
                 .expect("nova vm failure");
+
             println!("gas used: {}", output.gas_used());
             println!("got:{}, exp:{}", status, exp_output.vm_status());
             assert!(status == *exp_output.vm_status());
@@ -182,8 +188,10 @@ fn run_transaction(testcases: Vec<MockTx>) {
         if should_commit {
             chain.commit(state);
         } else {
-            // invalidate only when tx has publish?
-            vm.invalidate_loader_cache();
+            // invalidate only when tx has module publish msg
+            if module_published {
+                vm.invalidate_loader_cache();
+            }
         }
     }
 }
@@ -230,7 +238,32 @@ fn test_deps_transaction() {
 }
 
 #[test]
-fn test_abandon_tx_loader_cache() {}
+fn test_abandon_tx_loader_cache() {
+    let testcases: Vec<MockTx> = vec![
+        MockTx::new_skip_commit(vec![
+            (
+                // upgrade module
+                Message::new_module(
+                    Some(AccountAddress::ONE),
+                    ModuleBundle::from(Module::create_basic_coin()),
+                ),
+                ExpectedOutput::new(VMStatus::Executed, 1, None),
+            ),
+            (
+                // get 123
+                Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+                ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
+            ),
+        ]),
+        MockTx::one(
+            // should fail since module has been disposed
+            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            ExpectedOutput::new(VMStatus::Error(StatusCode::LINKER_ERROR), 0, None),
+        ),
+    ];
+
+    run_transaction(testcases);
+}
 
 #[test]
 fn test_module_upgrade_loader_cache() {

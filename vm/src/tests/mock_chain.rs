@@ -28,7 +28,6 @@ impl MockChain {
     }
 }
 
-//faking chain db
 pub struct MockState {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
 }
