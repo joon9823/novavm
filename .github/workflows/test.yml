@@ -16,10 +16,16 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
-
+      - name: Cache move-cli
+        id: cache-mv-cli
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/move
+          key: ${{ '0.3.2' }}
       - name: Install move
+        if: steps.cache-mv-cli.outputs.cache-hit != 'true'
         run: |
-          cargo install mv-cli --features address20
+          cargo install mv-cli@0.3.2 --features address20
       - name: Build test contracts
         run: |
           (cd vm/move-test && move build)
