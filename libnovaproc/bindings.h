@@ -249,9 +249,6 @@ typedef struct {
 
 void destroy_unmanaged_vector(UnmanagedVector v);
 
-/**
- * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
- */
 UnmanagedVector execute_contract(Db db,
                                  GoApi api,
                                  GoQuerier querier,
@@ -270,7 +267,6 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
 
 /**
  * exported function to publish a module
- * TODO: wrap sender after PoC: make Context including sender, funds and other contextual information
  */
 UnmanagedVector publish_module(Db db,
                                bool is_verbose,
@@ -279,9 +275,6 @@ UnmanagedVector publish_module(Db db,
                                ByteSliceView sender,
                                ByteSliceView module);
 
-/**
- * TODO: after PoC: make Context contextual information
- */
 UnmanagedVector query_contract(Db db,
                                GoApi api,
                                GoQuerier querier,

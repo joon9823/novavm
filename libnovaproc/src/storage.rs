@@ -46,7 +46,7 @@ impl GoStorage {
 
 impl StateView for GoStorage {
         fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
-        let key = access_path.to_string(); // FIXME: replace to_string to to_cosmos_key
+        let key = access_path.to_string();
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
         let go_error: GoError = (self.db.vtable.read_db)(

@@ -39,7 +39,7 @@ impl Querier for GoQuerier {
     fn query_raw(
         &self,
         request: &[u8],
-    ) -> BackendResult<Vec<u8>> { /* FIXME: put Vec<u8> as stub */
+    ) -> BackendResult<Vec<u8>> {
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
         let go_result: GoError = (self.vtable.query_external)(
