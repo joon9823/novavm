@@ -139,7 +139,7 @@ impl NovaVM {
         modules: &ModuleBundle,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session =  self.create_session(remote_cache);
+        let mut session = self.create_session(remote_cache);
 
         // TODO: verification
 
@@ -167,7 +167,7 @@ impl NovaVM {
         payload: &MessagePayload,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session =  self.create_session(remote_cache);
+        let mut session = self.create_session(remote_cache);
 
         // TODO: verification
 
