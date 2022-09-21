@@ -16,6 +16,8 @@ use move_deps::{
     },
 };
 
+use super::mock_tx::MockTx;
+use super::{mock_chain::MockChain, mock_tx::ExpectedOutput};
 use crate::asset::{
     compile_move_nursery_modules, compile_move_stdlib_modules, compile_nova_stdlib_modules,
 };
@@ -124,37 +126,7 @@ impl Script {
     }
 }
 
-struct ExpectedOutput {
-    vm_status: VMStatus,
-    changed_accounts: usize,
-    result_bytes: Option<Vec<u8>>,
-}
-impl ExpectedOutput {
-    pub fn new(
-        vm_status: VMStatus,
-        changed_accounts: usize,
-        result_bytes: Option<Vec<u8>>,
-    ) -> Self {
-        ExpectedOutput {
-            vm_status,
-            changed_accounts,
-            result_bytes,
-        }
-    }
-    pub fn vm_status(&self) -> &VMStatus {
-        &self.vm_status
-    }
-    pub fn changed_accounts(&self) -> usize {
-        self.changed_accounts
-    }
-    pub fn result_bytes(&self) -> &Option<Vec<u8>> {
-        &self.result_bytes
-    }
-}
-
-fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
-    use super::mock_chain::MockChain;
-
+fn run_transaction(testcases: Vec<MockTx>) {
     let mut chain = MockChain::new();
     let mut vm = NovaVM::new();
 
@@ -179,30 +151,40 @@ fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
     chain.commit(state);
 
     let gas_limit = Gas::new(100_000u64);
-    for (msg, exp_output) in testcases {
+    for MockTx {
+        test_msgs,
+        should_commit,
+    } in testcases
+    {
         let mut state = chain.create_state();
-        let resolver = DataViewResolver::new(&state);
-        let (status, output, result) = vm
-            .execute_message(msg, &resolver, gas_limit)
-            .expect("nova vm failure");
-        println!("gas used: {}", output.gas_used());
-        println!("got:{}, exp:{}", status, exp_output.vm_status());
-        assert!(status == *exp_output.vm_status());
-        assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
 
-        let result_bytes = result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-        assert!(result_bytes == *exp_output.result_bytes());
+        for (msg, exp_output) in test_msgs {
+            let resolver = DataViewResolver::new(&state);
+            let (status, output, result) = vm
+                .execute_message(msg, &resolver, gas_limit)
+                .expect("nova vm failure");
+            println!("gas used: {}", output.gas_used());
+            println!("got:{}, exp:{}", status, exp_output.vm_status());
+            assert!(status == *exp_output.vm_status());
+            assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
 
-        if output.status().is_discarded() {
-            continue;
+            let result_bytes =
+                result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
+            assert!(result_bytes == *exp_output.result_bytes());
+
+            if status != VMStatus::Executed {
+                continue;
+            }
+            // apply output into state
+            state.push_write_set(output.change_set().clone());
         }
-        // apply output into db
-        state.push_write_set(output.change_set().clone());
 
-        chain.commit(state);
-
-        // TODO: mock tx rollback
-        vm.invalidate_loader_cache();
+        if should_commit {
+            chain.commit(state);
+        } else {
+            // invalidate only when tx has publish?
+            vm.invalidate_loader_cache();
+        }
     }
 }
 
@@ -214,8 +196,8 @@ fn test_deps_transaction() {
     let account_three =
         AccountAddress::from_hex_literal("0x3").expect("0x3 account should be created");
 
-    let testcases: Vec<(Message, ExpectedOutput)> = vec![
-        (
+    let testcases: Vec<MockTx> = vec![
+        MockTx::one(
             // publish module
             Message::new_module(
                 Some(AccountAddress::ONE),
@@ -223,7 +205,7 @@ fn test_deps_transaction() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, None),
         ),
-        (
+        MockTx::one(
             // bank module : balance
             Message::new_entry_function(
                 Some(AccountAddress::ONE),
@@ -235,7 +217,7 @@ fn test_deps_transaction() {
                 Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
             ),
         ),
-        (
+        MockTx::one(
             // bank module : transfer
             Message::new_entry_function(
                 Some(AccountAddress::ONE),
@@ -248,12 +230,16 @@ fn test_deps_transaction() {
 }
 
 #[test]
-fn test_linker_cache_flush() {
+fn test_abandon_tx_loader_cache() {}
+
+#[test]
+fn test_module_upgrade_loader_cache() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
 
-    let testcases: Vec<(Message, ExpectedOutput)> = vec![
-        (
+    let testcases: Vec<MockTx> = vec![
+
+        MockTx::one(
             // module have only one function that get number 123
             Message::new_module(
                 Some(AccountAddress::ONE),
@@ -261,12 +247,12 @@ fn test_linker_cache_flush() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, None)
         ),
-        (
+        MockTx::one(
             // by calling this, loader caches module
             Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
         ),
-        (
+        MockTx::one(
             // upgrade module
             Message::new_module(
                 Some(AccountAddress::ONE),
@@ -274,7 +260,7 @@ fn test_linker_cache_flush() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, None),
         ),
-        (
+        MockTx::one(
             // mint with entry function
             // should work with new module
             Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
@@ -285,14 +271,13 @@ fn test_linker_cache_flush() {
     run_transaction(testcases);
 }
 
-#[cfg(test)]
 #[test]
 fn test_simple_trasaction() {
     let account_two =
         AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
 
-    let testcases: Vec<(Message, ExpectedOutput)> = vec![
-        (
+    let testcases: Vec<MockTx> = vec![
+        MockTx::one(
             // publish module
             Message::new_module(
                 Some(AccountAddress::ONE),
@@ -300,17 +285,17 @@ fn test_simple_trasaction() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, None),
         ),
-        (
+        MockTx::one(
             // mint with script
             Message::new_script(Some(AccountAddress::ONE), Script::mint_200()),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
-        (
+        MockTx::one(
             // mint with entry function
             Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
-        (
+        MockTx::one(
             // linker error
             Message::new_entry_function(
                 Some(AccountAddress::ZERO),
@@ -318,12 +303,12 @@ fn test_simple_trasaction() {
             ),
             ExpectedOutput::new(VMStatus::Error(StatusCode::LINKER_ERROR), 0, None),
         ),
-        (
+        MockTx::one(
             // get 123
             Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
         ),
-        (
+        MockTx::one(
             // get coin amount for 0x1
             Message::new_entry_function(
                 Some(AccountAddress::ZERO),
@@ -331,7 +316,7 @@ fn test_simple_trasaction() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![200, 0, 0, 0, 0, 0, 0, 0])),
         ),
-        (
+        MockTx::one(
             // get coin amount for 0x0
             Message::new_entry_function(
                 Some(AccountAddress::ZERO),
@@ -339,7 +324,7 @@ fn test_simple_trasaction() {
             ),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![100, 0, 0, 0, 0, 0, 0, 0])),
         ),
-        (
+        MockTx::one(
             // get Coin structure
             Message::new_entry_function(
                 Some(AccountAddress::ZERO),
