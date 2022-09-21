@@ -36,8 +36,9 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            vm/target/
+            libnovaproc/target/
+          key: ${{ runner.os }}-cargo
       - name: Build rust
         run: |
           make build-rust
