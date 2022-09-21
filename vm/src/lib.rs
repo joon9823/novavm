@@ -3,7 +3,7 @@
 pub mod serde_helper;
 
 pub use crate::errors::BackendError;
-pub use crate::errors::VmError;
+pub use crate::errors::NovaVMError;
 pub use crate::nova_vm::NovaVM;
 pub use crate::message::*;
 pub use crate::backend::*;

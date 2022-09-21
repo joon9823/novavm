@@ -1,4 +1,4 @@
-use novavm::{VmError, BackendError};
+use novavm::{NovaVMError, BackendError};
 use errno::{set_errno, Errno};
 use move_deps::move_core_types::vm_status::{VMStatus, StatusCode};
 use thiserror::Error;
@@ -129,10 +129,11 @@ impl From<VMStatus> for RustError {
     }
 }
 
-impl From<VmError> for RustError {
-    fn from(source: VmError) -> Self {
+impl From<NovaVMError> for RustError {
+    fn from(source: NovaVMError) -> Self {
         match source {
-            VmError::GasDepletion { .. } => RustError::out_of_gas(),
+            NovaVMError::GasDepletion { .. } => RustError::out_of_gas(),
+            NovaVMError::MoveError { status } => RustError::from(status),
             _ => RustError::vm_err(source),
         }
     }
