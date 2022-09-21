@@ -230,7 +230,9 @@ fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
     let gas_limit = Gas::new(100_000u64);
     for (msg, exp_output) in testcases {
         let resolver = DataViewResolver::new(&db);
-        let (status, output, result) = vm.execute_message(msg, &resolver, gas_limit).expect("nova vm failure");
+        let (status, output, result) = vm
+            .execute_message(msg, &resolver, gas_limit)
+            .expect("nova vm failure");
         println!("gas used: {}", output.gas_used());
         println!("got:{}, exp:{}", status, exp_output.vm_status());
         assert!(status == *exp_output.vm_status());
@@ -244,6 +246,9 @@ fn run_transaction(testcases: Vec<(Message, ExpectedOutput)>) {
         }
         // apply output into db
         db.push_write_set(output.change_set().clone());
+
+        // TODO: mock tx rollback
+        vm.invalidate_loader_cache();
     }
 }
 

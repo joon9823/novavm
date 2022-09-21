@@ -91,7 +91,7 @@ impl NovaVM {
     /// outdated. This can happen if the adapter executed a particular code publishing transaction
     /// but decided to not commit the result to the data store. Because the code cache currently
     /// does not support deletion, the cache will, incorrectly, still contain this module.
-    pub fn invalidate_loader_cache(self) {
+    pub fn invalidate_loader_cache(&self) {
         self.move_vm.mark_loader_cache_as_invalid();
     }
 
