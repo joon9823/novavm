@@ -153,14 +153,14 @@ fn run_transaction(testcases: Vec<MockTx>) {
 
     let gas_limit = Gas::new(100_000u64);
     for MockTx {
-        test_msgs,
+        msg_tests,
         should_commit,
     } in testcases
     {
         let mut state = chain.create_state();
         let mut module_published = false;
 
-        for (msg, exp_output) in test_msgs {
+        for (msg, exp_output) in msg_tests {
             if matches!(msg.payload(), MessagePayload::ModuleBundle(_)) {
                 module_published = true;
             }

@@ -3,35 +3,35 @@ use move_deps::move_core_types::vm_status::VMStatus;
 use crate::Message;
 
 pub struct MockTx {
-    pub test_msgs: Vec<(Message, ExpectedOutput)>,
+    pub msg_tests: Vec<(Message, ExpectedOutput)>,
     pub should_commit: bool,
 }
 
 impl MockTx {
     pub fn one(msg: Message, exp_output: ExpectedOutput) -> Self {
         Self {
-            test_msgs: vec![(msg, exp_output)],
+            msg_tests: vec![(msg, exp_output)],
             should_commit: true,
         }
     }
 
     pub fn one_skip_commit(msg: Message, exp_output: ExpectedOutput) -> Self {
         Self {
-            test_msgs: vec![(msg, exp_output)],
+            msg_tests: vec![(msg, exp_output)],
             should_commit: false,
         }
     }
 
-    pub fn new(test_msgs: Vec<(Message, ExpectedOutput)>) -> Self {
+    pub fn new(msg_tests: Vec<(Message, ExpectedOutput)>) -> Self {
         Self {
-            test_msgs,
+            msg_tests,
             should_commit: true,
         }
     }
 
-    pub fn new_skip_commit(test_msgs: Vec<(Message, ExpectedOutput)>) -> Self {
+    pub fn new_skip_commit(msg_tests: Vec<(Message, ExpectedOutput)>) -> Self {
         Self {
-            test_msgs,
+            msg_tests,
             should_commit: false,
         }
     }
