@@ -1,31 +1,86 @@
-pub mod bank;
+// Copyright (c) Aptos
+// SPDX-License-Identifier: Apache-2.0
+
+pub mod code;
 mod helpers;
+pub mod signature;
+pub mod type_info;
+pub mod util;
 
 use move_deps::{
-    move_core_types::account_address::AccountAddress,
+    move_core_types::{account_address::AccountAddress, identifier::Identifier},
     move_vm_runtime::native_functions::{make_table_from_iter, NativeFunctionTable},
-    move_core_types::gas_algebra::GasQuantity
 };
 
-pub enum AbstractValueUnit {}
-pub type AbstractValueSize = GasQuantity<AbstractValueUnit>;
+pub mod status {
+    // Failure in parsing a struct type tag
+    pub const NFE_EXPECTED_STRUCT_TYPE_TAG: u64 = 0x1;
+    // Failure in address parsing (likely no correct length)
+    pub const NFE_UNABLE_TO_PARSE_ADDRESS: u64 = 0x2;
+}
 
 #[derive(Debug, Clone)]
 pub struct GasParameters {
-    pub bank: bank::GasParameters,
+    pub signature: signature::GasParameters,
+    pub type_info: type_info::GasParameters,
+    pub util: util::GasParameters,
+    pub code: code::GasParameters,
 }
 
 impl GasParameters {
     pub fn zeros() -> Self {
         Self {
-            bank: bank::GasParameters {
-                balance: bank::BalanceGasParameters { base: 0.into() },
-                transfer: bank::TransferGasParameters { base: 0.into() },
+            signature: signature::GasParameters {
+                bls12381_validate_pubkey: signature::Bls12381ValidatePubkeyGasParameters {
+                    base_cost: 0.into(),
+                },
+                ed25519_validate_pubkey: signature::Ed25519ValidatePubkeyGasParameters {
+                    base_cost: 0.into(),
+                },
+                ed25519_verify: signature::Ed25519VerifyGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+                secp256k1_ecdsa_recover: signature::Secp256k1ECDSARecoverGasParameters {
+                    base_cost: 0.into(),
+                },
+                bls12381_verify_signature: signature::Bls12381VerifySignatureGasParams {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+                bls12381_aggregate_pop_verified_pubkeys:
+                    signature::Bls12381AggregatePopVerifiedPubkeysGasParameters {
+                        base_cost: 0.into(),
+                        per_pubkey_cost: 0.into(),
+                    },
+                bls12381_verify_proof_of_possession:
+                    signature::Bls12381VerifyProofOfPosessionGasParameters { base_cost: 0.into() },
+            },
+            type_info: type_info::GasParameters {
+                type_of: type_info::TypeOfGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+                type_name: type_info::TypeNameGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+            },
+            util: util::GasParameters {
+                from_bytes: util::FromBytesGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+            },
+            code: code::GasParameters {
+                request_publish: code::RequestPublishGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
             },
         }
     }
 }
-
 
 pub fn all_natives(
     framework_addr: AccountAddress,
@@ -41,7 +96,19 @@ pub fn all_natives(
         };
     }
 
-    add_natives_from_module!("bank", bank::make_all(gas_params.bank));
+    add_natives_from_module!("signature", signature::make_all(gas_params.signature));
+    add_natives_from_module!("type_info", type_info::make_all(gas_params.type_info));
+    add_natives_from_module!("util", util::make_all(gas_params.util.clone()));
+    add_natives_from_module!("code", code::make_all(gas_params.code));
 
     make_table_from_iter(framework_addr, natives)
+}
+
+/// A temporary hack to patch Table -> table module name as long as it is not upgraded
+/// in the Move repo.
+pub fn patch_table_module(table: NativeFunctionTable) -> NativeFunctionTable {
+    table
+        .into_iter()
+        .map(|(m, _, f, i)| (m, Identifier::new("table").unwrap(), f, i))
+        .collect()
 }

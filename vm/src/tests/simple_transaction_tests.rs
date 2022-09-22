@@ -41,24 +41,6 @@ impl Module {
 
 #[cfg(test)]
 impl EntryFunction {
-    fn balance(addr: AccountAddress) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("balance").unwrap(),
-            vec![],
-            vec![addr.to_vec()],
-        )
-    }
-
-    fn transfer(from: AccountAddress, to: AccountAddress, amount: u64) -> Self {
-        Self::new(
-            Module::get_basic_coin_module_id(),
-            Identifier::new("transfer").unwrap(),
-            vec![],
-            vec![from.to_vec(), to.to_vec(), amount.to_le_bytes().to_vec()],
-        )
-    }
-
     fn mint(amount: u64) -> Self {
         Self::new(
             Module::get_basic_coin_module_id(),
@@ -132,23 +114,29 @@ fn run_transaction(testcases: Vec<MockTx>) {
     let mut vm = NovaVM::new();
 
     // publish move_stdlib and move_nursery and nova_stdlib modules
-    let mut modules = compile_move_stdlib_modules();
-    modules.append(&mut compile_move_nursery_modules());
-    modules.append(&mut compile_nova_stdlib_modules());
+    // let mut modules = compile_move_stdlib_modules();
+    // modules.append(&mut compile_move_nursery_modules());
+    // modules.append(&mut compile_nova_stdlib_modules());
+
+    // let module_bundle = ModuleBundle::new(
+    //     modules
+    //         .iter()
+    //         .map(|m| {
+    //             let mut mod_blob = vec![];
+    //             m.serialize(&mut mod_blob)
+    //                 .expect("Module serialization error");
+    //             mod_blob
+    //         })
+    //         .collect(),
+    // );
 
     let mut state = chain.create_state();
-    for module in modules {
-        let resolver = DataViewResolver::new(&state);
-        let mut mod_blob = vec![];
-        module
-            .serialize(&mut mod_blob)
-            .expect("Module serialization error");
-        let (status, output, _) = vm
-            .initialize(mod_blob, &resolver)
-            .expect("Module must load");
-        assert!(status == VMStatus::Executed);
-        state.push_write_set(output.change_set().clone());
-    }
+    let resolver = DataViewResolver::new(&state);
+    let (status, output, _) = vm
+        .initialize(&resolver, None)
+        .expect("Module must load");
+    assert!(status == VMStatus::Executed);
+    state.push_write_set(output.change_set().clone());
     chain.commit(state);
 
     let gas_limit = Gas::new(100_000u64);
@@ -194,47 +182,6 @@ fn run_transaction(testcases: Vec<MockTx>) {
             }
         }
     }
-}
-
-#[cfg(test)]
-#[test]
-fn test_deps_transaction() {
-    let account_two =
-        AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
-    let account_three =
-        AccountAddress::from_hex_literal("0x3").expect("0x3 account should be created");
-
-    let testcases: Vec<MockTx> = vec![
-        MockTx::one(
-            // publish module
-            Message::new_module(
-                Some(AccountAddress::ONE),
-                ModuleBundle::from(Module::create_basic_coin()),
-            ),
-            ExpectedOutput::new(VMStatus::Executed, 1, None),
-        ),
-        MockTx::one(
-            // bank module : balance
-            Message::new_entry_function(
-                Some(AccountAddress::ONE),
-                EntryFunction::balance(account_two),
-            ),
-            ExpectedOutput::new(
-                VMStatus::Executed,
-                0,
-                Some(vec![160, 134, 1, 0, 0, 0, 0, 0]),
-            ),
-        ),
-        MockTx::one(
-            // bank module : transfer
-            Message::new_entry_function(
-                Some(AccountAddress::ONE),
-                EntryFunction::transfer(account_two, account_three, 100),
-            ),
-            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![])),
-        ),
-    ];
-    run_transaction(testcases);
 }
 
 #[test]

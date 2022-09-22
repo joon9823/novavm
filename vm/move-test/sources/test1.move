@@ -2,8 +2,6 @@ module std::BasicCoin {
     use std::debug;
     use std::signer;
     use std::event::{Self, EventHandle};
-   
-    use nova_std::bank;
 
     struct Nova {}
 
@@ -63,13 +61,5 @@ module std::BasicCoin {
 
     public entry fun print_number(number: u64) {
         debug::print(&number)
-    }
-
-    public entry fun balance(addr: address) : u64 {
-        bank::balance(addr)
-    }
-
-    public entry fun transfer(from: address, to: address, amount: u64) {
-        bank::transfer(from, to, amount)
     }
 }

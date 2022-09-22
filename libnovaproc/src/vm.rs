@@ -6,9 +6,6 @@ use crate::GoStorage;
 use crate::result::generate_result;
 
 use novavm::access_path::AccessPath;
-use novavm::asset::{
-    compile_nova_stdlib_modules, compile_move_nursery_modules, compile_move_stdlib_modules,
-};
 use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::BackendResult;
@@ -32,35 +29,20 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, 
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
 
-    // initialize stdlib
-    let mut module_bundle: Vec<Vec<u8>> = vec![];
-    let mut modules = compile_move_stdlib_modules();
-    modules.append(&mut compile_move_nursery_modules());
-    modules.append(&mut compile_nova_stdlib_modules());
-    for module in modules {
-        let mut mod_blob = vec![];
-        module.serialize(&mut mod_blob).unwrap();
-        module_bundle.push(mod_blob);
-    }
-
     // add passed custom module bundles
     let custom_module_bundle: ModuleBundle =
         serde_json::from_slice(payload.as_slice()).unwrap();
-    module_bundle.extend(custom_module_bundle.into_inner());
 
-    for module in module_bundle {
-        let data_view = DataViewResolver::new(&storage);
-        let (status, output, _retval) =
-            unsafe { INSTANCE.initialize(module, &data_view) }.unwrap();
+    let data_view = DataViewResolver::new(&storage);
+    let (status, output, _retval) =
+        unsafe { INSTANCE.initialize(&data_view, Some(custom_module_bundle)) }.unwrap();
 
-        match status {
-            VMStatus::Executed => {
-                push_write_set(&mut storage, output.change_set())?;
-            },
-            _ => Err(Error::from(status))?
-        }
+    match status {
+        VMStatus::Executed => {
+            push_write_set(&mut storage, output.change_set())?;
+        },
+        _ => Err(Error::from(status))?
     }
-
     Ok(Vec::from("ok"))
 }
 

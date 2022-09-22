@@ -15,8 +15,6 @@ exclude = [".gitignore"]
 [features]
 default = []
 backtraces = []
-cloneable-private-keys = []
-fuzzing = ["proptest", "proptest-derive", "cloneable-private-keys"]
 
 
 [dependencies]
@@ -47,7 +45,10 @@ proc-macro2 = "1.0.38"
 quote = "1.0.18"
 syn = { version = "1.0.92", features = ["derive"] }
 
-
+better_any = "0.1.1"
+curve25519-dalek = { version = "3", default-features = false }
+aptos-crypto = "0.2.7"
+libsecp256k1 = "0.7.0"
 
 [profile.release]
 opt-level = 3

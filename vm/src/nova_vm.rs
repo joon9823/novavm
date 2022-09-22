@@ -4,7 +4,8 @@ use move_deps::{
         account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode 
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
-    move_vm_types::gas::UnmeteredGasMeter,
+    move_vm_types::gas::UnmeteredGasMeter, move_bytecode_utils::Modules,
+    move_table_extension::{table_natives, GasParameters}, move_binary_format::CompiledModule,
 };
 use std::{sync::Arc};
 use move_deps::{
@@ -24,6 +25,9 @@ use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
 use crate::gas::{
     NovaGasMeter, NovaGasParameters, Gas, NativeGasParameters,
+};
+use crate::asset::{
+    compile_move_nursery_modules, compile_move_stdlib_modules, compile_nova_stdlib_modules,
 };
 
 
@@ -53,8 +57,12 @@ impl NovaVM {
         .chain(
             nova_stdlib::all_natives(
             CORE_CODE_ADDRESS, 
-            native_gas_parameters.nova_stdlib
-        )))
+            native_gas_parameters.nova_stdlib))
+        .into_iter()
+        .chain(
+            table_natives( // TODO: move table_natives to nova_stdlib
+            CORE_CODE_ADDRESS,
+            GasParameters::zeros(),))) 
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
         Self {
@@ -65,13 +73,52 @@ impl NovaVM {
 
     pub fn initialize<S: StateView>(
         &mut self,
-        compiled_module: Vec<u8>,
-        remote_cache: &DataViewResolver<'_, S>,
+        resolver: &DataViewResolver<'_, S>,
+        custom_module_bundle : Option<ModuleBundle>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
-        let mut session = self.create_session(remote_cache);
-        let mut gas_meter = UnmeteredGasMeter;
+
+        // publish move_stdlib and nova_stdlib modules    
+        let mut modules = compile_move_stdlib_modules();
+        modules.append(&mut compile_move_nursery_modules());
+        modules.append(&mut compile_nova_stdlib_modules());
+
+        if let Some(module_bundle) = custom_module_bundle {
+            let module_bundle = module_bundle.into_inner();
+            for module in module_bundle {
+                let compiled_module = CompiledModule::deserialize(&module).unwrap();
+                modules.push(compiled_module);
+            }
+        }
+
+        let mut session = self.create_session(resolver);
+
+        let lib = Modules::new(&modules);
+        let dep_graph = lib.compute_dependency_graph();
+        let mut addr_opt: Option<AccountAddress> = None;
+        let modules = dep_graph
+            .compute_topological_order()
+            .unwrap()
+            .map(|m| {
+                let addr = *m.self_id().address();
+                if let Some(a) = addr_opt {
+                    assert_eq!(
+                        a,
+                        addr,
+                        "All genesis modules must be published under the same address, but found modules under both {} and {}",
+                        a.short_str_lossless(),
+                        addr.short_str_lossless(),
+                    );
+                } else {
+                    addr_opt = Some(addr)
+                }
+                let mut bytes = vec![];
+                m.serialize(&mut bytes).unwrap();
+                bytes
+            })
+            .collect::<Vec<Vec<u8>>>();
+
         session
-                .publish_module(compiled_module, CORE_CODE_ADDRESS, &mut gas_meter)
+                .publish_module_bundle(modules, addr_opt.unwrap(), &mut UnmeteredGasMeter)
                 .map_err(|e| {
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     NovaVMError::from(e.into_vm_status())

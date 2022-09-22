@@ -4,7 +4,10 @@ use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
 use log::error;
-use move_deps::move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
+use move_deps::{
+    move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
+    move_table_extension::{TableHandle, TableResolver},
+};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
     language_storage::{ModuleId, StructTag},
@@ -51,5 +54,15 @@ impl<'block, S: StateView> ResourceResolver for DataViewResolver<'block, S> {
 
         self.get(&ap)
             .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
+    }
+}
+
+impl<'block, S: TableResolver> TableResolver for DataViewResolver<'block, S> {
+    fn resolve_table_entry(
+        &self,
+        handle: &TableHandle,
+        key: &[u8],
+    ) -> Result<Option<Vec<u8>>, anyhow::Error> {
+        self.data_view.resolve_table_entry(handle, key)
     }
 }

@@ -22,8 +22,8 @@ pub fn compile_move_nursery_modules() -> Vec<CompiledModule> {
 
 pub fn compile_nova_stdlib_modules() -> Vec<CompiledModule> {
     let src_files = move_nova_stdlib_files();
-    let deps_files = vec![];
-    let mapping = [("nova_std", "0x1")];
+    let deps_files = move_stdlib::move_stdlib_files();
+    let mapping = [("nova_std", "0x1"), ("std", "0x1")];
     let name_address_map = mapping
         .iter()
         .map(|(name, addr)| (name.to_string(), NumericalAddress::parse_str(addr).unwrap()))
@@ -66,3 +66,11 @@ where
     path.push(relative.into());
     path
 }
+
+#[test]
+fn test_compile_nova_stdlib_modules() {
+    let modules = compile_nova_stdlib_modules();
+    assert!(!modules.is_empty()); // TODO: check that all modules are compiled
+}
+
+// /extensions/move-table-extension/sources
