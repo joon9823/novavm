@@ -8,6 +8,7 @@ pub use crate::nova_vm::NovaVM;
 pub use crate::message::*;
 pub use crate::backend::*;
 
+pub mod table;
 pub mod access_path;
 pub mod backend;
 pub mod gas;

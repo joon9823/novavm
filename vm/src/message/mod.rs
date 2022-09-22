@@ -12,6 +12,7 @@ use move_deps::move_core_types::effects::Event;
 use move_deps::move_core_types::vm_status::*;
 use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
+use move_deps::move_table_extension::TableChangeSet;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -23,30 +24,49 @@ mod script;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
+    /// SessionID is a seed for global unique ID of Table extension.
+    /// Ex) transaction hash
+    session_id: Vec<u8>,
     /// Sender's address.
     sender: Option<AccountAddress>,
-    // The message script to execute.
+    /// The message script to execute.
     payload: MessagePayload,
-
 }
 
 impl Message {
     /// Create a new `Message` with a payload.
     ///
     /// It can be either to publish a module, to execute a script
-    pub fn new(sender: Option<AccountAddress>, payload: MessagePayload) -> Self {
-        Message { sender, payload }
+    pub fn new(
+        session_id: Vec<u8>,
+        sender: Option<AccountAddress>,
+        payload: MessagePayload,
+    ) -> Self {
+        Message {
+            session_id,
+            sender,
+            payload,
+        }
     }
 
-    pub fn new_with_default_gas_token(sender: Option<AccountAddress>, payload: MessagePayload) -> Self {
-        Message { sender, payload }
+    pub fn new_with_default_gas_token(
+        session_id: Vec<u8>,
+        sender: Option<AccountAddress>,
+        payload: MessagePayload,
+    ) -> Self {
+        Message {
+            session_id,
+            sender,
+            payload,
+        }
     }
 
     /// Create a new `Message` with a script.
     ///
     /// A script message contains only code to execute. No publishing is allowed in scripts.
-    pub fn new_script(sender: Option<AccountAddress>, script: Script) -> Self {
+    pub fn new_script(session_id: Vec<u8>, sender: Option<AccountAddress>, script: Script) -> Self {
         Message {
+            session_id,
             sender,
             payload: MessagePayload::Script(script),
         }
@@ -55,8 +75,13 @@ impl Message {
     /// Create a new `Message` with a script function.
     ///
     /// A script message contains only code to execute. No publishing is allowed in scripts.
-    pub fn new_entry_function(sender: Option<AccountAddress>, entry_function: EntryFunction) -> Self {
+    pub fn new_entry_function(
+        session_id: Vec<u8>,
+        sender: Option<AccountAddress>,
+        entry_function: EntryFunction,
+    ) -> Self {
         Message {
+            session_id,
             sender,
             payload: MessagePayload::EntryFunction(entry_function),
         }
@@ -65,8 +90,13 @@ impl Message {
     /// Create a new `Message` with a module to publish.
     ///
     /// A module message is the only way to publish code.
-    pub fn new_module(sender: Option<AccountAddress>, modules: ModuleBundle) -> Self {
+    pub fn new_module(
+        session_id: Vec<u8>,
+        sender: Option<AccountAddress>,
+        modules: ModuleBundle,
+    ) -> Self {
         Message {
+            session_id,
             sender,
             payload: MessagePayload::ModuleBundle(modules),
         }
@@ -74,6 +104,11 @@ impl Message {
 
     pub fn into_payload(self) -> MessagePayload {
         self.payload
+    }
+
+    /// Return session_id
+    pub fn session_id(&self) -> &[u8] {
+        &self.session_id
     }
 
     /// Return the sender of this message.
@@ -91,6 +126,7 @@ impl Message {
 
     pub fn mock_by_sender(sender: AccountAddress) -> Self {
         Self::new_with_default_gas_token(
+            vec![0; 32],
             Some(sender),
             MessagePayload::Script(Script::new(vec![], vec![], vec![])),
         )
@@ -98,6 +134,7 @@ impl Message {
 
     pub fn mock_from(compiled_script: Vec<u8>) -> Self {
         Self::new_with_default_gas_token(
+            vec![0; 32],
             None,
             MessagePayload::Script(Script::new(compiled_script, vec![], vec![])),
         )
@@ -107,9 +144,9 @@ impl Message {
         bcs::to_bytes(&self.payload())
             .expect("Unable to serialize payload")
             .len()
-        + bcs::to_bytes(&self.sender())
-            .expect("Unable to serialize sender")
-            .len()
+            + bcs::to_bytes(&self.sender())
+                .expect("Unable to serialize sender")
+                .len()
     }
 }
 
@@ -189,6 +226,7 @@ impl From<VMStatus> for MessageStatus {
 pub struct MessageOutput {
     change_set: ChangeSet,
     events: Vec<Event>,
+    table_change_set: TableChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -201,11 +239,13 @@ impl MessageOutput {
     pub fn new(
         change_set: ChangeSet,
         events: Vec<Event>,
+        table_change_set: TableChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
         MessageOutput {
             change_set,
+            table_change_set,
             events,
             gas_used,
             status,
@@ -214,6 +254,10 @@ impl MessageOutput {
 
     pub fn change_set(&self) -> &ChangeSet {
         &self.change_set
+    }
+
+    pub fn table_change_set(&self) -> &TableChangeSet {
+        &self.table_change_set
     }
 
     pub fn events(&self) -> &[Event] {

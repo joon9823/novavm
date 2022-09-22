@@ -36,7 +36,6 @@
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
 // use crate::parser::parse_struct_tag;
-use serde::{Deserialize, Serialize};
 use anyhow::{bail, Result};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
@@ -45,9 +44,11 @@ use move_deps::move_core_types::{
     parser::parse_type_tag,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde::{Deserialize, Serialize};
 
 use std::fmt;
 use std::str::FromStr;
+use std::{fmt::Write, num::ParseIntError};
 #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct AccessPath {
     pub address: AccountAddress,
@@ -67,12 +68,21 @@ impl AccessPath {
         AccessPath::new(address, Self::code_data_path(module_name))
     }
 
+    pub fn table_item_access_path(address/* Table Address */: AccountAddress, key: Vec<u8>) -> AccessPath {
+        // table address created uniquely in move table extension
+        AccessPath::new(address, Self::table_item_data_path(key))
+    }
+
     pub fn resource_data_path(tag: StructTag) -> DataPath {
         DataPath::Resource(tag)
     }
 
     pub fn code_data_path(module_name: ModuleName) -> DataPath {
         DataPath::Code(module_name)
+    }
+
+    pub fn table_item_data_path(key: Vec<u8>) -> DataPath {
+        DataPath::TableItem(key)
     }
 
     pub fn into_inner(self) -> (AccountAddress, DataPath) {
@@ -118,9 +128,11 @@ impl From<&ResourceKey> for AccessPath {
 )]
 #[repr(u8)]
 #[allow(clippy::upper_case_acronyms)]
+#[allow(non_camel_case_types)]
 pub enum DataType {
     CODE,
     RESOURCE,
+    TABLE_ITEM,
 }
 
 impl DataType {
@@ -151,29 +163,38 @@ impl DataType {
 
 pub type ModuleName = Identifier;
 
-#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Serialize, Deserialize,)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub enum DataPath {
     Code(ModuleName),
     Resource(StructTag),
+    TableItem(Vec<u8>),
 }
 
 impl DataPath {
     pub fn is_code(&self) -> bool {
         matches!(self, DataPath::Code(_))
     }
+
     pub fn is_resource(&self) -> bool {
         matches!(self, DataPath::Resource(_))
     }
+
+    pub fn is_table_item(&self) -> bool {
+        matches!(self, DataPath::TableItem(_))
+    }
+
     pub fn as_struct_tag(&self) -> Option<&StructTag> {
         match self {
             DataPath::Resource(struct_tag) => Some(struct_tag),
             _ => None,
         }
     }
+
     pub fn data_type(&self) -> DataType {
         match self {
             DataPath::Code(_) => DataType::CODE,
             DataPath::Resource(_) => DataType::RESOURCE,
+            DataPath::TableItem(_) => DataType::TABLE_ITEM,
         }
     }
 }
@@ -187,6 +208,9 @@ impl fmt::Display for DataPath {
             }
             DataPath::Code(module_name) => {
                 write!(f, "{}/{}", storage_index, module_name)
+            }
+            DataPath::TableItem(key) => {
+                write!(f, "{}/{}", storage_index, encode_hex(key))
             }
         }
     }
@@ -205,6 +229,7 @@ impl FromStr for AccessPath {
         let data_path = match data_type {
             DataType::CODE => AccessPath::code_data_path(Identifier::new(parts[2])?),
             DataType::RESOURCE => AccessPath::resource_data_path(parse_struct_tag(parts[2])?),
+            DataType::TABLE_ITEM => AccessPath::table_item_data_path(decode_hex(parts[2])?),
         };
         Ok(AccessPath::new(address, data_path))
     }
@@ -216,4 +241,19 @@ fn parse_struct_tag(s: &str) -> Result<StructTag> {
         TypeTag::Struct(st) => Ok(st),
         t => bail!("expect a struct tag, found: {:?}", t),
     }
+}
+
+pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
+}
+
+pub fn encode_hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        write!(&mut s, "{:02x}", b).unwrap();
+    }
+    s
 }

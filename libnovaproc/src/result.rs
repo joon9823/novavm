@@ -19,7 +19,7 @@ pub fn to_vec<T>(data: &T) -> Result<Vec<u8>, Error>
 where
     T: Serialize + ?Sized,
 {
-    serde_json::to_vec(data).map_err(|e| Error::invalid_utf8("failed to serialize"))
+    serde_json::to_vec(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
 }
 
 impl Serialize for  ExecutionResult{

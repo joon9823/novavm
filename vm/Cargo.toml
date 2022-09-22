@@ -16,7 +16,6 @@ exclude = [".gitignore"]
 default = []
 backtraces = []
 
-
 [dependencies]
 move-deps = { path = "../move-deps", features = ["address20"] }
 

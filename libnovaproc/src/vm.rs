@@ -1,19 +1,19 @@
 use crate::error::Error;
+use crate::result::generate_result;
 use crate::result::to_vec;
 use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
-use crate::result::generate_result;
 
 use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::BackendResult;
 use novavm::EntryFunction;
-use novavm::NovaVM;
 use novavm::Message;
 use novavm::Module;
 use novavm::ModuleBundle;
+use novavm::NovaVM;
 
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_core_types::effects::ChangeSet;
@@ -30,8 +30,7 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, 
     let mut storage = GoStorage::new(db_handle);
 
     // add passed custom module bundles
-    let custom_module_bundle: ModuleBundle =
-        serde_json::from_slice(payload.as_slice()).unwrap();
+    let custom_module_bundle: ModuleBundle = serde_json::from_slice(payload.as_slice()).unwrap();
 
     let data_view = DataViewResolver::new(&storage);
     let (status, output, _retval) =
@@ -40,8 +39,8 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, 
     match status {
         VMStatus::Executed => {
             push_write_set(&mut storage, output.change_set())?;
-        },
-        _ => Err(Error::from(status))?
+        }
+        _ => Err(Error::from(status))?,
     }
     Ok(Vec::from("ok"))
 }
@@ -55,16 +54,17 @@ pub(crate) fn publish_module(
     let gas_limit = Gas::new(gas);
 
     let module: ModuleBundle = ModuleBundle::from(Module::new(payload));
-    let message: Message = Message::new_module(Some(sender), module);
+    let message: Message = Message::new_module(vec![0; 32], Some(sender), module);
 
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, retval) =
-        unsafe { 
-            INSTANCE.execute_message(message, &data_view, gas_limit).map_err(|e| Error::from(e))?
-        };
+    let (status, output, retval) = unsafe {
+        INSTANCE
+            .execute_message(message, &data_view, gas_limit)
+            .map_err(|e| Error::from(e))?
+    };
 
     match status {
         VMStatus::Executed => {
@@ -72,39 +72,38 @@ pub(crate) fn publish_module(
 
             let res = generate_result(status, output, retval, false)?;
             to_vec(&res)
-        },
-        _ => Err(Error::from(status))
+        }
+        _ => Err(Error::from(status)),
     }
 }
 
 pub(crate) fn execute_script(
+    session_id: Vec<u8>, // seed for global unique session id
     sender: AccountAddress,
     payload: Vec<u8>,
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(Some(sender), payload, db_handle, gas, false)
+    execute_entry(session_id, Some(sender), payload, db_handle, gas, false)
 }
 
 pub(crate) fn execute_contract(
+    session_id: Vec<u8>, // seed for global unique session id
     sender: AccountAddress,
     payload: Vec<u8>,
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(Some(sender), payload, db_handle, gas, false)
+    execute_entry(session_id, Some(sender), payload, db_handle, gas, false)
 }
 
 // works as smart query
-pub(crate) fn query_contract(
-    payload: Vec<u8>,
-    db_handle: Db,
-    gas: u64,
-) -> Result<Vec<u8>, Error> {
-    execute_entry(None, payload, db_handle, gas, true)
+pub(crate) fn query_contract(payload: Vec<u8>, db_handle: Db, gas: u64) -> Result<Vec<u8>, Error> {
+    execute_entry(vec![0; 32], None, payload, db_handle, gas, true)
 }
 
 fn execute_entry(
+    session_id: Vec<u8>, // seed for global unique session id
     sender: Option<AccountAddress>,
     payload: Vec<u8>,
     db_handle: Db,
@@ -117,28 +116,29 @@ fn execute_entry(
 
     let gas_limit = Gas::new(gas);
 
-    let entry: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
-    let message: Message = Message::new_entry_function(sender, entry);
+    let ef: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
+    let message: Message = Message::new_entry_function(session_id, sender, ef);
 
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
-    let (status, output, retval) =
-        unsafe { 
-            INSTANCE.execute_message(message, &data_view, gas_limit).map_err(|e| Error::from(e))?
-        };
+    let (status, output, retval) = unsafe {
+        INSTANCE
+            .execute_message(message, &data_view, gas_limit)
+            .map_err(|e| Error::from(e))?
+    };
 
     match status {
         VMStatus::Executed => {
-            if !is_query { 
+            if !is_query {
                 push_write_set(&mut storage, output.change_set())?;
             }
 
             let res = generate_result(status, output, retval, is_query)?;
             to_vec(&res)
-        },
-        _ => Err(Error::from(status))
+        }
+        _ => Err(Error::from(status)),
     }
 }
 
@@ -167,4 +167,3 @@ pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> Back
     }
     Ok(())
 }
-
