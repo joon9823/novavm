@@ -106,6 +106,7 @@ func (vm *VM) ExecuteEntryFunction(
 	goApi api.GoAPI,
 	querier api.Querier,
 	gasLimit uint64,
+	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
 	payload types.ExecuteEntryFunctionPayload,
 ) (uint64, []types.Event, error) {
@@ -120,6 +121,7 @@ func (vm *VM) ExecuteEntryFunction(
 		querier,
 		vm.printDebug,
 		gasLimit,
+		txHash,
 		sender,
 		bz,
 	)

@@ -19,9 +19,6 @@ use move_deps::{
 
 use super::mock_tx::MockTx;
 use super::{mock_chain::MockChain, mock_tx::ExpectedOutput};
-use crate::asset::{
-    compile_move_nursery_modules, compile_move_stdlib_modules, compile_nova_stdlib_modules,
-};
 
 #[cfg(test)]
 impl Module {
@@ -132,9 +129,7 @@ fn run_transaction(testcases: Vec<MockTx>) {
 
     let mut state = chain.create_state();
     let resolver = DataViewResolver::new(&state);
-    let (status, output, _) = vm
-        .initialize(&resolver, None)
-        .expect("Module must load");
+    let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
     assert!(status == VMStatus::Executed);
     state.push_write_set(output.change_set().clone());
     chain.commit(state);
@@ -191,6 +186,7 @@ fn test_abandon_tx_loader_cache() {
             (
                 // upgrade module
                 Message::new_module(
+                    vec![1; 32],
                     Some(AccountAddress::ONE),
                     ModuleBundle::from(Module::create_basic_coin()),
                 ),
@@ -198,13 +194,21 @@ fn test_abandon_tx_loader_cache() {
             ),
             (
                 // get 123
-                Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+                Message::new_entry_function(
+                    vec![2; 32],
+                    Some(AccountAddress::ZERO),
+                    EntryFunction::number(),
+                ),
                 ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
             ),
         ]),
         MockTx::one(
             // should fail since module has been disposed
-            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            Message::new_entry_function(
+                vec![3; 32],
+                Some(AccountAddress::ZERO),
+                EntryFunction::number(),
+            ),
             ExpectedOutput::new(VMStatus::Error(StatusCode::LINKER_ERROR), 0, None),
         ),
     ];
@@ -222,19 +226,21 @@ fn test_module_upgrade_loader_cache() {
         MockTx::one(
             // module have only one function that get number 123
             Message::new_module(
+                vec![1; 32],
                 Some(AccountAddress::ONE),
-                ModuleBundle::singleton(hex::decode("a11ceb0b0500000006010002030205050703070a11081b140c2f1000000001000100000103094261736963436f696e066e756d6265720000000000000000000000000000000000000001000104000002067b000000000000000200").expect("ms"))
+                ModuleBundle::singleton(hex::decode("a11ceb0b0500000006010002030205050703070a11081b140c2f1000000001000100000103094261736963436f696e066e756d6265720000000000000000000000000000000000000001000104000002067b000000000000000200").expect("ms")),
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, None)
         ),
         MockTx::one(
             // by calling this, loader caches module
-            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            Message::new_entry_function(vec![2; 32],Some(AccountAddress::ZERO), EntryFunction::number()),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
         ),
         MockTx::one(
             // upgrade module
             Message::new_module(
+                vec![3; 32],
                 Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
@@ -243,7 +249,7 @@ fn test_module_upgrade_loader_cache() {
         MockTx::one(
             // mint with entry function
             // should work with new module
-            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
+            Message::new_entry_function(vec![4; 32],Some(account_two), EntryFunction::mint(100)),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
     ];
@@ -260,6 +266,7 @@ fn test_simple_trasaction() {
         MockTx::one(
             // publish module
             Message::new_module(
+                vec![1; 32],
                 Some(AccountAddress::ONE),
                 ModuleBundle::from(Module::create_basic_coin()),
             ),
@@ -267,17 +274,18 @@ fn test_simple_trasaction() {
         ),
         MockTx::one(
             // mint with script
-            Message::new_script(Some(AccountAddress::ONE), Script::mint_200()),
+            Message::new_script(vec![2; 32], Some(AccountAddress::ONE), Script::mint_200()),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
         MockTx::one(
             // mint with entry function
-            Message::new_entry_function(Some(account_two), EntryFunction::mint(100)),
+            Message::new_entry_function(vec![3; 32], Some(account_two), EntryFunction::mint(100)),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
         ),
         MockTx::one(
             // linker error
             Message::new_entry_function(
+                vec![4; 32],
                 Some(AccountAddress::ZERO),
                 EntryFunction::mint_with_wrong_module_address(100),
             ),
@@ -285,12 +293,17 @@ fn test_simple_trasaction() {
         ),
         MockTx::one(
             // get 123
-            Message::new_entry_function(Some(AccountAddress::ZERO), EntryFunction::number()),
+            Message::new_entry_function(
+                vec![5; 32],
+                Some(AccountAddress::ZERO),
+                EntryFunction::number(),
+            ),
             ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![123, 0, 0, 0, 0, 0, 0, 0])),
         ),
         MockTx::one(
             // get coin amount for 0x1
             Message::new_entry_function(
+                vec![6; 32],
                 Some(AccountAddress::ZERO),
                 EntryFunction::get(AccountAddress::ONE),
             ),
@@ -299,6 +312,7 @@ fn test_simple_trasaction() {
         MockTx::one(
             // get coin amount for 0x0
             Message::new_entry_function(
+                vec![7; 32],
                 Some(AccountAddress::ZERO),
                 EntryFunction::get(account_two),
             ),
@@ -307,6 +321,7 @@ fn test_simple_trasaction() {
         MockTx::one(
             // get Coin structure
             Message::new_entry_function(
+                vec![8; 32],
                 Some(AccountAddress::ZERO),
                 EntryFunction::get_coin_struct(account_two),
             ),

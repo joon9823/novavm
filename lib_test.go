@@ -1,6 +1,7 @@
 package nova_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"testing"
 
@@ -75,6 +76,7 @@ func mintCoin(
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		100000000,
+		bytes.Repeat([]byte{0}, 32),
 		minter,
 		payload,
 	)
@@ -135,6 +137,7 @@ func Test_FailOnExecute(t *testing.T) {
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		100000000,
+		bytes.Repeat([]byte{0}, 32),
 		minter,
 		payload,
 	)
@@ -169,6 +172,7 @@ func Test_OutOfGas(t *testing.T) {
 		api.NewMockAPI(&api.MockBankModule{}),
 		api.MockQuerier{},
 		1,
+		bytes.Repeat([]byte{0}, 32),
 		minter,
 		payload,
 	)

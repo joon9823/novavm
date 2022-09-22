@@ -250,16 +250,17 @@ typedef struct {
 void destroy_unmanaged_vector(UnmanagedVector v);
 
 UnmanagedVector execute_contract(Db db,
-                                 GoApi api,
-                                 GoQuerier querier,
-                                 bool is_verbose,
+                                 GoApi _api,
+                                 GoQuerier _querier,
+                                 bool _is_verbose,
                                  uint64_t gas_limit,
                                  UnmanagedVector *errmsg,
+                                 ByteSliceView session_id,
                                  ByteSliceView sender,
                                  ByteSliceView message);
 
 UnmanagedVector initialize(Db db,
-                           bool is_verbose,
+                           bool _is_verbose,
                            UnmanagedVector *errmsg,
                            ByteSliceView module_bundle);
 
@@ -269,16 +270,16 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
  * exported function to publish a module
  */
 UnmanagedVector publish_module(Db db,
-                               bool is_verbose,
+                               bool _is_verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
-                               ByteSliceView module);
+                               ByteSliceView module_bytes);
 
 UnmanagedVector query_contract(Db db,
-                               GoApi api,
-                               GoQuerier querier,
-                               bool is_verbose,
+                               GoApi _api,
+                               GoQuerier _querier,
+                               bool _is_verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView message);

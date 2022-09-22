@@ -1,13 +1,14 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode 
+        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode, 
     },
-    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}},
+    move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}, native_extensions::NativeContextExtensions},
     move_vm_types::gas::UnmeteredGasMeter, move_bytecode_utils::Modules,
-    move_table_extension::{table_natives, GasParameters}, move_binary_format::CompiledModule,
+    move_table_extension::{table_natives, GasParameters, NativeTableContext, TableResolver, TableChangeSet}, move_binary_format::CompiledModule,
+    move_binary_format::{access::ModuleAccess, errors::{Location, VMError, PartialVMError, VMResult}},
 };
-use std::{sync::Arc};
+use std::{sync::Arc, collections::{BTreeSet, BTreeMap}};
 use move_deps::{
     move_stdlib,
     move_core_types::language_storage::CORE_CODE_ADDRESS
@@ -19,7 +20,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{nova_stdlib, gas::{InitialGasSchedule}, NovaVMError};
+use crate::{nova_natives::{self, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -40,7 +41,6 @@ pub struct NovaVM {
 
 impl NovaVM {
     pub fn new() -> Self {
-
         let gas_params = NovaGasParameters::initial();
         let native_gas_parameters = NativeGasParameters::initial();
 
@@ -55,7 +55,7 @@ impl NovaVM {
             move_stdlib::natives::NurseryGasParameters::zeros()))
         .into_iter()
         .chain(
-            nova_stdlib::all_natives(
+            nova_natives::all_natives(
             CORE_CODE_ADDRESS, 
             native_gas_parameters.nova_stdlib))
         .into_iter()
@@ -71,6 +71,32 @@ impl NovaVM {
         }   
     }
 
+    fn create_session<'r, S: MoveResolver + TableResolver>(&self, remote: &'r S, session_id: Vec<u8>) -> Session<'r, '_, S> {
+        let mut extensions = NativeContextExtensions::default();
+        let txn_hash: [u8; 32] = session_id
+            .try_into()
+            .expect("HashValue should convert to [u8; 32]");
+        extensions.add(NativeTableContext::new(txn_hash, remote));
+        extensions.add(NativeCodeContext::default());
+
+        self.move_vm.flush_loader_cache_if_invalidated();
+        self.move_vm.new_session_with_extensions(remote, extensions)
+    }
+
+    fn finish_session<'r, S: MoveResolver + TableResolver>(&self, session: Session<'r, '_, S>) -> Result<(ChangeSet, Vec<Event>, TableChangeSet), VMStatus> {
+        let (change_set, events, mut extensions) = session.finish_with_extensions().map_err(|e| e.into_vm_status())?;
+        let table_context: NativeTableContext = extensions.remove();
+        let table_change_set = table_context
+            .into_change_set()
+            .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;
+
+        Ok((
+            change_set,
+            events,
+            table_change_set,
+        ))
+    }
+
     pub fn initialize<S: StateView>(
         &mut self,
         resolver: &DataViewResolver<'_, S>,
@@ -82,15 +108,13 @@ impl NovaVM {
         modules.append(&mut compile_move_nursery_modules());
         modules.append(&mut compile_nova_stdlib_modules());
 
+        
         if let Some(module_bundle) = custom_module_bundle {
-            let module_bundle = module_bundle.into_inner();
-            for module in module_bundle {
-                let compiled_module = CompiledModule::deserialize(&module).unwrap();
-                modules.push(compiled_module);
-            }
+            let custom_modules = self.deserialize_module_bundle(&module_bundle).map_err(|e| e.into_vm_status())?;
+            modules.extend(custom_modules.into_iter());
         }
 
-        let mut session = self.create_session(resolver);
+        let mut session = self.create_session(resolver, vec![0; 32]);
 
         let lib = Modules::new(&modules);
         let dep_graph = lib.compute_dependency_graph();
@@ -124,9 +148,7 @@ impl NovaVM {
                     NovaVMError::from(e.into_vm_status())
                 })?;
 
-        let session_output = session.finish().map_err(|e| {
-            NovaVMError::from(e.into_vm_status())
-        })?;
+        let session_output = self.finish_session(session)?;
 
         let output = get_message_output(session_output, Gas::zero(), KeptVMStatus::Executed).map_err(|e| {
             NovaVMError::from(e)
@@ -160,11 +182,11 @@ impl NovaVM {
         
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(sender, remote_cache, payload, &mut gas_meter)
+                self.execute_script_or_entry_function(msg.session_id().to_vec(), sender, remote_cache, payload, &mut gas_meter)
             }
             MessagePayload::ModuleBundle(m) => {
                 match sender {
-                    Some(sender) => self.publish_module_bundle(sender, remote_cache, m, &mut gas_meter),
+                    Some(sender) => self.publish_module_bundle(msg.session_id().to_vec(), sender, remote_cache, m, &mut gas_meter),
                     None => return Err(NovaVMError::generic_err("sender unset")),
                 }
             },
@@ -180,7 +202,7 @@ impl NovaVM {
 
                 let (status, message_output) = match txn_status.is_discarded() {
                     true => discard_error_vm_status(err, gas_used),
-                    false => self.failed_message_cleanup(err, remote_cache, gas_used ),
+                    false => self.failed_message_cleanup(msg.session_id().to_vec(), err, remote_cache, gas_used ),
                 };
                     
                 Ok((status, message_output, None))
@@ -188,19 +210,15 @@ impl NovaVM {
         }
     }
 
-    fn create_session<'r, S: MoveResolver>(&self, remote: &'r S) -> Session<'r, '_, S> {
-        self.move_vm.flush_loader_cache_if_invalidated();
-        self.move_vm.new_session(remote)
-    }
-
     fn publish_module_bundle<S: StateView>(
         &self,
+        session_id: Vec<u8>,
         sender: AccountAddress,
         remote_cache: &DataViewResolver<'_, S>,
         modules: &ModuleBundle,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache);
+        let mut session = self.create_session(remote_cache, session_id);
 
         // TODO: verification
 
@@ -216,19 +234,21 @@ impl NovaVM {
         // epilogue use the new modules.
         // session.empty_loader_cache()?;
 
-        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
+        
+        let session_output = self.finish_session(session)?;
         let (status,output) = self.success_message_cleanup(session_output, gas_meter)?;
         Ok((status, output, None))
     }
 
     fn execute_script_or_entry_function<S: StateView>(
         &self,
+        session_id: Vec<u8>,
         sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
         payload: &MessagePayload,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache);
+        let mut session = self.create_session(remote_cache, session_id);
 
         // TODO: verification
 
@@ -278,8 +298,12 @@ impl NovaVM {
                     e.into_vm_status()
                 })?;
 
+        // Handler for NativeCodeContext - to allow a module publish other module
+        self.resolve_pending_code_publish(&mut session, gas_meter)?;
+
+        let session_output = self.finish_session(session)?;        
+        
         // Charge for change set
-        let session_output = session.finish().map_err(|e| e.into_vm_status())?;
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
         let (status, output) = self.success_message_cleanup(session_output, gas_meter)?;
         
@@ -288,7 +312,7 @@ impl NovaVM {
 
     fn success_message_cleanup(
         &self,
-        session_output : (ChangeSet, Vec<Event>),// session: Session<R>,
+        session_output : (ChangeSet, Vec<Event>, TableChangeSet),// session: Session<R>,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let gas_limit = gas_meter.gas_limit();
@@ -301,12 +325,16 @@ impl NovaVM {
 
     fn failed_message_cleanup<S: StateView>(
         &self,
+        session_id: Vec<u8>,
         error_code: VMStatus,
         remote_cache: &DataViewResolver<'_, S>,
         gas_used : Gas
     ) -> (VMStatus, MessageOutput) {
-        let session: Session<_> = self.create_session(remote_cache).into();
-        let session_output = session.finish().map_err(|e| e.into_vm_status()).unwrap();
+        // TODO - in aptos vm, they rerun tx in simulation mode and get the used gas to charge cost
+        // even the tx failed. should we follow this?
+        let session: Session<_> = self.create_session(remote_cache, session_id).into();
+        let session_output = self.finish_session(session).unwrap();
+
         // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
@@ -319,12 +347,116 @@ impl NovaVM {
             }
         }
     }
+
+    /// Deserialize a module bundle.
+    fn deserialize_module_bundle(&self, modules: &ModuleBundle) -> VMResult<Vec<CompiledModule>> {
+        let mut result = vec![];
+        for module_blob in modules.iter() {
+            match CompiledModule::deserialize(module_blob.code()) {
+                Ok(module) => {
+                    result.push(module);
+                }
+                Err(_err) => {
+                    return Err(PartialVMError::new(StatusCode::CODE_DESERIALIZATION_ERROR)
+                        .finish(Location::Undefined))
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Resolve a pending code publish request registered via the NativeCodeContext.
+    fn resolve_pending_code_publish<'r, S: MoveResolver + TableResolver>(
+        &self,
+        session: &mut Session<'r, '_, S>,
+        gas_meter: &mut NovaGasMeter,
+    ) -> Result<(), VMStatus> {
+        let ctx = session.get_native_extensions().get_mut::<NativeCodeContext>();
+
+        if let Some(PublishRequest {
+            destination,
+            bundle,
+            expected_modules,
+            allowed_deps,
+            check_compat,
+        }) = ctx.requested_module_bundle.take()
+        {
+            // TODO: unfortunately we need to deserialize the entire bundle here to handle
+            // `init_module` and verify some deployment conditions, while the VM need to do
+            // the deserialization again. Consider adding an API to MoveVM which allows to
+            // directly pass CompiledModule.
+            let modules = self.deserialize_module_bundle(&bundle)?;
+
+            // Validate the module bundle
+            self.validate_publish_request(&modules, expected_modules, allowed_deps)?;
+
+            // Publish the bundle
+            if check_compat {
+                session.publish_module_bundle(bundle.into_inner(), destination, gas_meter)?
+            } else {
+                session.publish_module_bundle_relax_compatibility(
+                    bundle.into_inner(),
+                    destination,
+                    gas_meter,
+                )?
+            }
+
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Validate a publish request.
+    fn validate_publish_request(
+        &self,
+        modules: &[CompiledModule],
+        mut expected_modules: BTreeSet<String>,
+        allowed_deps: Option<BTreeMap<AccountAddress, BTreeSet<String>>>,
+    ) -> VMResult<()> {
+        for m in modules {
+            if !expected_modules.remove(m.self_id().name().as_str()) {
+                return Err(Self::metadata_validation_error(&format!(
+                    "unregistered module: '{}'",
+                    m.self_id().name()
+                )));
+            }
+            if let Some(allowed) = &allowed_deps {
+                for dep in m.immediate_dependencies() {
+                    if !allowed
+                        .get(dep.address())
+                        .map(|modules| {
+                            modules.contains("") || modules.contains(dep.name().as_str())
+                        })
+                        .unwrap_or(false)
+                    {
+                        return Err(Self::metadata_validation_error(&format!(
+                            "unregistered dependency: '{}'",
+                            dep
+                        )));
+                    }
+                }
+            }
+        }
+        if !expected_modules.is_empty() {
+            return Err(Self::metadata_validation_error(
+                "not all registered modules published",
+            ));
+        }
+        Ok(())
+    }
+
+    fn metadata_validation_error(msg: &str) -> VMError {
+        PartialVMError::new(StatusCode::CONSTRAINT_NOT_SATISFIED)
+            .with_message(format!("metadata and code bundle mismatch: {}", msg))
+            .finish(Location::Undefined)
+    }
 }
 
 pub(crate) fn discard_error_output(err: StatusCode, gas_used : Gas) -> MessageOutput {
     info!("discard error output: {:?}", err);
     // Since this message will be discarded, no writeset will be included.
-    MessageOutput::new(ChangeSet::new(), vec![], gas_used.into(), MessageStatus::Discard(err))
+    MessageOutput::new(ChangeSet::new(), vec![], TableChangeSet::default(), gas_used.into(), MessageStatus::Discard(err))
 }
 
 pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used : Gas) -> (VMStatus, MessageOutput) {
@@ -341,15 +473,16 @@ pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used : Gas) -> (VMStatu
 }
 
 pub(crate) fn get_message_output(
-    session_output : (ChangeSet, Vec<Event>),
+    session_output : (ChangeSet, Vec<Event>, TableChangeSet),
     gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {
-    let (changeset, events) = session_output;
+    let (change_set, events, table_change_set) = session_output;
 
     Ok(MessageOutput::new(
-        changeset,
+        change_set,
         events,
+        table_change_set,
         gas_used.into(),
         MessageStatus::Keep(status),
     ))

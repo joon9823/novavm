@@ -9,7 +9,7 @@ use move_deps::move_core_types::account_address::AccountAddress;
 #[no_mangle]
 pub extern "C" fn initialize(
     db: Db,
-    is_verbose: bool,
+    _is_verbose: bool,
     errmsg: Option<&mut UnmanagedVector>,
     module_bundle: ByteSliceView,
 ) -> UnmanagedVector {
@@ -27,17 +27,17 @@ pub extern "C" fn initialize(
 #[no_mangle]
 pub extern "C" fn publish_module(
     db: Db,
-    is_verbose: bool,
+    _is_verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
     sender: ByteSliceView,
-    module: ByteSliceView,
+    module_bytes: ByteSliceView,
 ) -> UnmanagedVector {
-    let m = module.to_owned().unwrap();
+    let mb = module_bytes.to_owned().unwrap();
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
-        vm::publish_module(addr, m, db, gas_limit)
+        vm::publish_module(addr, mb, db, gas_limit)
     }))
     .unwrap_or_else(|_| Err(Error::panic()));
 
@@ -49,19 +49,21 @@ pub extern "C" fn publish_module(
 #[no_mangle]
 pub extern "C" fn execute_contract(
     db: Db,
-    api: GoApi,
-    querier: GoQuerier,
-    is_verbose: bool,
+    _api: GoApi,
+    _querier: GoQuerier,
+    _is_verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
+    session_id: ByteSliceView,
     sender: ByteSliceView,
     message: ByteSliceView,
 ) -> UnmanagedVector {
+    let sid = session_id.to_owned().unwrap();
     let payload = message.to_owned().unwrap();
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
 
     let res = catch_unwind(AssertUnwindSafe(move || {
-        vm::execute_contract(addr, payload, db, gas_limit)
+        vm::execute_contract(sid, addr, payload, db, gas_limit)
     }))
     .unwrap_or_else(|_| Err(Error::panic()));
 
@@ -73,9 +75,9 @@ pub extern "C" fn execute_contract(
 #[no_mangle]
 pub extern "C" fn query_contract(
     db: Db,
-    api: GoApi,
-    querier: GoQuerier,
-    is_verbose: bool,
+    _api: GoApi,
+    _querier: GoQuerier,
+    _is_verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
     message: ByteSliceView,

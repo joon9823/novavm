@@ -31,19 +31,19 @@ impl ContractEvent {
         }
     }
 
-    pub fn key(&self) -> &Vec<u8> {
+    pub fn _key(&self) -> &Vec<u8> {
         &self.key
     }
 
-    pub fn sequence_number(&self) -> u64 {
+    pub fn _sequence_number(&self) -> u64 {
         self.sequence_number
     }
 
-    pub fn event_data(&self) -> &[u8] {
+    pub fn _event_data(&self) -> &[u8] {
         &self.event_data
     }
 
-    pub fn type_tag(&self) -> &TypeTag {
+    pub fn _type_tag(&self) -> &TypeTag {
         &self.type_tag
     }
 }

@@ -67,6 +67,7 @@ func ExecuteContract(
 	querier Querier,
 	isVerbose bool,
 	gasLimit uint64,
+	session_id []byte,
 	sender []byte,
 	message []byte,
 ) ([]byte, error) {
@@ -77,14 +78,16 @@ func ExecuteContract(
 	_api := buildAPI(&api)
 	_querier := buildQuerier(&querier)
 
-	msg := makeView(message)
-	defer runtime.KeepAlive(msg)
+	sid := makeView(session_id)
+	defer runtime.KeepAlive(sid)
 	senderView := makeView(sender)
 	defer runtime.KeepAlive(senderView)
+	msg := makeView(message)
+	defer runtime.KeepAlive(msg)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, msg)
+	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
