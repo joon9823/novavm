@@ -1,14 +1,14 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode 
+        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode, 
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}, native_extensions::NativeContextExtensions},
     move_vm_types::gas::UnmeteredGasMeter, move_bytecode_utils::Modules,
     move_table_extension::{table_natives, GasParameters, NativeTableContext, TableResolver, TableChangeSet}, move_binary_format::CompiledModule,
-    move_binary_format::errors::Location,
+    move_binary_format::{access::ModuleAccess, errors::{Location, VMError, PartialVMError, VMResult}},
 };
-use std::{sync::Arc};
+use std::{sync::Arc, collections::{BTreeSet, BTreeMap}};
 use move_deps::{
     move_stdlib,
     move_core_types::language_storage::CORE_CODE_ADDRESS
@@ -20,7 +20,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{nova_stdlib::{self, code::NativeCodeContext}, gas::{InitialGasSchedule}, NovaVMError};
+use crate::{nova_stdlib::{self, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -108,12 +108,10 @@ impl NovaVM {
         modules.append(&mut compile_move_nursery_modules());
         modules.append(&mut compile_nova_stdlib_modules());
 
+        
         if let Some(module_bundle) = custom_module_bundle {
-            let module_bundle = module_bundle.into_inner();
-            for module in module_bundle {
-                let compiled_module = CompiledModule::deserialize(&module).unwrap();
-                modules.push(compiled_module);
-            }
+            let custom_modules = self.deserialize_module_bundle(&module_bundle).map_err(|e| e.into_vm_status())?;
+            modules.extend(custom_modules.into_iter());
         }
 
         let mut session = self.create_session(resolver, vec![0; 32]);
@@ -300,8 +298,12 @@ impl NovaVM {
                     e.into_vm_status()
                 })?;
 
+        // Handler for NativeCodeContext - to allow a module publish other module
+        self.resolve_pending_code_publish(&mut session, gas_meter)?;
+
+        let session_output = self.finish_session(session)?;        
+        
         // Charge for change set
-        let session_output = self.finish_session(session)?;
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
         let (status, output) = self.success_message_cleanup(session_output, gas_meter)?;
         
@@ -344,6 +346,110 @@ impl NovaVM {
                 (VMStatus::Error(status), discard_error_output(status, gas_used))
             }
         }
+    }
+
+    /// Deserialize a module bundle.
+    fn deserialize_module_bundle(&self, modules: &ModuleBundle) -> VMResult<Vec<CompiledModule>> {
+        let mut result = vec![];
+        for module_blob in modules.iter() {
+            match CompiledModule::deserialize(module_blob.code()) {
+                Ok(module) => {
+                    result.push(module);
+                }
+                Err(_err) => {
+                    return Err(PartialVMError::new(StatusCode::CODE_DESERIALIZATION_ERROR)
+                        .finish(Location::Undefined))
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Resolve a pending code publish request registered via the NativeCodeContext.
+    fn resolve_pending_code_publish<'r, S: MoveResolver + TableResolver>(
+        &self,
+        session: &mut Session<'r, '_, S>,
+        gas_meter: &mut NovaGasMeter,
+    ) -> Result<(), VMStatus> {
+        let ctx = session.get_native_extensions().get_mut::<NativeCodeContext>();
+
+        if let Some(PublishRequest {
+            destination,
+            bundle,
+            expected_modules,
+            allowed_deps,
+            check_compat,
+        }) = ctx.requested_module_bundle.take()
+        {
+            // TODO: unfortunately we need to deserialize the entire bundle here to handle
+            // `init_module` and verify some deployment conditions, while the VM need to do
+            // the deserialization again. Consider adding an API to MoveVM which allows to
+            // directly pass CompiledModule.
+            let modules = self.deserialize_module_bundle(&bundle)?;
+
+            // Validate the module bundle
+            self.validate_publish_request(&modules, expected_modules, allowed_deps)?;
+
+            // Publish the bundle
+            if check_compat {
+                session.publish_module_bundle(bundle.into_inner(), destination, gas_meter)?
+            } else {
+                session.publish_module_bundle_relax_compatibility(
+                    bundle.into_inner(),
+                    destination,
+                    gas_meter,
+                )?
+            }
+
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Validate a publish request.
+    fn validate_publish_request(
+        &self,
+        modules: &[CompiledModule],
+        mut expected_modules: BTreeSet<String>,
+        allowed_deps: Option<BTreeMap<AccountAddress, BTreeSet<String>>>,
+    ) -> VMResult<()> {
+        for m in modules {
+            if !expected_modules.remove(m.self_id().name().as_str()) {
+                return Err(Self::metadata_validation_error(&format!(
+                    "unregistered module: '{}'",
+                    m.self_id().name()
+                )));
+            }
+            if let Some(allowed) = &allowed_deps {
+                for dep in m.immediate_dependencies() {
+                    if !allowed
+                        .get(dep.address())
+                        .map(|modules| {
+                            modules.contains("") || modules.contains(dep.name().as_str())
+                        })
+                        .unwrap_or(false)
+                    {
+                        return Err(Self::metadata_validation_error(&format!(
+                            "unregistered dependency: '{}'",
+                            dep
+                        )));
+                    }
+                }
+            }
+        }
+        if !expected_modules.is_empty() {
+            return Err(Self::metadata_validation_error(
+                "not all registered modules published",
+            ));
+        }
+        Ok(())
+    }
+
+    fn metadata_validation_error(msg: &str) -> VMError {
+        PartialVMError::new(StatusCode::CONSTRAINT_NOT_SATISFIED)
+            .with_message(format!("metadata and code bundle mismatch: {}", msg))
+            .finish(Location::Undefined)
     }
 }
 
