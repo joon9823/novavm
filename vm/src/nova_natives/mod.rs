@@ -1,8 +1,9 @@
 // Copyright (c) Aptos
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod code;
 mod helpers;
+
+pub mod code;
 pub mod signature;
 pub mod type_info;
 pub mod util;

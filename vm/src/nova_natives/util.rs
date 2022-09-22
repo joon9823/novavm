@@ -72,5 +72,5 @@ pub struct GasParameters {
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [("from_bytes", make_native_from_bytes(gas_params.from_bytes))];
 
-    crate::nova_stdlib::helpers::make_module_natives(natives)
+    crate::nova_natives::helpers::make_module_natives(natives)
 }

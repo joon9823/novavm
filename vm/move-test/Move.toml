@@ -3,7 +3,7 @@ name = "test1"
 version = "0.0.0"
 
 [dependencies]
-MoveNursery = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib/nursery", rev = "70b34a66473c34ad30d101290b249f2db3c847a2" }
+MoveNursery = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib/nursery", rev = "0fe2e6ce5af811d68b8a995b7da3f4c4ecc485fa" }
 NovaStdlib = { local = "../src/nova_stdlib" }
 
 [addresses]

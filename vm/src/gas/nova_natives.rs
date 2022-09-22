@@ -1,6 +1,6 @@
-use crate::nova_stdlib::GasParameters;
+use crate::nova_natives::GasParameters;
 
-crate::gas::natives::define_gas_parameters_for_natives!(GasParameters, "nova_stdlib", [
+crate::gas::natives::define_gas_parameters_for_natives!(GasParameters, "nova_natives", [
     [.signature.bls12381_validate_pubkey.base_cost, "signature.bls12381_validate_pubkey.base", 1],
     [.signature.ed25519_validate_pubkey.base_cost, "signature.ed25519_validate_pubkey.base", 1],
     [.signature.ed25519_verify.base_cost, "signature.ed25519_verify.base", 1],

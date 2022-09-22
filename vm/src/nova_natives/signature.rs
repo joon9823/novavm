@@ -568,5 +568,5 @@ pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, Nati
         ),
     ];
 
-    crate::nova_stdlib::helpers::make_module_natives(natives)
+    crate::nova_natives::helpers::make_module_natives(natives)
 }

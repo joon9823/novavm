@@ -20,7 +20,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{nova_stdlib::{self, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
+use crate::{nova_natives::{self, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -55,7 +55,7 @@ impl NovaVM {
             move_stdlib::natives::NurseryGasParameters::zeros()))
         .into_iter()
         .chain(
-            nova_stdlib::all_natives(
+            nova_natives::all_natives(
             CORE_CODE_ADDRESS, 
             native_gas_parameters.nova_stdlib))
         .into_iter()

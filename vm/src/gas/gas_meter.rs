@@ -25,7 +25,7 @@ use move_deps::move_stdlib;
 use syn::token::In;
 use std::collections::BTreeMap;
 
-use crate::nova_stdlib;
+use crate::nova_natives;
 
 // TODO : remove this if we don't need to store gas schedule on chain
 /// A trait for converting from a map representation of the on-chain gas schedule.
@@ -54,7 +54,7 @@ pub trait InitialGasSchedule: Sized {
 #[derive(Debug, Clone)]
 pub struct NativeGasParameters {
     pub move_stdlib: move_stdlib::natives::GasParameters,
-    pub nova_stdlib: nova_stdlib::GasParameters,
+    pub nova_stdlib: nova_natives::GasParameters,
     
     // TODO : add move_table_extension later
     // pub table: move_table_extension::GasParameters,
@@ -84,7 +84,7 @@ impl NativeGasParameters {
     pub fn zeros() -> Self {
         Self {
             move_stdlib: move_stdlib::natives::GasParameters::zeros(),
-            nova_stdlib: nova_stdlib::GasParameters::zeros(),
+            nova_stdlib: nova_natives::GasParameters::zeros(),
             // table: move_table_extension::GasParameters::zeros(),
         }
     }

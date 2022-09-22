@@ -22,7 +22,7 @@ mod natives;
 mod params;
 
 mod algebra;
-mod nova_stdlib;
+mod nova_natives;
 mod gas_meter;
 mod instr;
 mod misc;
