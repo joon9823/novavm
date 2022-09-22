@@ -4,15 +4,15 @@ BUILDERS_PREFIX := nova/go-ext-builder:0012
 
 .PHONY: docker-image-centos7
 docker-image-centos7:
-	docker build --platform linux/amd64 --pull . -t $(BUILDERS_PREFIX)-centos7 -f ./Dockerfile.centos7
+	docker build --pull . -t $(BUILDERS_PREFIX)-centos7 -f ./Dockerfile.centos7
 
 .PHONY: docker-image-cross
 docker-image-cross:
-	docker build --platform linux/amd64 --pull . -t $(BUILDERS_PREFIX)-cross -f ./Dockerfile.cross
+	docker build --pull . -t $(BUILDERS_PREFIX)-cross -f ./Dockerfile.cross
 
 .PHONY: docker-image-alpine
 docker-image-alpine:
-	docker build --platform linux/amd64 --pull . -t $(BUILDERS_PREFIX)-alpine -f ./Dockerfile.alpine
+	docker build --pull . -t $(BUILDERS_PREFIX)-alpine -f ./Dockerfile.alpine
 
 .PHONY: docker-images
 docker-images: docker-image-centos7 docker-image-cross docker-image-alpine

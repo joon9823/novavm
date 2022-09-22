@@ -1,6 +1,12 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
+# create artifacts directory
+mkdir -p artifacts
+
+# set pkg_config to allow cross compile
+export PKG_CONFIG_ALLOW_CROSS=1
+
 # See https://github.com/CosmWasm/wasmvm/issues/222#issuecomment-880616953 for two approaches to
 # enable stripping through cargo (if that is desired).
 
@@ -17,5 +23,8 @@ export AR_aarch64_unknown_linux_gnu=llvm-ar
 export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=/usr/aarch64-linux-gnu"
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
+export OPENSSL_DIR=/opt/aarch64-openssl
+
+# build libnovaproc for aarch64
 cargo build --release --target aarch64-unknown-linux-gnu
-cp target/aarch64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.aarch64.so
+cp -R target/aarch64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.aarch64.so

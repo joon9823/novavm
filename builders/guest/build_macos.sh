@@ -1,6 +1,12 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
+# create artifacts directory
+mkdir -p artifacts
+
+# set pkg_config to allow cross compile
+export PKG_CONFIG_ALLOW_CROSS=1
+
 # ref: https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
 export PATH="/opt/osxcross/target/bin:$PATH"
 export LIBZ_SYS_STATIC=1

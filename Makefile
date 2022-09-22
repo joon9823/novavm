@@ -91,7 +91,7 @@ clean:
 release-build-alpine:
 	rm -rf libnovaproc/target/release
 	# build the muslc *.a file
-	docker run --platform linux/amd64 --rm -u $(USER_ID):$(USER_GROUP)  \
+	docker run --rm -u $(USER_ID):$(USER_GROUP)  \
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
@@ -100,14 +100,14 @@ release-build-alpine:
 	cp libnovaproc/artifacts/libnovaproc_muslc.aarch64.a api
 	make update-bindings
 	# try running go tests using this lib with muslc
-	# docker run --platform linux/amd64 --rm -u $(USER_ID):$(USER_GROUP) -v $(shell pwd):/mnt/testrun -w /mnt/testrun $(ALPINE_TESTER) go build -tags muslc ./...
+	# docker run --rm -u $(USER_ID):$(USER_GROUP) -v $(shell pwd):/mnt/testrun -w /mnt/testrun $(ALPINE_TESTER) go build -tags muslc ./...
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
-	# docker run --platform linux/amd64 --rm -u $(USER_ID):$(USER_GROUP) -v $(shell pwd):/mnt/testrun -w /mnt/testrun $(ALPINE_TESTER) go test -tags muslc -count=1 ./...
+	# docker run --rm -u $(USER_ID):$(USER_GROUP) -v $(shell pwd):/mnt/testrun -w /mnt/testrun $(ALPINE_TESTER) go test -tags muslc -count=1 ./...
 
 # Creates a release build in a containerized build environment of the shared library for glibc Linux (.so)
 release-build-linux:
 	rm -rf libnovaproc/target/release
-	docker run --platform linux/amd64 --rm -u $(USER_ID):$(USER_GROUP) \
+	docker run --rm -u $(USER_ID):$(USER_GROUP) \
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
@@ -120,7 +120,7 @@ release-build-linux:
 release-build-macos:
 	rm -rf libnovaproc/target/x86_64-apple-darwin/release
 	rm -rf libnovaproc/target/aarch64-apple-darwin/release
-	docker run --platform linux/amd64 --rm -u $(USER_ID):$(USER_GROUP) \
+	docker run --rm -u $(USER_ID):$(USER_GROUP) \
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
