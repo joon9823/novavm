@@ -9,4 +9,4 @@ NovaStdlib = { local = "../src/nova_stdlib" }
 [addresses]
 nova_std = "0x1"
 std = "0x1"
-TestAccount = "0xCAFE"
+TestAccount = "0x2"
