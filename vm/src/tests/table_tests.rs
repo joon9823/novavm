@@ -185,7 +185,7 @@ fn test_tables() {
                 Some(generate_account("0x5")),
                 EntryFunction::table_borrow_global(),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![55, 0, 0, 0, 0, 0, 0, 0])),
+            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![55, 0, 0, 0, 0, 0, 0, 0])),
         ),
         MockTx::one(
             // tables in table
