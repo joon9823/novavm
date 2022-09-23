@@ -1,8 +1,7 @@
 //! This module defines all the gas parameters for transactions, along with their initial values
 //! in the genesis and a mapping between the Rust representation and the on-chain gas schedule.
 
-use crate::{gas::algebra::{FeePerGasUnit, Gas, GasScalingFactor, GasUnit}, access_path::AccessPath};
-// use aptos_types::{state_store::state_key::StateKey, write_set::WriteOp};
+use crate::{gas::algebra::{FeePerGasUnit, Gas, GasScalingFactor, GasUnit}};
 use move_deps::move_core_types::{
     gas_algebra::{
         InternalGas, InternalGasPerArg, InternalGasPerByte, InternalGasUnit, NumArgs, NumBytes,

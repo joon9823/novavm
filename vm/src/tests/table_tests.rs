@@ -1,5 +1,5 @@
 use crate::{
-    message::{EntryFunction, Message, Module, ModuleBundle, Script},
+    message::{EntryFunction, Message, Module, ModuleBundle},
 };
 
 use move_deps::{
@@ -7,9 +7,8 @@ use move_deps::{
     move_core_types::{
         account_address::AccountAddress,
         identifier::Identifier,
-        language_storage::{ModuleId, TypeTag},
-        parser::parse_struct_tag,
-        vm_status::{StatusCode, VMStatus},
+        language_storage::ModuleId,
+        vm_status::VMStatus,
     },
 };
 

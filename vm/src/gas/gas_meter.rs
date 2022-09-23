@@ -1,7 +1,6 @@
 //! This module contains the official gas meter implementation, along with some top-level gas
 //! parameters and traits to help manipulate them.
 
-use crate::access_path::AccessPath;
 use crate::gas::{
     algebra::Gas, instr::InstructionGasParameters, misc::MiscGasParameters,
     transaction::TransactionGasParameters,
@@ -22,7 +21,6 @@ use move_deps::move_vm_types::{
     views::{TypeView, ValueView},
 };
 use move_deps::move_stdlib;
-use syn::token::In;
 use std::collections::BTreeMap;
 
 use crate::nova_natives;

@@ -2,11 +2,9 @@
 // Copyright (c) The Move Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Ok;
 use move_deps::{
     move_cli::base::test::{run_move_unit_tests, UnitTestResult},
-    move_core_types::account_address::AccountAddress,
-    move_table_extension::{table_natives, GasParameters, NativeTableContext},
+    move_table_extension::{table_natives, GasParameters},
     move_unit_test::UnitTestingConfig,
     move_stdlib, move_unit_test, move_package,
     move_core_types::language_storage::CORE_CODE_ADDRESS,
