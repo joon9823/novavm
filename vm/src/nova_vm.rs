@@ -144,9 +144,12 @@ impl NovaVM {
         session
                 .publish_module_bundle(modules, addr_opt.unwrap(), &mut UnmeteredGasMeter)
                 .map_err(|e| {
+                    self.move_vm.mark_loader_cache_as_invalid();
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     NovaVMError::from(e.into_vm_status())
                 })?;
+        
+        self.move_vm.mark_loader_cache_as_invalid();
 
         let session_output = self.finish_session(session)?;
 
@@ -154,14 +157,6 @@ impl NovaVM {
             NovaVMError::from(e)
         })?;
         Ok((VMStatus::Executed, output, None))
-    }
-
-    /// Allows the adapter to announce to the VM that the code loading cache should be considered
-    /// outdated. This can happen if the adapter executed a particular code publishing transaction
-    /// but decided to not commit the result to the data store. Because the code cache currently
-    /// does not support deletion, the cache will, incorrectly, still contain this module.
-    pub fn invalidate_loader_cache(&self) {
-        self.move_vm.mark_loader_cache_as_invalid();
     }
 
     pub fn execute_message<S: StateView>(
@@ -226,14 +221,12 @@ impl NovaVM {
         session
                 .publish_module_bundle(module_bin_list, sender, gas_meter)
                 .map_err(|e| {
+                    self.move_vm.mark_loader_cache_as_invalid();
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
             
-        // after publish the modules, we need to clear loader cache, to make init script function and
-        // epilogue use the new modules.
-        // session.empty_loader_cache()?;
-
+        self.move_vm.mark_loader_cache_as_invalid();
         
         let session_output = self.finish_session(session)?;
         let (status,output) = self.success_message_cleanup(session_output, gas_meter)?;
@@ -294,9 +287,12 @@ impl NovaVM {
             }
             .map_err(|e|
                 {
+                    self.move_vm.mark_loader_cache_as_invalid();
                     println!("[VM] execute_entry_function error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                     e.into_vm_status()
                 })?;
+
+        self.move_vm.mark_loader_cache_as_invalid();
 
         // Handler for NativeCodeContext - to allow a module publish other module
         self.resolve_pending_code_publish(&mut session, gas_meter)?;
