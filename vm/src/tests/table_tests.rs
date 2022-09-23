@@ -70,10 +70,10 @@ impl EntryFunction {
         )
     }
 
-    fn table_borrow_mut_wiht_default() -> Self {
+    fn table_borrow_mut_with_default() -> Self {
         Self::new(
             Module::get_table_test_data_module_id(),
-            Identifier::new("table_borrow_mut_wiht_default").unwrap(),
+            Identifier::new("table_borrow_mut_with_default").unwrap(),
             vec![],
             vec![],
         )
@@ -165,7 +165,7 @@ fn test_tables() {
             Message::new_entry_function(
                 vec![6; 32],
                 Some(generate_account("0x4")),
-                EntryFunction::table_borrow_mut_wiht_default(),
+                EntryFunction::table_borrow_mut_with_default(),
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![232, 3, 0, 0, 0, 0, 0, 0])),
         ),
@@ -176,16 +176,16 @@ fn test_tables() {
                 Some(generate_account("0x5")),
                 EntryFunction::add_after_remove(),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![0, 0, 0, 0, 0, 0, 0, 0])),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![55, 0, 0, 0, 0, 0, 0, 0])),
         ),
         MockTx::one(
-            // tables in table
+            // borrow global
             Message::new_entry_function(
                 vec![8; 32],
-                Some(generate_account("0x6")),
+                Some(generate_account("0x5")),
                 EntryFunction::table_borrow_global(),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![245, 3, 0, 0, 0, 0, 0, 0])),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![55, 0, 0, 0, 0, 0, 0, 0])),
         ),
         MockTx::one(
             // tables in table

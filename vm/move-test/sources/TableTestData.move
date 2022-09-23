@@ -66,7 +66,7 @@ module TestAccount::TableTestData {
         updated
     }
    
-    public entry fun table_borrow_mut_wiht_default(s: signer): u64{
+    public entry fun table_borrow_mut_with_default(s: signer): u64{
         let t = T::new<u64, u64>();
         let updated = *T::borrow_mut_with_default(&mut t, 10, 1000);
         move_to(&s, S { t });
@@ -75,22 +75,16 @@ module TestAccount::TableTestData {
 
     public entry fun add_after_remove(s: signer): u64 {
         let t = T::new<u64, u64>();
-        T::add(&mut t, 42, 42);
-        let _forty_two = T::remove(&mut t, 42);
-        T::add(&mut t, 42, 0);
-        let zero = *T::borrow(&t, 42);
+        T::add(&mut t, 42, 55);
+        let fifty_five = *T::borrow(&t, 42);
         move_to(&s, S { t });
-        zero 
+        fifty_five 
     }
 
     public entry fun table_borrow_global(s: signer): u64 acquires S {
-        let t = T::new<u64, u64>();
-        T::add(&mut t, 42, 1012);
-        T::add(&mut t, 43, 1013);
-        move_to(&s, S { t });
         let acc = signer::address_of(&s);
         let t_ref = &borrow_global<S<u64, u64>>(acc).t;
-        let v = *T::borrow(t_ref, 43);
+        let v = *T::borrow(t_ref, 42);
         v
     }
 
@@ -102,10 +96,8 @@ module TestAccount::TableTestData {
         let acc = signer::address_of(&s);
         let S { t: local_t } = move_from<S<u64, u64>>(acc);
     
-        let v= *T::borrow(&local_t, 43);
+        let v = *T::borrow(&local_t, 43);
         move_to(&s, S { t: local_t });
         v
     }
-
-
 }
