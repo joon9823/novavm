@@ -72,5 +72,3 @@ fn test_compile_nova_stdlib_modules() {
     let modules = compile_nova_stdlib_modules();
     assert!(!modules.is_empty()); // TODO: check that all modules are compiled
 }
-
-// /extensions/move-table-extension/sources

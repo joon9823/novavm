@@ -1,4 +1,4 @@
-module 0x77d96ae5e7885b19b5bf4e680e129ace8fd58fb1::TestCoin {
+module TestAccount::TestCoin {
     use std::signer;
     use std::event::{Self, EventHandle};
 
