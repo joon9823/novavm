@@ -98,12 +98,8 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     } in testcases
     {
         let mut state = chain.create_state();
-        let mut module_published = false;
 
         for (msg, exp_output) in msg_tests {
-            if matches!(msg.payload(), MessagePayload::ModuleBundle(_)) {
-                module_published = true;
-            }
             let resolver = DataViewResolver::new(&state);
             let (status, output, result) = vm
                 .execute_message(msg, &resolver, gas_limit)
@@ -129,11 +125,6 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
 
         if should_commit {
             chain.commit(state);
-        } else {
-            // invalidate only when tx has module publish msg
-            if module_published {
-                vm.invalidate_loader_cache();
-            }
         }
     }
 }
