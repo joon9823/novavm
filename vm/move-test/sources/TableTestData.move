@@ -4,7 +4,7 @@ module TestAccount::TableTestData {
     use std::signer;
     use nova_std::table as T;
 
-    struct S<phantom K: copy + drop,phantom V> has key {
+    struct S<K: copy + drop,V> has key {
         t: T::Table<K, V>
     }
 
