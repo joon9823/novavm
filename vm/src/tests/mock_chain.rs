@@ -1,10 +1,10 @@
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
-use move_deps::move_core_types::{
+use move_deps::{move_core_types::{
     effects::{ChangeSet, Op},
     language_storage::ModuleId,
-};
+}, move_table_extension::TableChangeSet};
 
 pub struct MockChain {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
@@ -45,7 +45,7 @@ impl MockState {
         }
     }
 
-    pub fn push_write_set(&mut self, changeset: ChangeSet) {
+    pub fn push_write_set(&mut self, changeset: ChangeSet, table_change_set: &TableChangeSet) {
         for (addr, account_changeset) in changeset.into_inner() {
             let (modules, resources) = account_changeset.into_inner();
             for (struct_tag, blob_opt) in resources {
@@ -56,6 +56,13 @@ impl MockState {
             for (name, blob_opt) in modules {
                 let ap = AccessPath::from(&ModuleId::new(addr, name));
                 self.write_op(ap, blob_opt)
+            }
+
+            for (handle, change) in &table_change_set.changes {
+                for (key, blob_opt) in &change.entries {
+                    let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+                    self.write_op(ap, blob_opt.clone())
+                }
             }
         }
     }

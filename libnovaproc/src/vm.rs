@@ -5,6 +5,7 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
+use move_deps::move_table_extension::TableChangeSet;
 use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
@@ -38,7 +39,7 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: &[u8]) -> Result<Vec<u8>, Er
 
     match status {
         VMStatus::Executed => {
-            push_write_set(&mut storage, output.change_set())?;
+            push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
         }
         _ => Err(Error::from(status))?,
     }
@@ -68,7 +69,7 @@ pub(crate) fn publish_module(
 
     match status {
         VMStatus::Executed => {
-            push_write_set(&mut storage, output.change_set())?;
+            push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
 
             let res = generate_result(status, output, retval, false)?;
             to_vec(&res)
@@ -136,7 +137,7 @@ fn execute_entry_function_internal(
     match status {
         VMStatus::Executed => {
             if !is_query {
-                push_write_set(&mut storage, output.change_set())?;
+                push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
             }
 
             let res = generate_result(status, output, retval, is_query)?;
@@ -161,7 +162,11 @@ fn write_op(
     }
 }
 
-pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> BackendResult<()> {
+pub fn push_write_set(
+    go_storage: &mut GoStorage,
+    changeset: &ChangeSet,
+    table_change_set: &TableChangeSet,
+) -> BackendResult<()> {
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
             let ap = AccessPath::resource_access_path(addr.clone(), struct_tag.clone());
@@ -172,7 +177,15 @@ pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> Back
             let ap = AccessPath::from(&ModuleId::new(addr.clone(), name.clone()));
             write_op(go_storage, &ap, &blob_opt)?;
         }
+
+        for (handle, change) in &table_change_set.changes {
+            for (key, val) in &change.entries {
+                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+                write_op(go_storage, &ap, &val)?;
+            }
+        }
     }
+
     Ok(())
 }
 
@@ -210,7 +223,7 @@ fn execute_script_internal(
     match status {
         VMStatus::Executed => {
             if !is_query {
-                push_write_set(&mut storage, output.change_set())?;
+                push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
             }
 
             let res = generate_result(status, output, retval, is_query)?;
