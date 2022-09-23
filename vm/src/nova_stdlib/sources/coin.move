@@ -161,6 +161,28 @@ module nova_std::coin {
     }
 
     // Chain functions
+    /// Creates a new Coin with given `CoinType`
+    public entry fun native_initialize<CoinType>(
+        chain: &signer,
+        name: string::String,
+        symbol: string::String,
+        decimals: u8,
+    ) {
+        assert!(signer::address_of(chain) == @nova_std, error::invalid_argument(ECOIN_UNAUTHORIZED));
+        assert!(!exists<CoinInfo<CoinType>>(@nova_std), error::already_exists(ECOIN_INFO_ALREADY_PUBLISHED));
+
+        assert!(string::length(&name) <= MAX_COIN_NAME_LENGTH, error::invalid_argument(ECOIN_NAME_TOO_LONG));
+        assert!(string::length(&symbol) <= MAX_COIN_SYMBOL_LENGTH, error::invalid_argument(ECOIN_SYMBOL_TOO_LONG));
+
+        let coin_info = CoinInfo<CoinType> {
+            name,
+            symbol,
+            decimals,
+            supply: (0 as u128),
+        };
+        move_to(chain, coin_info);
+    }
+
     /// Burn native coins to the recipient
     public entry fun native_burn_from<CoinType>(chain: &signer, account_addr: address, amount: u64) acquires CoinStore, CoinInfo {
         assert!(signer::address_of(chain) == @nova_std, ECOIN_UNAUTHORIZED);
@@ -176,10 +198,10 @@ module nova_std::coin {
         assert!(signer::address_of(chain) == @nova_std, ECOIN_UNAUTHORIZED);
         assert!(amount > 0, error::invalid_argument(EZERO_COIN_AMOUNT));
 
+        deposit<CoinType>(account_addr, Coin<CoinType> { value: amount });
+
         let coin_info = borrow_global_mut<CoinInfo<CoinType>>(coin_address<CoinType>());
         coin_info.supply = coin_info.supply + (amount as u128);
-
-        deposit<CoinType>(account_addr, Coin<CoinType> { value: amount });
     }
 
     // Public functions
@@ -339,7 +361,7 @@ module nova_std::coin {
         Coin<CoinType> { value: amount }
     }
 
-    public fun register<CoinType>(account: &signer) {
+    public entry fun register<CoinType>(account: &signer) {
         let account_addr = signer::address_of(account);
         assert!(
             !is_account_registered<CoinType>(account_addr),
