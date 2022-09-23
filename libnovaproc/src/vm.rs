@@ -9,11 +9,11 @@ use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::BackendResult;
-use novavm::EntryFunction;
 use novavm::Message;
 use novavm::Module;
 use novavm::ModuleBundle;
 use novavm::NovaVM;
+use novavm::{EntryFunction, Script};
 
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_core_types::effects::ChangeSet;
@@ -25,12 +25,12 @@ use once_cell::sync::Lazy;
 
 static mut INSTANCE: Lazy<NovaVM> = Lazy::new(|| NovaVM::new());
 
-pub(crate) fn initialize_vm(db_handle: Db, payload: Vec<u8>) -> Result<Vec<u8>, Error> {
+pub(crate) fn initialize_vm(db_handle: Db, payload: &[u8]) -> Result<Vec<u8>, Error> {
     //let cv = CosmosView::new(&db_handle);
     let mut storage = GoStorage::new(db_handle);
 
     // add passed custom module bundles
-    let custom_module_bundle: ModuleBundle = serde_json::from_slice(payload.as_slice()).unwrap();
+    let custom_module_bundle: ModuleBundle = serde_json::from_slice(payload).unwrap();
 
     let data_view = DataViewResolver::new(&storage);
     let (status, output, _retval) =
@@ -84,7 +84,7 @@ pub(crate) fn execute_script(
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(session_id, Some(sender), payload, db_handle, gas, false)
+    execute_script_internal(session_id, Some(sender), payload, db_handle, gas, false)
 }
 
 pub(crate) fn execute_contract(
@@ -94,15 +94,19 @@ pub(crate) fn execute_contract(
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry(session_id, Some(sender), payload, db_handle, gas, false)
+    execute_entry_function_internal(session_id, Some(sender), payload, db_handle, gas, false)
 }
 
 // works as smart query
 pub(crate) fn query_contract(payload: Vec<u8>, db_handle: Db, gas: u64) -> Result<Vec<u8>, Error> {
-    execute_entry(vec![0; 32], None, payload, db_handle, gas, true)
+    execute_entry_function_internal(vec![0; 32], None, payload, db_handle, gas, true)
 }
 
-fn execute_entry(
+/////////////////////////////////////////
+/// Entry Function //////////////////////
+/////////////////////////////////////////
+
+fn execute_entry_function_internal(
     session_id: Vec<u8>, // seed for global unique session id
     sender: Option<AccountAddress>,
     payload: Vec<u8>,
@@ -142,6 +146,10 @@ fn execute_entry(
     }
 }
 
+/////////////////////////////////////////
+/// Storage Operation ///////////////////
+/////////////////////////////////////////
+
 fn write_op(
     go_storage: &mut GoStorage,
     ap: &AccessPath,
@@ -166,4 +174,48 @@ pub fn push_write_set(go_storage: &mut GoStorage, changeset: &ChangeSet) -> Back
         }
     }
     Ok(())
+}
+
+/////////////////////////////////////////
+/// Script //////////////////////////////
+/////////////////////////////////////////
+
+fn execute_script_internal(
+    session_id: Vec<u8>, // seed for global unique session id
+    sender: Option<AccountAddress>,
+    payload: Vec<u8>,
+    db_handle: Db,
+    gas: u64,
+    is_query: bool,
+) -> Result<Vec<u8>, Error> {
+    if !is_query && sender.is_none() {
+        return Err(Error::unset_arg("sender"));
+    }
+
+    let gas_limit = Gas::new(gas);
+
+    let script: Script = serde_json::from_slice(payload.as_slice()).unwrap();
+    let message: Message = Message::new_script(session_id, sender, script);
+
+    //let cv = CosmosView::new(&db_handle);
+    let mut storage = GoStorage::new(db_handle);
+    let data_view = DataViewResolver::new(&storage);
+
+    let (status, output, retval) = unsafe {
+        INSTANCE
+            .execute_message(message, &data_view, gas_limit)
+            .map_err(|e| Error::from(e))?
+    };
+
+    match status {
+        VMStatus::Executed => {
+            if !is_query {
+                push_write_set(&mut storage, output.change_set())?;
+            }
+
+            let res = generate_result(status, output, retval, is_query)?;
+            to_vec(&res)
+        }
+        _ => Err(Error::from(status)),
+    }
 }

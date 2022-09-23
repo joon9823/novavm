@@ -142,44 +142,65 @@ func (vm *VM) ExecuteScript(
 	goApi api.GoAPI,
 	querier api.Querier,
 	gasLimit uint64,
+	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
 	payload types.ExecuteScriptPayload,
 ) (uint64, []types.Event, error) {
-	// _, usedGas, err := api.ExecuteContract(
-	// 	kvStore,
-	// 	goApi,
-	// 	querier,
-	// 	vm.printDebug,
-	// 	gasLimit,
-	// 	sender,
-	// 	message,
-	// )
-	return 0, nil, nil
+	bz, err := json.Marshal(payload)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	res, err := api.ExecuteScript(
+		kvStore,
+		goApi,
+		querier,
+		vm.printDebug,
+		gasLimit,
+		txHash,
+		sender,
+		bz,
+	)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	var execRes types.ExecutionResult
+	err = json.Unmarshal(res, &execRes)
+	return execRes.GasUsed, execRes.Events, err
 }
 
-// Query will do a query request to VM
-func (vm *VM) QueryScript(
+// DecodeMoveResource decode resource bytes to move resource
+// instance and return as jSON string
+func (vm *VM) DecodeMoveResource(
 	kvStore api.KVStore,
-	goApi api.GoAPI,
-	querier api.Querier,
-	gasLimit uint64,
-	payload types.ExecuteScriptPayload,
+	structTag string,
+	resourceBytes []byte,
 ) ([]byte, error) {
-	// bz, err := json.Marshal(payload)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	return api.DecodeMoveResource(
+		kvStore,
+		structTag,
+		resourceBytes,
+	)
+}
 
-	// TODO - remove used gas output from query
-	// res, _, err := api.QueryContract(
-	// 	kvStore,
-	// 	goApi,
-	// 	querier,
-	// 	vm.printDebug,
-	// 	gasLimit,
-	// 	sender,
-	// 	bz,
-	// )
+// DecodeModuleBytes decode module bytes to MoveModule
+// instance and return as jSON string
+func (vm *VM) DecodeModuleBytes(
+	moduleBytes []byte,
+) ([]byte, error) {
+	return api.DecodeModuleBytes(
+		moduleBytes,
+	)
+}
 
-	return nil, nil
+// DecodeScriptBytes decode script bytes to MoveFunction
+// instance and return as jSON string
+func (vm *VM) DecodeScriptBytes(
+	scriptBytes []byte,
+) ([]byte, error) {
+	return api.DecodeScriptBytes(
+		scriptBytes,
+	)
 }

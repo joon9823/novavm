@@ -2,6 +2,7 @@ package nova_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"io/ioutil"
 	"testing"
 
@@ -38,13 +39,16 @@ func publishModule(
 	vm vm.VM,
 	kvStore *api.Lookup,
 ) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	require.NoError(t, err)
+
+	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
 	usedGas, err := vm.PublishModule(
 		kvStore,
 		10000,
-		types.StdAddress,
+		testAccount,
 		f,
 	)
 	require.NoError(t, err)
@@ -58,16 +62,16 @@ func mintCoin(
 	minter types.AccountAddress,
 	amount uint64,
 ) {
-	std, err := types.NewAccountAddress("0x1")
+	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
 	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
-			Address: std,
-			Name:    "BasicCoin",
+			Address: testAccount,
+			Name:    "TestCoin",
 		},
 		Function: "mint",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
+		TyArgs:   []types.TypeTag{"0x2::TestCoin::Nova"},
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
@@ -114,21 +118,18 @@ func Test_FailOnExecute(t *testing.T) {
 
 	amount := uint64(100)
 
-	minter, err := types.NewAccountAddress("0x2")
+	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	mintCoin(t, vm, kvStore, minter, amount)
-
-	std, err := types.NewAccountAddress("0x1")
-	require.NoError(t, err)
+	mintCoin(t, vm, kvStore, testAccount, amount)
 
 	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
-			Address: std,
-			Name:    "BasicCoin",
+			Address: testAccount,
+			Name:    "TestCoin",
 		},
 		Function: "mint2",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
+		TyArgs:   []types.TypeTag{"0x2::TestCoin::Nova"},
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
@@ -138,7 +139,7 @@ func Test_FailOnExecute(t *testing.T) {
 		api.MockQuerier{},
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
-		minter,
+		testAccount,
 		payload,
 	)
 	require.NotNil(t, err)
@@ -151,19 +152,16 @@ func Test_OutOfGas(t *testing.T) {
 
 	amount := uint64(100)
 
-	minter, err := types.NewAccountAddress("0x2")
-	require.NoError(t, err)
-
-	std, err := types.NewAccountAddress("0x1")
+	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
 	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
-			Address: std,
+			Address: testAccount,
 			Name:    "BasicCoin",
 		},
 		Function: "mint2",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
+		TyArgs:   []types.TypeTag{"0x2::TestCoin::Nova"},
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
@@ -173,7 +171,7 @@ func Test_OutOfGas(t *testing.T) {
 		api.MockQuerier{},
 		1,
 		bytes.Repeat([]byte{0}, 32),
-		minter,
+		testAccount,
 		payload,
 	)
 	require.NotNil(t, err)
@@ -184,20 +182,20 @@ func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
-	minter, err := types.NewAccountAddress("0x2")
+	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
 	mintAmount := uint64(100)
-	mintCoin(t, vm, kvStore, minter, mintAmount)
+	mintCoin(t, vm, kvStore, testAccount, mintAmount)
 
 	payload := types.ExecuteEntryFunctionPayload{
 		Module: types.ModuleId{
-			Address: types.StdAddress,
-			Name:    "BasicCoin",
+			Address: testAccount,
+			Name:    "TestCoin",
 		},
 		Function: "get",
-		TyArgs:   []types.TypeTag{"0x1::BasicCoin::Nova"},
-		Args:     []types.Bytes{types.Bytes(minter)},
+		TyArgs:   []types.TypeTag{"0x2::TestCoin::Nova"},
+		Args:     []types.Bytes{types.Bytes(testAccount)},
 	}
 
 	res, err := vm.QueryEntryFunction(
@@ -212,4 +210,71 @@ func Test_QueryContract(t *testing.T) {
 
 	num := types.DeserializeUint64(res)
 	require.Equal(t, mintAmount, num)
+}
+
+func Test_DecodeResource(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
+
+	bz, err := base64.StdEncoding.DecodeString("LAEAAAAAAAAB")
+	require.NoError(t, err)
+
+	bz, err = vm.DecodeMoveResource(kvStore, "0x2::TestCoin::Coin<0x2::TestCoin::Nova>", bz)
+	require.NoError(t, err)
+	require.Equal(t, bz, []byte(`{"type":"0x2::TestCoin::Coin<0x2::TestCoin::Nova>","data":{"test":true,"value":"300"}}`))
+}
+
+func Test_DecodeModule(t *testing.T) {
+	vm, _ := initializeVM(t)
+
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	require.NoError(t, err)
+
+	bz, err := vm.DecodeModuleBytes(f)
+	require.NoError(t, err)
+	require.Contains(t, string(bz), `"address":"0x2","name":"TestCoin"`)
+}
+
+func Test_DecodeScript(t *testing.T) {
+	vm, _ := initializeVM(t)
+
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+	require.NoError(t, err)
+
+	bz, err := vm.DecodeScriptBytes(f)
+	require.NoError(t, err)
+	require.Contains(t, string(bz), `"name":"main"`)
+}
+
+func Test_ExecuteScript(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	publishModule(t, vm, kvStore)
+
+	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+
+	testAccount, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	payload := types.ExecuteScriptPayload{
+		Code:   f,
+		TyArgs: []types.TypeTag{"0x2::TestCoin::Nova", "bool"},
+		Args:   []types.Bytes{},
+	}
+
+	usedGas, events, err := vm.ExecuteScript(
+		kvStore,
+		api.NewMockAPI(&api.MockBankModule{}),
+		api.MockQuerier{},
+		15000,
+		bytes.Repeat([]byte{0}, 32),
+		testAccount,
+		payload,
+	)
+
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+
+	num := types.DeserializeUint64(events[0].Data)
+	require.Equal(t, uint64(200), num)
+	require.NotZero(t, usedGas)
 }

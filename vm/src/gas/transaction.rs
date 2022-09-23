@@ -1,16 +1,15 @@
 //! This module defines all the gas parameters for transactions, along with their initial values
 //! in the genesis and a mapping between the Rust representation and the on-chain gas schedule.
 
-use crate::{gas::algebra::{FeePerGasUnit, Gas, GasScalingFactor, GasUnit}};
+use crate::gas::algebra::{FeePerGasUnit, Gas, GasScalingFactor, GasUnit};
+// use aptos_types::{state_store::state_key::StateKey, write_set::WriteOp};
 use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    effects::{AccountChangeSet, Op},
     gas_algebra::{
         InternalGas, InternalGasPerArg, InternalGasPerByte, InternalGasUnit, NumArgs, NumBytes,
         ToUnitFractionalWithParams, ToUnitWithParams,
     },
-    effects::{
-        Op, AccountChangeSet
-    },
-    account_address::AccountAddress
 };
 
 crate::gas::params::define_gas_parameters!(
@@ -127,8 +126,7 @@ impl TransactionGasParameters {
 
     pub fn calculate_change_set_gas<'a>(
         &self,
-        ops : impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>
-        // ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>,
+        ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>, // ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>,
     ) -> InternalGas {
         use Op::*;
 
@@ -151,7 +149,7 @@ impl TransactionGasParameters {
             }
 
             // TODO : Does this double charging?
-            for (_, op) in acs.modules().into_iter(){
+            for (_, op) in acs.modules().into_iter() {
                 match op {
                     New(data) => {
                         num_new_items += 1.into();
@@ -164,7 +162,7 @@ impl TransactionGasParameters {
                 }
             }
 
-            for (_, op) in acs.resources().into_iter(){
+            for (_, op) in acs.resources().into_iter() {
                 match op {
                     New(data) => {
                         num_new_items += 1.into();

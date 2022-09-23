@@ -7,12 +7,12 @@ mod error;
 mod event;
 mod interface;
 mod memory;
+mod move_api;
 mod querier;
 mod result;
 mod storage;
 mod version;
 mod vm;
-
 
 pub use db::{db_t, Db};
 pub use memory::{
