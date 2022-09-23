@@ -14,7 +14,7 @@ pub mod backend;
 pub mod gas;
 pub mod message;
 pub mod storage;
-pub mod nova_natives;
+pub mod natives;
 pub mod asset;
 
 mod args_validator;

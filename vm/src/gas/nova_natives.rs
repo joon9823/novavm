@@ -1,4 +1,4 @@
-use crate::nova_natives::GasParameters;
+use crate::natives::GasParameters;
 
 crate::gas::natives::define_gas_parameters_for_natives!(GasParameters, "nova_natives", [
     [.signature.bls12381_validate_pubkey.base_cost, "signature.bls12381_validate_pubkey.base", 1],

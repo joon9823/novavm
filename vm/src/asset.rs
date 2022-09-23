@@ -4,7 +4,7 @@ use move_deps::move_compiler::shared::NumericalAddress;
 use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
 use move_deps::move_stdlib;
 
-use std::{env, collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, env, path::PathBuf};
 
 pub fn compile_move_stdlib_modules() -> Vec<CompiledModule> {
     let src_files = move_stdlib::move_stdlib_files();
@@ -22,7 +22,10 @@ pub fn compile_move_nursery_modules() -> Vec<CompiledModule> {
 
 pub fn compile_nova_stdlib_modules() -> Vec<CompiledModule> {
     let src_files = move_nova_stdlib_files();
-    let deps_files = move_stdlib::move_stdlib_files();
+    let deps_files = move_stdlib::move_stdlib_files()
+        .into_iter()
+        .chain(move_stdlib::move_nursery_files())
+        .collect();
     let mapping = [("nova_std", "0x1"), ("std", "0x1")];
     let name_address_map = mapping
         .iter()

@@ -1,5 +1,7 @@
 module TestAccount::TableUnitTests {
+    #[test_only]
     use std::vector;
+
     #[test]
     fun simple(){
         assert!(1==1,1);
