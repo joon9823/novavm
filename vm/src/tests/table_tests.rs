@@ -61,13 +61,59 @@ impl EntryFunction {
             vec![],
         )
     }
+
+    fn table_borrow_mut() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("table_borrow_mut").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+    fn table_borrow_mut_wiht_default() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("table_borrow_mut_wiht_default").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+    fn add_after_remove() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("add_after_remove").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+    fn table_borrow_global() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("table_borrow_global").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
+
+    fn table_move_from() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("table_move_from").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
 }
 
-
+fn generate_account(literal : &str) -> AccountAddress {
+    AccountAddress::from_hex_literal(literal).expect("account should be created")
+}
 #[test]
 fn test_tables() {
-    let account_two =
-        AccountAddress::from_hex_literal("0x2").expect("0x2 account should be created");
+    let account_two = generate_account("0x2");
 
     let testcases: Vec<MockTx> = vec![
         MockTx::one(
@@ -105,6 +151,51 @@ fn test_tables() {
                 EntryFunction::table_of_tables(),
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![3, 78, 11, 45])),
+        ),
+        MockTx::one(
+            // borrow mut
+            Message::new_entry_function(
+                vec![5; 32],
+                Some(generate_account("0x3")),
+                EntryFunction::table_borrow_mut(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![3, 0, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            // borrow mut with default
+            Message::new_entry_function(
+                vec![6; 32],
+                Some(generate_account("0x4")),
+                EntryFunction::table_borrow_mut_wiht_default(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![232, 3, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            // add after remove contents
+            Message::new_entry_function(
+                vec![7; 32],
+                Some(generate_account("0x5")),
+                EntryFunction::add_after_remove(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![0, 0, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            // tables in table
+            Message::new_entry_function(
+                vec![8; 32],
+                Some(generate_account("0x6")),
+                EntryFunction::table_borrow_global(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![245, 3, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            // tables in table
+            Message::new_entry_function(
+                vec![9; 32],
+                Some(generate_account("0x7")),
+                EntryFunction::table_move_from(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![245, 3, 0, 0, 0, 0, 0, 0])),
         ),
     ];
 

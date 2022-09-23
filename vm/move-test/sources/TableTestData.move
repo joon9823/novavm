@@ -1,9 +1,10 @@
 /// This module provides test tables of various key / value types, for use in API tests
 module TestAccount::TableTestData {
     use std::vector;
-    use std::table as T;
+    use std::signer;
+    use nova_std::table as T;
 
-    struct S<phantom K: copy + drop, phantom V> has key {
+    struct S<phantom K: copy + drop,phantom V> has key {
         t: T::Table<K, V>
     }
 
@@ -16,13 +17,13 @@ module TestAccount::TableTestData {
         two
     }
 
-    public entry fun table_len(account: signer): u64{
+    public entry fun table_len(s: signer): u64{
         let t = T::new<u64, u64>();
         T::add(&mut t, 1, 1);
         T::add(&mut t, 2, 2);
         T::add(&mut t, 3, 3);
         let len = T::length(&t);
-        move_to(&account,S { t });
+        move_to(&s,S { t });
         len
     }
 
@@ -53,7 +54,58 @@ module TestAccount::TableTestData {
         vector::push_back(&mut vec_u8, val); // == val_2
         
         move_to(&s, S { t });
-        vec_u8 // vec![val_3, val_1, val_2]
+        vec_u8
     }
+
+    public entry fun table_borrow_mut(s: signer): u64 {
+        let t = T::new<u64, u64>();
+        T::add(&mut t, 10, 2);
+        *T::borrow_mut(&mut t, 10) = 3 ;
+        let updated = *T::borrow(&t, 10);
+        move_to(&s, S { t });
+        updated
+    }
+   
+    public entry fun table_borrow_mut_wiht_default(s: signer): u64{
+        let t = T::new<u64, u64>();
+        let updated = *T::borrow_mut_with_default(&mut t, 10, 1000);
+        move_to(&s, S { t });
+        updated
+    }
+
+    public entry fun add_after_remove(s: signer): u64 {
+        let t = T::new<u64, u64>();
+        T::add(&mut t, 42, 42);
+        let _forty_two = T::remove(&mut t, 42);
+        T::add(&mut t, 42, 0);
+        let zero = *T::borrow(&t, 42);
+        move_to(&s, S { t });
+        zero 
+    }
+
+    public entry fun table_borrow_global(s: signer): u64 acquires S {
+        let t = T::new<u64, u64>();
+        T::add(&mut t, 42, 1012);
+        T::add(&mut t, 43, 1013);
+        move_to(&s, S { t });
+        let acc = signer::address_of(&s);
+        let t_ref = &borrow_global<S<u64, u64>>(acc).t;
+        let v = *T::borrow(t_ref, 43);
+        v
+    }
+
+    public entry fun table_move_from(s: signer): u64 acquires S {
+        let t = T::new<u64, u64>();
+        T::add(&mut t, 42, 1012);
+        T::add(&mut t, 43, 1013);
+        move_to(&s, S { t });
+        let acc = signer::address_of(&s);
+        let S { t: local_t } = move_from<S<u64, u64>>(acc);
     
+        let v= *T::borrow(&local_t, 43);
+        move_to(&s, S { t: local_t });
+        v
+    }
+
+
 }
