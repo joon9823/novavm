@@ -176,6 +176,22 @@ typedef struct {
   size_t cap;
 } UnmanagedVector;
 
+/**
+ * A view into an externally owned byte slice (Go `[]byte`).
+ * Use this for the current call only. A view cannot be copied for safety reasons.
+ * If you need a copy, use [`ByteSliceView::to_owned`].
+ *
+ * Go's nil value is fully supported, such that we can differentiate between nil and an empty slice.
+ */
+typedef struct {
+  /**
+   * True if and only if the byte slice is nil in Go. If this is true, the other fields must be ignored.
+   */
+  bool is_nil;
+  const uint8_t *ptr;
+  size_t len;
+} ByteSliceView;
+
 typedef struct {
   uint8_t _private[0];
 } db_t;
@@ -231,21 +247,14 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
-/**
- * A view into an externally owned byte slice (Go `[]byte`).
- * Use this for the current call only. A view cannot be copied for safety reasons.
- * If you need a copy, use [`ByteSliceView::to_owned`].
- *
- * Go's nil value is fully supported, such that we can differentiate between nil and an empty slice.
- */
-typedef struct {
-  /**
-   * True if and only if the byte slice is nil in Go. If this is true, the other fields must be ignored.
-   */
-  bool is_nil;
-  const uint8_t *ptr;
-  size_t len;
-} ByteSliceView;
+UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
+
+UnmanagedVector decode_move_resource(Db db,
+                                     UnmanagedVector *errmsg,
+                                     ByteSliceView struct_tag,
+                                     ByteSliceView resource_bytes);
+
+UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView script_bytes);
 
 void destroy_unmanaged_vector(UnmanagedVector v);
 
@@ -258,6 +267,16 @@ UnmanagedVector execute_contract(Db db,
                                  ByteSliceView session_id,
                                  ByteSliceView sender,
                                  ByteSliceView message);
+
+UnmanagedVector execute_script(Db db,
+                               GoApi _api,
+                               GoQuerier _querier,
+                               bool _is_verbose,
+                               uint64_t gas_limit,
+                               UnmanagedVector *errmsg,
+                               ByteSliceView session_id,
+                               ByteSliceView sender,
+                               ByteSliceView message);
 
 UnmanagedVector initialize(Db db,
                            bool _is_verbose,

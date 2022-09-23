@@ -1,7 +1,6 @@
 //! This module contains the official gas meter implementation, along with some top-level gas
 //! parameters and traits to help manipulate them.
 
-use crate::access_path::AccessPath;
 use crate::gas::{
     algebra::Gas, instr::InstructionGasParameters, misc::MiscGasParameters,
     transaction::TransactionGasParameters,
@@ -9,20 +8,17 @@ use crate::gas::{
 
 use move_deps::move_binary_format::errors::{Location, PartialVMError, PartialVMResult, VMResult};
 use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    effects::AccountChangeSet,
     gas_algebra::{InternalGas, NumArgs, NumBytes},
     language_storage::ModuleId,
     vm_status::StatusCode,
-    effects::{
-        AccountChangeSet
-    },
-    account_address::AccountAddress
 };
+use move_deps::move_stdlib;
 use move_deps::move_vm_types::{
     gas::{GasMeter, SimpleInstruction},
     views::{TypeView, ValueView},
 };
-use move_deps::move_stdlib;
-use syn::token::In;
 use std::collections::BTreeMap;
 
 use crate::nova_natives;
@@ -55,7 +51,6 @@ pub trait InitialGasSchedule: Sized {
 pub struct NativeGasParameters {
     pub move_stdlib: move_stdlib::natives::GasParameters,
     pub nova_stdlib: nova_natives::GasParameters,
-    
     // TODO : add move_table_extension later
     // pub table: move_table_extension::GasParameters,
 }
@@ -65,7 +60,6 @@ impl FromOnChainGasSchedule for NativeGasParameters {
         Some(Self {
             move_stdlib: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
             nova_stdlib: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
-
             // table: FromOnChainGasSchedule::from_on_chain_gas_schedule(gas_schedule)?,
         })
     }
@@ -169,7 +163,7 @@ impl NovaGasMeter {
         Self {
             gas_params,
             balance,
-            gas_limit
+            gas_limit,
         }
     }
 
@@ -490,7 +484,7 @@ impl NovaGasMeter {
         let cost = self.gas_params.txn.calculate_intrinsic_gas(txn_size);
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))
     }
-    
+
     pub fn charge_change_set_gas<'a>(
         &mut self,
         ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>,
