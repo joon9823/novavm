@@ -7,6 +7,7 @@ pub mod code;
 pub mod signature;
 pub mod type_info;
 pub mod util;
+pub mod account;
 
 use move_deps::{
     move_core_types::language_storage::CORE_CODE_ADDRESS,
@@ -29,6 +30,7 @@ pub mod status {
 
 #[derive(Debug, Clone)]
 pub struct GasParameters {
+    pub account: account::GasParameters,
     pub signature: signature::GasParameters,
     pub type_info: type_info::GasParameters,
     pub util: util::GasParameters,
@@ -38,6 +40,10 @@ pub struct GasParameters {
 impl GasParameters {
     pub fn zeros() -> Self {
         Self {
+            account: account::GasParameters {
+                create_address: account::CreateAddressGasParameters { base_cost: 0.into() },
+                create_signer: account::CreateSignerGasParameters { base_cost: 0.into() },
+            },
             signature: signature::GasParameters {
                 bls12381_validate_pubkey: signature::Bls12381ValidatePubkeyGasParameters {
                     base_cost: 0.into(),
@@ -106,6 +112,7 @@ pub fn all_natives(
         };
     }
 
+    add_natives_from_module!("account", account::make_all(gas_params.account));
     add_natives_from_module!("signature", signature::make_all(gas_params.signature));
     add_natives_from_module!("type_info", type_info::make_all(gas_params.type_info));
     add_natives_from_module!("util", util::make_all(gas_params.util.clone()));
