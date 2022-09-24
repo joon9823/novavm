@@ -5,7 +5,6 @@ use crate::{
     gas::Gas,
     nova_vm::NovaVM,
     storage::data_view_resolver::DataViewResolver,
-    MessagePayload,
 };
 
 use move_deps::{
