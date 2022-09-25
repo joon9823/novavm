@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -36,18 +35,6 @@ func NewModuleBundle(modules ...Module) ModuleBundle {
 	}
 
 	return ModuleBundle{modules}
-}
-
-// SerializeUint64 serialize num to bytes for VM
-func SerializeUint64(num uint64) []byte {
-	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, num)
-	return bz
-}
-
-// DeserializeUint64 deserialize bytes to num
-func DeserializeUint64(bz []byte) uint64 {
-	return binary.LittleEndian.Uint64(bz)
 }
 
 // AccountAddressLen address bytes length

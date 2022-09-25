@@ -1,4 +1,4 @@
-use crate::nova_natives::GasParameters;
+use crate::natives::GasParameters;
 
 crate::gas::natives::define_gas_parameters_for_natives!(GasParameters, "nova_natives", [
     [.signature.ed25519.base, "signature.ed25519.base", 1],

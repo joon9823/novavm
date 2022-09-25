@@ -5,14 +5,10 @@ use move_deps::{
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}, native_extensions::NativeContextExtensions},
     move_vm_types::gas::UnmeteredGasMeter, move_bytecode_utils::Modules,
-    move_table_extension::{table_natives, GasParameters, NativeTableContext, TableResolver, TableChangeSet}, move_binary_format::CompiledModule,
+    move_table_extension::{NativeTableContext, TableResolver, TableChangeSet}, move_binary_format::CompiledModule,
     move_binary_format::{access::ModuleAccess, errors::{Location, VMError, PartialVMError, VMResult}},
 };
 use std::{sync::Arc, collections::{BTreeSet, BTreeMap}};
-use move_deps::{
-    move_stdlib,
-    move_core_types::language_storage::CORE_CODE_ADDRESS
-};
 pub use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
@@ -20,7 +16,7 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{nova_natives::{self, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
+use crate::{natives::{nova_natives, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
@@ -41,33 +37,12 @@ pub struct NovaVM {
 
 impl NovaVM {
     pub fn new() -> Self {
-        let gas_params = NovaGasParameters::initial();
-        let native_gas_parameters = NativeGasParameters::initial();
-
-        let inner = MoveVM::new(
-            move_stdlib::natives::all_natives(
-            CORE_CODE_ADDRESS,
-            native_gas_parameters.move_stdlib)
-        .into_iter()
-        .chain(
-            move_stdlib::natives::nursery_natives(
-            CORE_CODE_ADDRESS,
-            move_stdlib::natives::NurseryGasParameters::zeros()))
-        .into_iter()
-        .chain(
-            nova_natives::all_natives(
-            CORE_CODE_ADDRESS, 
-            native_gas_parameters.nova_stdlib))
-        .into_iter()
-        .chain(
-            table_natives( // TODO: move table_natives to nova_stdlib
-            CORE_CODE_ADDRESS,
-            GasParameters::zeros(),))) 
+        let inner = MoveVM::new(nova_natives(NativeGasParameters::initial())) 
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
         Self {
             move_vm: Arc::new(inner),
-            gas_params
+            gas_params: NovaGasParameters::initial()
         }   
     }
 

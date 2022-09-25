@@ -1,8 +1,5 @@
 use crate::{
-    gas::Gas,
     message::{EntryFunction, Message, Module, ModuleBundle, Script},
-    nova_vm::NovaVM,
-    storage::data_view_resolver::DataViewResolver,
 };
 
 use move_deps::{
@@ -16,8 +13,8 @@ use move_deps::{
     },
 };
 
-use super::mock_tx::MockTx;
-use super::{mock_chain::MockChain, mock_tx::ExpectedOutput};
+use super::mock_tx::{MockTx, run_transaction};
+use super::{mock_tx::ExpectedOutput};
 
 #[cfg(test)]
 impl Module {
@@ -102,70 +99,6 @@ impl Script {
             ],
             vec![],
         )
-    }
-}
-
-fn run_transaction(testcases: Vec<MockTx>) {
-    let mut chain = MockChain::new();
-    let mut vm = NovaVM::new();
-
-    // publish move_stdlib and move_nursery and nova_stdlib modules
-    // let mut modules = compile_move_stdlib_modules();
-    // modules.append(&mut compile_move_nursery_modules());
-    // modules.append(&mut compile_nova_stdlib_modules());
-
-    // let module_bundle = ModuleBundle::new(
-    //     modules
-    //         .iter()
-    //         .map(|m| {
-    //             let mut mod_blob = vec![];
-    //             m.serialize(&mut mod_blob)
-    //                 .expect("Module serialization error");
-    //             mod_blob
-    //         })
-    //         .collect(),
-    // );
-
-    let mut state = chain.create_state();
-    let resolver = DataViewResolver::new(&state);
-    let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
-    assert!(status == VMStatus::Executed);
-    state.push_write_set(output.change_set().clone());
-    chain.commit(state);
-
-    let gas_limit = Gas::new(100_000u64);
-    for MockTx {
-        msg_tests,
-        should_commit,
-    } in testcases
-    {
-        let mut state = chain.create_state();
-
-        for (msg, exp_output) in msg_tests {
-            let resolver = DataViewResolver::new(&state);
-            let (status, output, result) = vm
-                .execute_message(msg, &resolver, gas_limit)
-                .expect("nova vm failure");
-
-            println!("gas used: {}", output.gas_used());
-            println!("got:{}, exp:{}", status, exp_output.vm_status());
-            assert!(status == *exp_output.vm_status());
-            assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
-
-            let result_bytes =
-                result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-            assert!(result_bytes == *exp_output.result_bytes());
-
-            if status != VMStatus::Executed {
-                continue;
-            }
-            // apply output into state
-            state.push_write_set(output.change_set().clone());
-        }
-
-        if should_commit {
-            chain.commit(state);
-        }
     }
 }
 

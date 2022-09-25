@@ -3,7 +3,8 @@ name = "NovaStdlib"
 version = "1.5.0"
 
 [dependencies]
-MoveStdlib = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib", rev = "70b34a66473c34ad30d101290b249f2db3c847a2" }
+MoveStdlib = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib", rev = "0fe2e6ce5af811d68b8a995b7da3f4c4ecc485fa" }
+MoveNursery = { git = "https://github.com/move-language/move.git", subdir = "language/move-stdlib/nursery", rev = "0fe2e6ce5af811d68b8a995b7da3f4c4ecc485fa" }
 
 [addresses]
 std = "0x1"
