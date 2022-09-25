@@ -15,6 +15,7 @@ impl MockTx {
         }
     }
 
+    #[allow(dead_code)]
     pub fn one_skip_commit(msg: Message, exp_output: ExpectedOutput) -> Self {
         Self {
             msg_tests: vec![(msg, exp_output)],
@@ -22,6 +23,7 @@ impl MockTx {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new(msg_tests: Vec<(Message, ExpectedOutput)>) -> Self {
         Self {
             msg_tests,

@@ -3,7 +3,6 @@ use crate::{
     message::{EntryFunction, Message, Module, ModuleBundle, Script},
     nova_vm::NovaVM,
     storage::data_view_resolver::DataViewResolver,
-    MessagePayload,
 };
 
 use move_deps::{

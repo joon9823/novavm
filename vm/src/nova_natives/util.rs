@@ -15,6 +15,15 @@ use std::{collections::VecDeque, sync::Arc};
 /// Abort code when from_bytes fails (0x03 == INVALID_ARGUMENT)
 const EFROM_BYTES: u64 = 0x01_0001;
 
+
+/// Used to pass gas parameters into native functions.
+pub fn make_native_from_func<T: std::marker::Send + std::marker::Sync + 'static>(
+    gas_params: T,
+    func: fn(&T, &mut NativeContext, Vec<Type>, VecDeque<Value>) -> PartialVMResult<NativeResult>,
+) -> NativeFunction {
+    Arc::new(move |context, ty_args, args| func(&gas_params, context, ty_args, args))
+}
+
 /***************************************************************************************************
  * native fun from_bytes
  *
@@ -23,8 +32,8 @@ const EFROM_BYTES: u64 = 0x01_0001;
  **************************************************************************************************/
 #[derive(Debug, Clone)]
 pub struct FromBytesGasParameters {
-    pub base_cost: InternalGas,
-    pub unit_cost: InternalGas,
+    pub base: InternalGas,
+    pub unit: InternalGas,
 }
 
 fn native_from_bytes(
@@ -45,8 +54,8 @@ fn native_from_bytes(
     })?;
 
     let bytes = pop_arg!(args, Vec<u8>);
-    let base_cost: u64 = gas_params.base_cost.into();
-    let unit_cost: u64 = gas_params.unit_cost.into();
+    let base_cost: u64 = gas_params.base.into();
+    let unit_cost: u64 = gas_params.unit.into();
     let cost = base_cost + unit_cost * bytes.len() as u64;
     let val = match Value::simple_deserialize(&bytes, &layout) {
         Some(val) => val,
