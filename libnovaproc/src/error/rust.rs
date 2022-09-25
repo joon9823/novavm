@@ -182,6 +182,7 @@ pub fn set_error(err: RustError, error_msg: Option<&mut UnmanagedVector>) {
 /// Otherwise it returns a null pointer, writes the error message to `error_msg` and sets [errno].
 ///
 /// [errno]: https://utcc.utoronto.ca/~cks/space/blog/programming/GoCgoErrorReturns
+#[allow(dead_code)]
 pub fn handle_c_error_ptr<T>(
     result: Result<*mut T, RustError>,
     error_msg: Option<&mut UnmanagedVector>,
@@ -202,6 +203,7 @@ pub fn handle_c_error_ptr<T>(
 /// Otherwise it returns an empty vector, writes the error message to `error_msg` and sets [errno].
 ///
 /// [errno]: https://utcc.utoronto.ca/~cks/space/blog/programming/GoCgoErrorReturns
+#[allow(dead_code)]
 pub fn handle_c_error_binary<T>(
     result: Result<T, RustError>,
     error_msg: Option<&mut UnmanagedVector>,
@@ -226,6 +228,7 @@ where
 /// Otherwise it returns the default value, writes the error message to `error_msg` and sets [errno].
 ///
 /// [errno]: https://utcc.utoronto.ca/~cks/space/blog/programming/GoCgoErrorReturns
+#[allow(dead_code)]
 pub fn handle_c_error_default<T>(
     result: Result<T, RustError>,
     error_msg: Option<&mut UnmanagedVector>,
