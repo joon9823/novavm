@@ -73,7 +73,7 @@ module nova_std::signature {
     /// - `aggsig` (1) is the identity point, or (2) is NOT a BLS12-381 elliptic curve point, or (3) is NOT a
     ///   prime-order point
     /// Does not abort.
-    native fun bls12381_verify_aggregate_signature(
+    native public fun bls12381_verify_aggregate_signature(
         aggsig: vector<u8>,
         public_keys: vector<vector<u8>>,
         messages: vector<vector<u8>>,
