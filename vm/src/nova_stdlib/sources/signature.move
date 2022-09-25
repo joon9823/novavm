@@ -15,7 +15,7 @@ module nova_std::signature {
     ///  (3) is a prime-order point
     /// Return `false` otherwise.
     /// Does not abort.
-    native fun bls12381_signature_subgroup_check(signature: vector<u8>): bool;
+    native public fun bls12381_signature_subgroup_check(signature: vector<u8>): bool;
 
     /// Given a vector of serialized public keys, combines them into an aggregated public key which can be used to verify
     /// multisignatures using `bls12381_verify_signature`.
