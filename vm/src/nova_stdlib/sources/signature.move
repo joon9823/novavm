@@ -8,7 +8,14 @@
 ///     where public keys are BLS12-381 elliptic-curve points in $\mathbb{G}_1$ and signatures are in $\mathbb{G}_2$,
 ///     as per the [IETF BLS draft standard](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature#section-2.1)
 module nova_std::signature {
-    use std::option::Option;
+
+    /// Return `true` if the elliptic curve point serialized in `signature`:
+    ///  (1) is NOT the identity point, and
+    ///  (2) is a BLS12-381 elliptic curve point, and
+    ///  (3) is a prime-order point
+    /// Return `false` otherwise.
+    /// Does not abort.
+    native fun bls12381_signature_subgroup_check(signature: vector<u8>): bool;
 
     /// Given a vector of serialized public keys, combines them into an aggregated public key which can be used to verify
     /// multisignatures using `bls12381_verify_signature`.
@@ -18,7 +25,17 @@ module nova_std::signature {
     /// Does not abort.
     native public fun bls12381_aggregate_pop_verified_pubkeys(
         public_keys: vector<vector<u8>>,
-    ): Option<vector<u8>>;
+    ): (vector<u8>, bool);
+
+    /// CRYPTOGRAPHY WARNING: This function can be safely called without verifying that the input signatures are elements
+    /// of the prime-order subgroup of the BLS12-381 curve.
+    ///
+    /// Given a vector of serialized signatures, combines them into an aggregate signature, returning `(bytes, true)`,
+    /// where `bytes` store the serialized signature.
+    /// Does not check the input signatures nor the final aggregated signatures for prime-order subgroup membership.
+    /// Returns `(_, false)` if no signatures are given as input.
+    /// Does not abort.
+    native public fun bls12381_aggregate_signatures(signatures: vector<vector<u8>>): (vector<u8>, bool);
 
     // TODO: implement remaining BLS functions:
     // native public fun bls12381_aggregate_signatures(signatures: vector<vector<u8>>): Option<vector<u8>>;
@@ -43,6 +60,25 @@ module nova_std::signature {
         pragma opaque;
     }
 
+    /// CRYPTOGRAPHY WARNING: First, this function assumes all public keys have a valid proof-of-possesion (PoP).
+    /// This prevents both small-subgroup attacks and rogue-key attacks. Second, this function can be safely called
+    /// without verifying that the aggregate signature is in the prime-order subgroup of the BLS12-381 curve.
+    ///
+    /// Returns `true` if the aggregate signature `aggsig` on `messages` under `public_keys` verifies (where `messages[i]`
+    /// should be signed by `public_keys[i]`).
+    ///
+    /// Returns `false` if either:
+    /// - no public keys or messages are given as input,
+    /// - number of messages does not equal number of public keys
+    /// - `aggsig` (1) is the identity point, or (2) is NOT a BLS12-381 elliptic curve point, or (3) is NOT a
+    ///   prime-order point
+    /// Does not abort.
+    native fun bls12381_verify_aggregate_signature(
+        aggsig: vector<u8>,
+        public_keys: vector<vector<u8>>,
+        messages: vector<vector<u8>>,
+    ): bool;
+
     /// Return true if the BLS `signature` on `message` verifiers against the BLS public key `public_key`.
     /// Returns `false` if:
     /// - `signature` is not 96 bytes
@@ -56,6 +92,30 @@ module nova_std::signature {
     /// Does not abort.
     native public fun bls12381_verify_signature(
         signature: vector<u8>,
+        public_key: vector<u8>,
+        message: vector<u8>
+    ): bool;
+
+    /// CRYPTOGRAPHY WARNING: This function assumes verified proofs-of-possesion (PoP) for the public keys used in
+    /// computing the aggregate public key. This prevents small-subgroup attacks and rogue-key attacks.
+    ///
+    /// Return `true` if the BLS `multisignature` on `message` verifies against the BLS aggregate public key `agg_public_key`.
+    /// Returns `false` otherwise.
+    /// Does not abort.
+    native public fun bls12381_verify_multisig(
+        multisignature: vector<u8>,
+        agg_public_key: vector<u8>,
+        message: vector<u8>
+    ): bool;
+
+    /// CRYPTOGRAPHY WARNING: Assumes the public key has a valid proof-of-possesion (PoP). This prevents rogue-key
+    /// attacks later on during signature aggregation.
+    ///
+    /// Returns `true` if the `signature_share` on `message` verifies under `public key`.
+    /// Returns `false` otherwise, similar to `verify_multisignature`.
+    /// Does not abort.
+    native public fun bls12381_verify_signature_share(
+        signature_share: vector<u8>,
         public_key: vector<u8>,
         message: vector<u8>
     ): bool;
@@ -90,6 +150,9 @@ module nova_std::signature {
         recovery_id: u8,
         signature: vector<u8>
     ): (vector<u8>, bool);
+
+    #[test_only]
+    use std::vector;
 
     #[test]
     /// Test on a valid secp256k1 ECDSA signature created using sk = x"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -138,6 +201,53 @@ module nova_std::signature {
         );
 
         assert!(ok == true, 1);
+    }
+
+    #[test]
+    fun test_verify_multisig() {
+        // Second, try some test-cases generated by running the following command in `crates/aptos-crypto`:
+        //  $ cargo test -- sample_aggregate_pk_and_multisig --nocapture --include-ignored
+        let pks = vector[
+            x"92e201a806af246f805f460fbdc6fc90dd16a18d6accc236e85d3578671d6f6690dde22134d19596c58ce9d63252410a",
+            x"ab9df801c6f96ade1c0490c938c87d5bcc2e52ccb8768e1b5d14197c5e8bfa562783b96711b702dda411a1a9f08ebbfa",
+            x"b698c932cf7097d99c17bd6e9c9dc4eeba84278c621700a8f80ec726b1daa11e3ab55fc045b4dbadefbeef05c4182494",
+            x"934706a8b876d47a996d427e1526ce52c952d5ec0858d49cd262efb785b62b1972d06270b0a7adda1addc98433ad1843",
+            x"a4cd352daad3a0651c1998dfbaa7a748e08d248a54347544bfedd51a197e016bb6008e9b8e45a744e1a030cc3b27d2da",
+        ];
+
+        // agg_pks[i] = \sum_{j <= i}  pk[j]
+        let agg_pks = vector[
+            x"92e201a806af246f805f460fbdc6fc90dd16a18d6accc236e85d3578671d6f6690dde22134d19596c58ce9d63252410a",
+            x"b79ad47abb441d7eda9b220a626df2e4e4910738c5f777947f0213398ecafae044ec0c20d552d1348347e9abfcf3eca1",
+            x"b5f5eb6153ab5388a1a76343d714e4a2dcf224c5d0722d1e8e90c6bcead05c573fffe986460bd4000645a655bf52bc60",
+            x"b922006ec14c183572a8864c31dc6632dccffa9f9c86411796f8b1b5a93a2457762c8e2f5ef0a2303506c4bca9a4e0bf",
+            x"b53df1cfee2168f59e5792e710bf22928dc0553e6531dae5c7656c0a66fc12cb82fbb04863938c953dc901a5a79cc0f3",
+        ];
+
+        // multisigs[i] is a signature on "Hello, Aptoverse!" under agg_pks[i]
+        let multisigs = vector[
+            x"ade45c67bff09ae57e0575feb0be870f2d351ce078e8033d847615099366da1299c69497027b77badb226ff1708543cd062597030c3f1553e0aef6c17e7af5dd0de63c1e4f1f9da68c966ea6c1dcade2cdc646bd5e8bcd4773931021ec5be3fd",
+            x"964af3d83436f6a9a382f34590c0c14e4454dc1de536af205319ce1ed417b87a2374863d5df7b7d5ed900cf91dffa7a105d3f308831d698c0d74fb2259d4813434fb86425db0ded664ae8f85d02ec1d31734910317d4155cbf69017735900d4d",
+            x"b523a31813e771e55aa0fc99a48db716ecc1085f9899ccadb64e759ecb481a2fb1cdcc0b266f036695f941361de773081729311f6a1bca9d47393f5359c8c87dc34a91f5dae335590aacbff974076ad1f910dd81750553a72ccbcad3c8cc0f07",
+            x"a945f61699df58617d37530a85e67bd1181349678b89293951ed29d1fb7588b5c12ebb7917dfc9d674f3f4fde4d062740b85a5f4927f5a4f0091e46e1ac6e41bbd650a74dd49e91445339d741e3b10bdeb9bc8bba46833e0011ff91fa5c77bd2",
+            x"b627b2cfd8ae59dcf5e58cc6c230ae369985fd096e1bc3be38da5deafcbed7d939f07cccc75383539940c56c6b6453db193f563f5b6e4fe54915afd9e1baea40a297fa7eda74abbdcd4cc5c667d6db3b9bd265782f7693798894400f2beb4637",
+        ];
+
+        let i = 0;
+        let accum_pk = std::vector::empty<vector<u8>>();
+        while (i < std::vector::length(&pks)) {
+            std::vector::push_back(&mut accum_pk, *std::vector::borrow(&pks, i));
+
+            let (apk, succ) = bls12381_aggregate_pop_verified_pubkeys(accum_pk);
+            assert!(succ == true, 1);
+
+            assert!(apk == *std::vector::borrow(&agg_pks, i), 1);
+
+            let msig = vector::borrow(&multisigs, i);
+            assert!(bls12381_verify_multisig(*msig, apk, b"Hello, Aptoverse!"), 1);
+
+            i = i + 1;
+        };
     }
 
 }

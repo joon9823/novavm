@@ -613,7 +613,9 @@ pub fn native_bls12381_aggregate_signatures(
 	}
 
 	let sigs = gas_params.bls12381_deserialize_sigs(sigs_serialized, &mut cost);
+    debug_assert!(sigs.len() <= num_sigs);
 
+    // If not all SIGs were successfully deserialized, return None and only charge for the actual work done
 	if sigs.len() != num_sigs {
 		return Ok(NativeResult::ok(
 			cost,
