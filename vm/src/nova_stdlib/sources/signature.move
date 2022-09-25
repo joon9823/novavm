@@ -37,14 +37,6 @@ module nova_std::signature {
     /// Does not abort.
     native public fun bls12381_aggregate_signatures(signatures: vector<vector<u8>>): (vector<u8>, bool);
 
-    // TODO: implement remaining BLS functions:
-    // native public fun bls12381_aggregate_signatures(signatures: vector<vector<u8>>): Option<vector<u8>>;
-    // native public fun bls12381_verify_aggregate_signature(
-    //        signature: vector<u8>,
-    //        public_keys: vector<vector<u8>>,
-    //        messages: vector<vector<u8>>,
-    //    ): bool;
-
     /// Return `true` if the bytes in `public_key` are a valid bls12381 public key: it is in the prime-order subgroup
     /// and it is different from the identity group element.
     /// Return `false` otherwise.
@@ -153,8 +145,6 @@ module nova_std::signature {
 
     #[test_only]
     use std::vector;
-    //#[test_only]
-    //use std::option;
 
     #[test]
     /// Test on a valid secp256k1 ECDSA signature created using sk = x"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
