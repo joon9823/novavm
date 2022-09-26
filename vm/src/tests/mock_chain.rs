@@ -1,10 +1,13 @@
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
-use move_deps::{move_core_types::{
-    effects::{ChangeSet, Op},
-    language_storage::ModuleId,
-}, move_table_extension::TableChangeSet};
+use move_deps::{
+    move_core_types::{
+        effects::{ChangeSet, Op},
+        language_storage::ModuleId,
+    },
+    move_table_extension::TableChangeSet,
+};
 
 pub struct MockChain {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
@@ -57,12 +60,12 @@ impl MockState {
                 let ap = AccessPath::from(&ModuleId::new(addr, name));
                 self.write_op(ap, blob_opt)
             }
+        }
 
-            for (handle, change) in &table_change_set.changes {
-                for (key, blob_opt) in &change.entries {
-                    let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-                    self.write_op(ap, blob_opt.clone())
-                }
+        for (handle, change) in &table_change_set.changes {
+            for (key, blob_opt) in &change.entries {
+                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+                self.write_op(ap, blob_opt.clone())
             }
         }
     }

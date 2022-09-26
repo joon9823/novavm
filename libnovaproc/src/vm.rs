@@ -177,12 +177,12 @@ pub fn push_write_set(
             let ap = AccessPath::from(&ModuleId::new(addr.clone(), name.clone()));
             write_op(go_storage, &ap, &blob_opt)?;
         }
+    }
 
-        for (handle, change) in &table_change_set.changes {
-            for (key, val) in &change.entries {
-                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-                write_op(go_storage, &ap, &val)?;
-            }
+    for (handle, change) in &table_change_set.changes {
+        for (key, val) in &change.entries {
+            let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+            write_op(go_storage, &ap, &val)?;
         }
     }
 
