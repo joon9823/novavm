@@ -1,8 +1,8 @@
 pub mod handler;
+pub mod compiler;
 
 mod address;
 mod bytecode;
-mod compiler;
 mod convert;
 mod move_types;
 mod wrappers;

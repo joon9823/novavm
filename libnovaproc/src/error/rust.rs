@@ -37,6 +37,8 @@ pub enum RustError {
     Aborted { location: String, code: u64 },
     #[error("failure occured from backend: {}", msg)]
     BackendFailure { msg: String },
+    #[error("unimplemented: {}", msg)]
+    Unimplemented { msg: String },
 }
 
 impl RustError {
@@ -91,6 +93,13 @@ impl RustError {
 
     pub fn backend_failure<S: ToString>(msg: S) -> Self {
         RustError::BackendFailure {
+            msg: msg.to_string(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn unimplemented<S: ToString>(msg: S) -> Self {
+        RustError::Unimplemented {
             msg: msg.to_string(),
         }
     }

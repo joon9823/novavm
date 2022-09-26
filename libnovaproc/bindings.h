@@ -247,6 +247,10 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
+UnmanagedVector compile_move_package(UnmanagedVector *errmsg,
+                                     ByteSliceView package_path,
+                                     bool verbose);
+
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
 UnmanagedVector decode_move_resource(Db db,
@@ -261,7 +265,7 @@ void destroy_unmanaged_vector(UnmanagedVector v);
 UnmanagedVector execute_contract(Db db,
                                  GoApi _api,
                                  GoQuerier _querier,
-                                 bool _is_verbose,
+                                 bool _verbose,
                                  uint64_t gas_limit,
                                  UnmanagedVector *errmsg,
                                  ByteSliceView session_id,
@@ -271,7 +275,7 @@ UnmanagedVector execute_contract(Db db,
 UnmanagedVector execute_script(Db db,
                                GoApi _api,
                                GoQuerier _querier,
-                               bool _is_verbose,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView session_id,
@@ -279,7 +283,7 @@ UnmanagedVector execute_script(Db db,
                                ByteSliceView message);
 
 UnmanagedVector initialize(Db db,
-                           bool _is_verbose,
+                           bool _verbose,
                            UnmanagedVector *errmsg,
                            ByteSliceView module_bundle);
 
@@ -289,7 +293,7 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
  * exported function to publish a module
  */
 UnmanagedVector publish_module(Db db,
-                               bool _is_verbose,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
@@ -298,10 +302,14 @@ UnmanagedVector publish_module(Db db,
 UnmanagedVector query_contract(Db db,
                                GoApi _api,
                                GoQuerier _querier,
-                               bool _is_verbose,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView message);
+
+UnmanagedVector test_move_package(UnmanagedVector *errmsg,
+                                  ByteSliceView package_path,
+                                  bool verbose);
 
 /**
  * Returns a version number of this library as a C string.
