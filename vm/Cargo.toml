@@ -46,7 +46,7 @@ syn = { version = "1.0.92", features = ["derive"] }
 
 better_any = "0.1.1"
 curve25519-dalek = { version = "3", default-features = false }
-aptos-crypto = "0.2.7"
+aptos-crypto = { git = "https://github.com/aptos-labs/aptos-core", rev = "a7ea562e1afd3f74fbcb68adcb1ff9019f07e395" }
 libsecp256k1 = "0.7.0"
 
 tempfile = "3.2.0"

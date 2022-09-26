@@ -45,53 +45,54 @@ impl GasParameters {
                 create_signer: account::CreateSignerGasParameters { base_cost: 0.into() },
             },
             signature: signature::GasParameters {
-                bls12381_validate_pubkey: signature::Bls12381ValidatePubkeyGasParameters {
-                    base_cost: 0.into(),
+                bls12381: signature::Bls12381GasParameters {
+                    base: 0.into(),
+                    per_pairing: 0.into(),
+                    per_msg: 0.into(),
+                    per_byte: 0.into(),
+                    per_pubkey_deserialize: 0.into(),
+                    per_pubkey_aggregate: 0.into(),
+                    per_pubkey_subgroup_check: 0.into(),
+                    per_sig_verify: 0.into(),
+                    per_sig_deserialize: 0.into(),
+                    per_sig_aggregate: 0.into(),
+                    per_sig_subgroup_check: 0.into(),
+                    per_proof_of_possession_verify: 0.into(),
                 },
-                ed25519_validate_pubkey: signature::Ed25519ValidatePubkeyGasParameters {
-                    base_cost: 0.into(),
+                ed25519: signature::Ed25519GasParameters {
+                    base: 0.into(),
+                    per_pubkey_deserialize: 0.into(),
+                    per_pubkey_small_order_check: 0.into(),
+                    per_sig_deserialize: 0.into(),
+                    per_sig_strict_verify: 0.into(),
+                    per_msg_hashing_base: 0.into(),
+                    per_msg_byte_hashing: 0.into(),
                 },
-                ed25519_verify: signature::Ed25519VerifyGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
+                secp256k1: signature::Secp256k1GasParameters {
+                    base: 0.into(),
+                    ecdsa_recover: 0.into(),
                 },
-                secp256k1_ecdsa_recover: signature::Secp256k1ECDSARecoverGasParameters {
-                    base_cost: 0.into(),
-                },
-                bls12381_verify_signature: signature::Bls12381VerifySignatureGasParams {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
-                },
-                bls12381_aggregate_pop_verified_pubkeys:
-                    signature::Bls12381AggregatePopVerifiedPubkeysGasParameters {
-                        base_cost: 0.into(),
-                        per_pubkey_cost: 0.into(),
-                    },
-                bls12381_verify_proof_of_possession:
-                    signature::Bls12381VerifyProofOfPosessionGasParameters {
-                        base_cost: 0.into(),
-                    },
             },
             type_info: type_info::GasParameters {
                 type_of: type_info::TypeOfGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
+                    base: 0.into(),
+                    unit: 0.into(),
                 },
                 type_name: type_info::TypeNameGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
+                    base: 0.into(),
+                    unit: 0.into(),
                 },
             },
             util: util::GasParameters {
                 from_bytes: util::FromBytesGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
+                    base: 0.into(),
+                    unit: 0.into(),
                 },
             },
             code: code::GasParameters {
                 request_publish: code::RequestPublishGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
+                    base: 0.into(),
+                    unit: 0.into(),
                 },
             },
         }

@@ -173,8 +173,8 @@ fn unpack_allowed_dep(v: Value) -> PartialVMResult<(AccountAddress, String)> {
  **************************************************************************************************/
 #[derive(Clone, Debug)]
 pub struct RequestPublishGasParameters {
-    pub base_cost: InternalGas,
-    pub unit_cost: InternalGasPerByte,
+    pub base: InternalGas,
+    pub unit: InternalGasPerByte,
 }
 
 fn native_request_publish(
@@ -209,16 +209,16 @@ fn native_request_publish(
     }
 
     // TODO(Gas): fine tune the gas formula
-    let cost = gas_params.base_cost
-        + gas_params.unit_cost
+    let cost = gas_params.base
+        + gas_params.unit
             * code.iter().fold(NumBytes::new(0), |acc, module_code| {
                 acc + NumBytes::new(module_code.len() as u64)
             })
-        + gas_params.unit_cost
+        + gas_params.unit
             * expected_modules.iter().fold(NumBytes::new(0), |acc, name| {
                 acc + NumBytes::new(name.len() as u64)
             })
-        + gas_params.unit_cost
+        + gas_params.unit
             * allowed_deps.clone().unwrap_or_default().iter().fold(
                 NumBytes::new(0),
                 |acc, (_, deps)| {
