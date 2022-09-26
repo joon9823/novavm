@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use std::{borrow::Borrow, cell::RefCell, collections::BTreeMap};
+
 use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
@@ -15,23 +17,55 @@ use move_deps::{
     move_table_extension::{TableHandle, TableResolver},
 };
 
+pub trait StoredSizeResolver {
+    fn get_size(&self, access_path: &AccessPath) -> Option<usize>;
+}
+
 pub struct DataViewResolver<'a, S> {
     data_view: &'a S,
+    pub size_cache: RefCell<BTreeMap<AccessPath, usize>>,
 }
 
 impl<'a, S: StateView> DataViewResolver<'a, S> {
     pub fn new(data_view: &'a S) -> Self {
-        Self { data_view }
+        Self {
+            data_view,
+            size_cache: RefCell::new(BTreeMap::default()),
+        }
     }
 
-    fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
+    pub(crate) fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
+        //FIXME: remove
+        println!("getting ac {}", access_path);
         match self.data_view.get(access_path) {
-            Ok(remote_data) => Ok(remote_data),
+            Ok(remote_data) => {
+                let mut cache = self.size_cache.borrow_mut();
+                if !cache.contains_key(access_path) {
+                    let size = match remote_data.borrow() {
+                        Some(val) => {
+                            let key_size = access_path.to_string().as_bytes().len();
+                            key_size + val.len()
+                        }
+                        None => 0,
+                    };
+                    // let val_size = remote_data.borrow().as_ref().map_or(0, |f| f.len());
+                    cache.insert(access_path.clone(), size);
+                }
+                Ok(remote_data)
+            }
             Err(e) => {
                 error!("[VM] Error getting data from storage for {:?}", access_path);
                 Err(e)
             }
         }
+    }
+}
+
+impl<'block, S: StateView> StoredSizeResolver for DataViewResolver<'block, S> {
+
+    //TODO: should it return Result rather than Option?
+    fn get_size(&self, access_path: &AccessPath) -> Option<usize> {
+        self.size_cache.borrow().get(access_path).cloned()
     }
 }
 

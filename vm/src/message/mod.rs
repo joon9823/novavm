@@ -19,8 +19,11 @@ use std::convert::TryFrom;
 pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
+use self::size_change_set::SizeChangeSet;
+
 mod module;
 mod script;
+pub mod size_change_set;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
@@ -227,6 +230,7 @@ pub struct MessageOutput {
     change_set: ChangeSet,
     events: Vec<Event>,
     table_change_set: TableChangeSet,
+    size_change_set: SizeChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -240,12 +244,14 @@ impl MessageOutput {
         change_set: ChangeSet,
         events: Vec<Event>,
         table_change_set: TableChangeSet,
+        size_change_set: SizeChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
         MessageOutput {
             change_set,
             table_change_set,
+            size_change_set,
             events,
             gas_used,
             status,
@@ -258,6 +264,10 @@ impl MessageOutput {
 
     pub fn table_change_set(&self) -> &TableChangeSet {
         &self.table_change_set
+    }
+
+    pub fn size_change_set(&self) -> &SizeChangeSet {
+        &self.size_change_set
     }
 
     pub fn events(&self) -> &[Event] {
