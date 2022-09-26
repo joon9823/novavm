@@ -171,24 +171,29 @@ pub fn move_compiler(
     }
 }
 
-/* 
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-
     use move_deps::{move_package::BuildConfig, move_cli::{Move, base::test::Test}};
-
     use super::{move_compiler, Command};
-
 
     #[test]
     fn test_move_compile() {
+        let path = Path::new(&"src/tests/move-test");
+        let move_args = Move{
+            package_path: Some(path.to_path_buf()),
+            verbose: true,
+            build_config: BuildConfig::default(),
+        };
+        assert!(path.exists());
+
+        let res = move_compiler(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
+        assert!(res==Vec::from("ok"));
     }
 
     #[test]
     fn test_move_test() {
-        let path = Path::new(&"../vm/move-test");
-        print!("PAPATHTH: {}", path.display());
+        let path = Path::new(&"src/tests/move-test");
         let move_args = Move{
             package_path: Some(path.to_path_buf()),
             verbose: true,
@@ -205,7 +210,7 @@ mod tests {
             report_storage_on_error: true,
             ignore_compile_warnings: false, 
             check_stackless_vm: false, 
-            verbose_mode: true , 
+            verbose_mode: true, 
             compute_coverage: false,
         };
         let cmd = Command::Test(test_arg);
@@ -214,4 +219,3 @@ mod tests {
         assert!(res==Vec::from("ok"));
     }
 }
-*/

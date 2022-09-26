@@ -1,0 +1,22 @@
+---
+compiled_package_info:
+  package_name: test1
+  address_alias_instantiation:
+    TestAccount: "0000000000000000000000000000000000000002"
+    nova_std: "0000000000000000000000000000000000000001"
+    std: "0000000000000000000000000000000000000001"
+  source_digest: C15993AA9EC6B373D62A52727368FE205A5BD1C487682B05E7CBFE78BCABC5DF
+  build_flags:
+    dev_mode: true
+    test_mode: true
+    generate_docs: false
+    generate_abis: false
+    install_dir: ~
+    force_recompilation: false
+    additional_named_addresses: {}
+    architecture: ~
+    fetch_deps_only: false
+dependencies:
+  - MoveNursery
+  - MoveStdlib
+  - NovaStdlib
