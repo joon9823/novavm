@@ -40,6 +40,7 @@ thiserror = "1.0.34"
 novavm = { path = "../vm", features = ["backtraces"] }
 move-deps = { path = "../move-deps", features = ["address20"] }
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_warn"] }
+clap = { version = "3.2.22", features = ["derive"] }
 
 [dev-dependencies]
 

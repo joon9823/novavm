@@ -2,6 +2,7 @@ pub mod handler;
 
 mod address;
 mod bytecode;
+mod compiler;
 mod convert;
 mod move_types;
 mod wrappers;
