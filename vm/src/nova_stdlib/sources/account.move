@@ -12,11 +12,8 @@ module nova_std::account {
 
     #[test]
     public fun test_create_address(){
-        use std::debug;
-        debug::print(&11);
         let bob = create_address(x"0000000000000000000000000000000000000b0b");
         let carol = create_address(x"00000000000000000000000000000000000ca501");        
-        debug::print(&bob);
         assert!(
             bob == @0x0000000000000000000000000000000000000b0b,
             error::invalid_argument(ECANNOT_CREATE_ADDRESS)
@@ -34,6 +31,6 @@ module nova_std::account {
         assert!(
             vector::length(&authentication_key) == 20,
             error::invalid_argument(EMALFORMED_AUTHENTICATION_KEY)
-        );
+        ); 
     }
 }
