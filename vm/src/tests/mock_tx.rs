@@ -19,6 +19,7 @@ pub struct MockTx {
     pub should_commit: bool,
 }
 
+#[allow(dead_code)]
 impl MockTx {
     pub fn one(msg: Message, exp_output: ExpectedOutput) -> Self {
         Self {

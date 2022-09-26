@@ -190,8 +190,6 @@ impl NovaVM {
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.create_session(remote_cache, session_id);
 
-        // TODO: verification
-
         let module_bin_list = modules.clone().into_inner();
         session
                 .publish_module_bundle(module_bin_list, sender, gas_meter)
@@ -217,8 +215,6 @@ impl NovaVM {
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
         let mut session = self.create_session(remote_cache, session_id);
-
-        // TODO: verification
 
         let senders = match sender {
             Some(s) => vec![s],
@@ -306,7 +302,6 @@ impl NovaVM {
         let session: Session<_> = self.create_session(remote_cache, session_id).into();
         let session_output = self.finish_session(session).unwrap();
 
-        // TODO: check if we should keep output on failure
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
                 let txn_output = get_message_output(session_output, gas_used, status)
