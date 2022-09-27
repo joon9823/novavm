@@ -291,14 +291,18 @@ func init() {
 	fmt.Printf("PACKAGE_PATH: %s\n", package_path)
 }
 
-func Test_CompileContract(t *testing.T) {
-	res, err := api.CompileContract([]byte(package_path), false)
+// CAUTION: Tests for contract action must be done particular order!
+//
+//	if not, they will be failed due to $HOME/.move
+
+func Test_TestContract(t *testing.T) {
+	res, err := api.TestContract([]byte(package_path), false)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 
-func Test_TestContract(t *testing.T) {
-	res, err := api.TestContract([]byte(package_path), false)
+func Test_CompileContract(t *testing.T) {
+	res, err := api.CompileContract([]byte(package_path), false)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
