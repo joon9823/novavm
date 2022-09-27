@@ -299,6 +299,8 @@ func Test_TestContract(t *testing.T) {
 		types.WithPackagePath(package_path),
 		types.WithInstallDir(package_path),
 		types.WithVerboseBuildConfig(),
+		types.WithDevMode(),
+		types.WithTestMode(),
 	)
 	testConfig := types.NewTestConfig(
 		types.WithVerboseTestConfig(),
@@ -310,14 +312,14 @@ func Test_TestContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 
-}
-
-func Test_BuildContract(t *testing.T) {
-	buildConfig := types.NewBuildConfig(
+	buildConfig = types.NewBuildConfig(
 		types.WithPackagePath(package_path),
+		types.WithInstallDir(package_path),
+		types.WithDevMode(),
+		types.WithTestMode(),
 	)
 
-	res, err := api.BuildContract(buildConfig)
+	res, err = api.BuildContract(buildConfig)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }

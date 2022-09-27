@@ -295,7 +295,6 @@ pub extern "C" fn test_move_package(
         None => None,
     };
 
-    // TODO make adjustable
     let test_arg = Test{ 
         instruction_execution_bound: Some(instruction_execution_bound),
         filter: filter_opt,
