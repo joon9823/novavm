@@ -289,10 +289,18 @@ func init() {
 	package_path = path.Join(wd, "vm/move-test")
 }
 
-//
-// CAUTION: Tests for contract action must be done particular order!
-//	if not, they will be failed due to $HOME/.move
-//
+func Test_BuildContract(t *testing.T) {
+	buildConfig := types.NewBuildConfig(
+		types.WithPackagePath(package_path),
+		types.WithInstallDir(package_path),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+
+	res, err := api.BuildContract(buildConfig)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
 
 func Test_TestContract(t *testing.T) {
 	buildConfig := types.NewBuildConfig(
@@ -312,14 +320,4 @@ func Test_TestContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 
-	buildConfig = types.NewBuildConfig(
-		types.WithPackagePath(package_path),
-		types.WithInstallDir(package_path),
-		types.WithDevMode(),
-		types.WithTestMode(),
-	)
-
-	res, err = api.BuildContract(buildConfig)
-	require.NoError(t, err)
-	require.Equal(t, string(res), "ok")
 }

@@ -36,11 +36,11 @@ test-filenames:
 test: test-rust test-go
 
 test-go: 
-	RUST_BACKTRACE=full go test -v -count=1 -parallel=1 ./...
+	RUST_BACKTRACE=full go test -v -count=1 ./...
 
 test-safety:
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
-	GODEBUG=cgocheck=2 go test -race -v -count=1 -parallel=1 ./...
+	GODEBUG=cgocheck=2 go test -race -v -count=1 ./...
 
 test-rust: test-vm test-lib
 
