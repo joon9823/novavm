@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
@@ -15,7 +16,7 @@ use move_deps::move_cli::base::{
     // coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
     // info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
 };
-use move_deps::move_package::BuildConfig;
+use move_deps::move_package::{BuildConfig, Architecture};
 
 // VM initializer
 #[no_mangle]
@@ -183,19 +184,46 @@ pub extern "C" fn decode_script_bytes(
 }
 
 #[no_mangle]
-pub extern "C" fn compile_move_package(
+pub extern "C" fn build_move_package(
     errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
     package_path: ByteSliceView,
-    verbose: bool
+    verbose: bool,
+    dev_mode: bool,
+    test_mode: bool,
+    generate_docs: bool,
+    generate_abis: bool,
+    install_dir: ByteSliceView,
+    force_recompilation: bool,
+    fetch_deps_only: bool, 
 ) -> UnmanagedVector {
 
-    let path_vec = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let path = Path::new(&path_vec);
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
+    let install_dir_buf = if install_dir_str.len() > 0 {
+        Some(Path::new(&install_dir_str).to_path_buf())
+    } else { 
+        None
+    };
+
+    let build_config = BuildConfig{
+        dev_mode,
+        test_mode,
+        generate_docs,
+        generate_abis,
+        install_dir: install_dir_buf,
+        force_recompilation,
+        additional_named_addresses: BTreeMap::new(),
+        architecture: Some(Architecture::Move),
+        fetch_deps_only,
+    };
 
     let move_args = Move{
-        package_path: Some(path.to_path_buf()),
+        package_path: Some(package_path_buf.to_path_buf()),
         verbose,
-        build_config: BuildConfig::default(),
+        build_config,
     };
     let cmd = Command::Build(Build);
 
@@ -211,31 +239,74 @@ pub extern "C" fn compile_move_package(
 #[no_mangle]
 pub extern "C" fn test_move_package(
     errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
     package_path: ByteSliceView,
-    verbose: bool
+    verbose: bool,
+    dev_mode: bool,
+    test_mode: bool,
+    generate_docs: bool,
+    generate_abis: bool,
+    install_dir: ByteSliceView,
+    force_recompilation: bool,
+    fetch_deps_only: bool, 
+    /* for test config */
+    instruction_execution_bound: u64,
+    filter: ByteSliceView,
+    list: bool,
+    num_threads: usize,
+    report_statistics: bool,
+    report_storage_on_error: bool,
+    ignore_compile_warnings: bool,
+    check_stackless_vm: bool,
+    verbose_mode: bool,
+    compute_coverage: bool,
 ) -> UnmanagedVector {
 
-    let path_vec = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let path = Path::new(&path_vec);
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
+    let install_dir_buf = if install_dir_str.len() > 0 {
+        Some(Path::new(&install_dir_str).to_path_buf())
+    } else { 
+        None
+    };
+
+    let build_config = BuildConfig{
+        dev_mode,
+        test_mode,
+        generate_docs,
+        generate_abis,
+        install_dir: install_dir_buf,
+        force_recompilation,
+        additional_named_addresses: BTreeMap::new(),
+        architecture: Some(Architecture::Move),
+        fetch_deps_only,
+    };
 
     let move_args = Move{
-        package_path: Some(path.to_path_buf()),
+        package_path: Some(package_path_buf.to_path_buf()),
         verbose,
-        build_config: BuildConfig::default(),
+        build_config,
+    };
+
+    let filter_opt= match filter.read() {
+        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+        None => None,
     };
 
     // TODO make adjustable
     let test_arg = Test{ 
-        instruction_execution_bound: None, 
-        filter: None, 
-        list: false, 
-        num_threads: 1, // 8 is from clap trait of base/tests.rs
-        report_statistics: false, 
-        report_storage_on_error: false,
-        ignore_compile_warnings: false, 
-        check_stackless_vm: false, 
-        verbose_mode: true , 
-        compute_coverage: false,
+        instruction_execution_bound: Some(instruction_execution_bound),
+        filter: filter_opt,
+        list, 
+        num_threads, 
+        report_statistics, 
+        report_storage_on_error,
+        ignore_compile_warnings, 
+        check_stackless_vm, 
+        verbose_mode, 
+        compute_coverage,
     };
     let cmd = Command::Test(test_arg);
 

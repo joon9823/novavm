@@ -179,24 +179,6 @@ mod tests {
     use super::{move_compiler, Command};
 
     #[test]
-    fn test_move_compile() {
-        // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
-        let md= env::var("CARGO_MANIFEST_DIR").unwrap();
-        let wd = Path::new(&md);
-        let path = Path::new(&"../vm/move-test");
-        let package_path = wd.join(path);
-        eprint!("COMP::PACKPATH: {:?}", package_path.to_str());
-
-        let move_args = Move{
-            package_path: Some(package_path.canonicalize().unwrap()),
-            verbose: true,
-            build_config: BuildConfig::default(),
-        };
-
-        let res = move_compiler(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
-        assert!(res==Vec::from("ok"));
-    }
-    #[test]
     fn test_move_test() {
         // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
         let md= env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -214,7 +196,7 @@ mod tests {
         let test_arg = Test{ 
             instruction_execution_bound: None, 
             filter: None, 
-            list: true, 
+            list: false, 
             num_threads: 8, // 8 is from clap trait of base/tests.rs
             report_statistics: true, 
             report_storage_on_error: true,
@@ -226,6 +208,26 @@ mod tests {
         let cmd = Command::Test(test_arg);
 
         let res = move_compiler(move_args, cmd).expect("compiler err");
+        assert!(res==Vec::from("ok"));
+
+    }
+
+    #[test]
+    fn test_move_compile() {
+        // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+        let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+        let wd = Path::new(&md);
+        let path = Path::new(&"../vm/move-test");
+        let package_path = wd.join(path);
+        eprint!("COMP::PACKPATH: {:?}", package_path.to_str());
+
+        let move_args = Move{
+            package_path: Some(package_path.canonicalize().unwrap()),
+            verbose: true,
+            build_config: BuildConfig::default(),
+        };
+
+        let res = move_compiler(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
         assert!(res==Vec::from("ok"));
     }
 }

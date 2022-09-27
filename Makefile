@@ -25,7 +25,6 @@ else
 	endif
 endif
 
-WORKING_DIR := $(shell pwd)
 
 all: test-filenames build test
 
@@ -37,8 +36,7 @@ test-filenames:
 test: test-rust test-go
 
 test-go: 
-	cd $(WORKING_DIR)
-	RUST_BACKTRACE=1 go test -v -count=1 -parallel=1 ./...
+	RUST_BACKTRACE=full go test -v -count=1 -parallel=1 ./...
 
 test-safety:
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.

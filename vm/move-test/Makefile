@@ -2,3 +2,4 @@
 
 build: 
 	move build
+	rm -rf ~/.move

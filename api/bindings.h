@@ -247,9 +247,16 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
-UnmanagedVector compile_move_package(UnmanagedVector *errmsg,
-                                     ByteSliceView package_path,
-                                     bool verbose);
+UnmanagedVector build_move_package(UnmanagedVector *errmsg,
+                                   ByteSliceView package_path,
+                                   bool verbose,
+                                   bool dev_mode,
+                                   bool test_mode,
+                                   bool generate_docs,
+                                   bool generate_abis,
+                                   ByteSliceView install_dir,
+                                   bool force_recompilation,
+                                   bool fetch_deps_only);
 
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
@@ -309,7 +316,24 @@ UnmanagedVector query_contract(Db db,
 
 UnmanagedVector test_move_package(UnmanagedVector *errmsg,
                                   ByteSliceView package_path,
-                                  bool verbose);
+                                  bool verbose,
+                                  bool dev_mode,
+                                  bool test_mode,
+                                  bool generate_docs,
+                                  bool generate_abis,
+                                  ByteSliceView install_dir,
+                                  bool force_recompilation,
+                                  bool fetch_deps_only,
+                                  uint64_t instruction_execution_bound,
+                                  ByteSliceView filter,
+                                  bool list,
+                                  size_t num_threads,
+                                  bool report_statistics,
+                                  bool report_storage_on_error,
+                                  bool ignore_compile_warnings,
+                                  bool check_stackless_vm,
+                                  bool verbose_mode,
+                                  bool compute_coverage);
 
 /**
  * Returns a version number of this library as a C string.

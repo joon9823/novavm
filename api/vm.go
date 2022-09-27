@@ -7,6 +7,8 @@ import "C"
 import (
 	"runtime"
 	"syscall"
+
+	"github.com/Kernel-Labs/novavm/types"
 )
 
 // Initialize call ffi(`initialize`) to initialize vm
@@ -14,7 +16,7 @@ import (
 // CONTRACT: should be executed at chain genesis
 func Initialize(
 	store KVStore,
-	isVerbose bool,
+	verbose bool,
 	moduleBundle []byte,
 ) ([]byte, error) {
 	var err error
@@ -27,7 +29,7 @@ func Initialize(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.initialize(db, cbool(isVerbose), &errmsg, mb)
+	res, err := C.initialize(db, cbool(verbose), &errmsg, mb)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -39,7 +41,7 @@ func Initialize(
 // PublishModule call ffi(`publish_module`) to store module
 func PublishModule(
 	store KVStore,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	sender []byte,
 	module []byte,
@@ -56,7 +58,7 @@ func PublishModule(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, mb)
+	res, err := C.publish_module(db, cbool(verbose), cu64(gasLimit), &errmsg, senderView, mb)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -71,7 +73,7 @@ func ExecuteContract(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
 	sender []byte,
@@ -93,7 +95,7 @@ func ExecuteContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_contract(db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -107,7 +109,7 @@ func ExecuteScript(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
 	sender []byte,
@@ -129,7 +131,7 @@ func ExecuteScript(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_script(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_script(db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -143,7 +145,7 @@ func QueryContract(
 	store KVStore,
 	api GoAPI,
 	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	message []byte,
 ) ([]byte, error) {
@@ -159,7 +161,7 @@ func QueryContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.query_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, msg)
+	res, err := C.query_contract(db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -239,18 +241,27 @@ func DecodeScriptBytes(
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func CompileContract(
-	pathBytes []byte,
-	isVerbose bool,
-) ([]byte, error) {
+func BuildContract(buildConfig types.BuildConfig) ([]byte, error) {
 	var err error
 
 	errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(pathBytes))
+	pathBytesView := makeView([]byte(buildConfig.PackagePath))
 	defer runtime.KeepAlive(pathBytesView)
+	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+	defer runtime.KeepAlive(installDirBytesView)
 
-	res, err := C.compile_move_package(&errmsg, pathBytesView, cbool(isVerbose))
+	res, err := C.build_move_package(&errmsg,
+		pathBytesView,
+		cbool(buildConfig.Verbose),
+		cbool(buildConfig.DevMode),
+		cbool(buildConfig.TestMode),
+		cbool(buildConfig.GenerateDocs),
+		cbool(buildConfig.GenerateABIs),
+		installDirBytesView,
+		cbool(buildConfig.ForceRecompilation),
+		cbool(buildConfig.FetchDepsOnly),
+	)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -259,18 +270,39 @@ func CompileContract(
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func TestContract(
-	pathBytes []byte,
-	isVerbose bool,
-) ([]byte, error) {
+func TestContract(buildConfig types.BuildConfig, testConfig types.TestConfig) ([]byte, error) {
 	var err error
 
 	errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(pathBytes))
+	pathBytesView := makeView([]byte(buildConfig.PackagePath))
 	defer runtime.KeepAlive(pathBytesView)
+	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+	defer runtime.KeepAlive(installDirBytesView)
+	filterBytesView := makeView([]byte(testConfig.Filter))
+	defer runtime.KeepAlive(filterBytesView)
 
-	res, err := C.test_move_package(&errmsg, pathBytesView, cbool(isVerbose))
+	res, err := C.test_move_package(&errmsg,
+		pathBytesView,
+		cbool(buildConfig.Verbose),
+		cbool(buildConfig.DevMode),
+		cbool(buildConfig.TestMode),
+		cbool(buildConfig.GenerateDocs),
+		cbool(buildConfig.GenerateABIs),
+		installDirBytesView,
+		cbool(buildConfig.ForceRecompilation),
+		cbool(buildConfig.FetchDepsOnly),
+		cu64(testConfig.InstructionExecutionBound),
+		filterBytesView,
+		cbool(testConfig.List),
+		cusize(testConfig.NumThreads),
+		cbool(testConfig.ReportStatistics),
+		cbool(testConfig.ReportStorageOnError),
+		cbool(testConfig.IgnoreCompileWarnings),
+		cbool(testConfig.CheckStacklessVM),
+		cbool(testConfig.VerboseMode),
+		cbool(testConfig.ComputeCoverage),
+	)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
