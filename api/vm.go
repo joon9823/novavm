@@ -238,3 +238,43 @@ func DecodeScriptBytes(
 
 	return copyAndDestroyUnmanagedVector(res), err
 }
+
+func CompileContract(
+	pathBytes []byte,
+	isVerbose bool,
+) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(pathBytes))
+	defer runtime.KeepAlive(pathBytesView)
+
+	res, err := C.compile_move_package(&errmsg, pathBytesView, cbool(isVerbose))
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
+func TestContract(
+	pathBytes []byte,
+	isVerbose bool,
+) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(pathBytes))
+	defer runtime.KeepAlive(pathBytesView)
+
+	res, err := C.test_move_package(&errmsg, pathBytesView, cbool(isVerbose))
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}

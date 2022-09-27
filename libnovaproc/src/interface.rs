@@ -228,14 +228,15 @@ pub extern "C" fn test_move_package(
     let test_arg = Test{ 
         instruction_execution_bound: None, 
         filter: None, 
-        list: true, 
-        num_threads: 8, // 8 is from clap trait of base/tests.rs
-        report_statistics: true, 
-        report_storage_on_error: true,
+        list: false, 
+        num_threads: 1, // 8 is from clap trait of base/tests.rs
+        report_statistics: false, 
+        report_storage_on_error: false,
         ignore_compile_warnings: false, 
         check_stackless_vm: false, 
         verbose_mode: true , 
-        compute_coverage: true, };
+        compute_coverage: false,
+    };
     let cmd = Command::Test(test_arg);
 
     let res = catch_unwind(AssertUnwindSafe(move|| {

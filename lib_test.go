@@ -3,7 +3,10 @@ package nova_test
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 
 	vm "github.com/Kernel-Labs/novavm"
@@ -13,6 +16,7 @@ import (
 )
 
 func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
+	setWd()
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
@@ -39,6 +43,7 @@ func publishModule(
 	vm vm.VM,
 	kvStore *api.Lookup,
 ) {
+	setWd()
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
 	require.NoError(t, err)
 
@@ -62,6 +67,7 @@ func mintCoin(
 	minter types.AccountAddress,
 	amount uint64,
 ) {
+	setWd()
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
@@ -93,16 +99,19 @@ func mintCoin(
 }
 
 func Test_InitializeVM(t *testing.T) {
+	setWd()
 	_, _ = initializeVM(t)
 }
 
 func Test_PublishModule(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 
 	publishModule(t, vm, kvStore)
 }
 
 func Test_ExecuteContract(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
@@ -113,6 +122,7 @@ func Test_ExecuteContract(t *testing.T) {
 }
 
 func Test_FailOnExecute(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
@@ -147,6 +157,7 @@ func Test_FailOnExecute(t *testing.T) {
 }
 
 func Test_OutOfGas(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
@@ -179,6 +190,7 @@ func Test_OutOfGas(t *testing.T) {
 }
 
 func Test_QueryContract(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
@@ -213,6 +225,7 @@ func Test_QueryContract(t *testing.T) {
 }
 
 func Test_DecodeResource(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
@@ -225,6 +238,7 @@ func Test_DecodeResource(t *testing.T) {
 }
 
 func Test_DecodeModule(t *testing.T) {
+	setWd()
 	vm, _ := initializeVM(t)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
@@ -236,6 +250,7 @@ func Test_DecodeModule(t *testing.T) {
 }
 
 func Test_DecodeScript(t *testing.T) {
+	setWd()
 	vm, _ := initializeVM(t)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
@@ -247,10 +262,12 @@ func Test_DecodeScript(t *testing.T) {
 }
 
 func Test_ExecuteScript(t *testing.T) {
+	setWd()
 	vm, kvStore := initializeVM(t)
 	publishModule(t, vm, kvStore)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+	require.NoError(t, err)
 
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -277,4 +294,28 @@ func Test_ExecuteScript(t *testing.T) {
 	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, uint64(200), num)
 	require.NotZero(t, usedGas)
+}
+
+var package_path string
+
+func init() {
+	wd, _ := os.Getwd()
+	package_path = path.Join(wd, "vm/move-test")
+	fmt.Printf("PATH: %s\n", package_path)
+}
+
+func setWd() {
+	//os.Chdir(nova_test_workingDir)
+}
+
+func Test_CompileContract(t *testing.T) {
+	res, err := api.CompileContract([]byte(package_path), false)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+
+func Test_TestContract(t *testing.T) {
+	res, err := api.TestContract([]byte(package_path), false)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
 }

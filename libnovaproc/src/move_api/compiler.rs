@@ -174,32 +174,42 @@ pub fn move_compiler(
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use std::env;
     use move_deps::{move_package::BuildConfig, move_cli::{Move, base::test::Test}};
     use super::{move_compiler, Command};
 
     #[test]
     fn test_move_compile() {
-        let path = Path::new(&"src/tests/move-test");
+        // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+        let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+        let wd = Path::new(&md);
+        let path = Path::new(&"../vm/move-test");
+        let package_path = wd.join(path);
+        eprint!("COMP::PACKPATH: {:?}", package_path.to_str());
+
         let move_args = Move{
-            package_path: Some(path.to_path_buf()),
+            package_path: Some(package_path.canonicalize().unwrap()),
             verbose: true,
             build_config: BuildConfig::default(),
         };
-        assert!(path.exists());
 
         let res = move_compiler(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
         assert!(res==Vec::from("ok"));
     }
-
     #[test]
     fn test_move_test() {
-        let path = Path::new(&"src/tests/move-test");
+        // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+        let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+        let wd = Path::new(&md);
+        let path = Path::new(&"../vm/move-test");
+        let package_path = wd.join(path);
+        eprint!("TEST::PACKPATH: {:?}", package_path.to_str());
+        
         let move_args = Move{
-            package_path: Some(path.to_path_buf()),
+            package_path: Some(package_path.canonicalize().unwrap()),
             verbose: true,
             build_config: BuildConfig::default(),
         };
-        assert!(path.exists());
 
         let test_arg = Test{ 
             instruction_execution_bound: None, 
