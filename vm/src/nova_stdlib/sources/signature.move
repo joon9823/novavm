@@ -318,8 +318,7 @@ module nova_std::signature {
         let accum_sigs = std::vector::empty<vector<u8>>();
         while (i < std::vector::length(&sigs)) {
             std::vector::push_back(&mut accum_sigs, *std::vector::borrow(&sigs, i));
-
-            std::debug::print(&i);
+            
             let (multisig, ok) = bls12381_aggregate_signatures(accum_sigs);
             assert!(ok == true, 1);
 
