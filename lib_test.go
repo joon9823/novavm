@@ -3,7 +3,6 @@ package nova_test
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -288,7 +287,6 @@ var package_path string
 func init() {
 	wd, _ := os.Getwd()
 	package_path = path.Join(wd, "vm/move-test")
-	fmt.Printf("PACKAGE_PATH: %s\n", package_path)
 }
 
 // CAUTION: Tests for contract action must be done particular order!
