@@ -1,6 +1,9 @@
 module nova_std::account {
+    #[test_only]
     use std::vector;
+    #[test_only]
     use std::error;
+    #[test_only]
     use std::bcs;
 
     /// The provided authentication had an invalid length
