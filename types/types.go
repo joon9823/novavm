@@ -362,11 +362,16 @@ type TestConfig struct {
 	ComputeCoverage           bool
 }
 
+const (
+	DefaultInstructionExecutionBound = 200_000 // twice of aptos default
+	DefaultNumThreads                = 8       // same with move default
+)
+
 // DefaultTestConfig returns TestConfig with default value
 func DefaultTestConfig() TestConfig {
 	return TestConfig{
-		InstructionExecutionBound: 200_000, // twice of aptos default
-		NumThreads:                8,       // same with move's default
+		InstructionExecutionBound: DefaultInstructionExecutionBound,
+		NumThreads:                DefaultNumThreads,
 		// else all set to false
 	}
 }
