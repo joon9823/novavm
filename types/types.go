@@ -353,7 +353,7 @@ type TestConfig struct {
 	InstructionExecutionBound uint64
 	Filter                    []byte
 	List                      bool
-	NumThreads                int
+	NumThreads                uint
 	ReportStatistics          bool
 	ReportStorageOnError      bool
 	IgnoreCompileWarnings     bool
@@ -398,7 +398,7 @@ func WithList() func(*TestConfig) {
 	}
 }
 
-func WithNumThreads(n int) func(*TestConfig) {
+func WithNumThreads(n uint) func(*TestConfig) {
 	return func(tc *TestConfig) {
 		tc.NumThreads = n
 	}
