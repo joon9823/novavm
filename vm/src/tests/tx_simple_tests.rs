@@ -1,6 +1,4 @@
-use crate::{
-    message::{EntryFunction, Message, Module, ModuleBundle, Script},
-};
+use crate::message::{EntryFunction, Message, Module, ModuleBundle, Script};
 
 use move_deps::{
     move_binary_format::CompiledModule,
@@ -13,8 +11,8 @@ use move_deps::{
     },
 };
 
-use super::mock_tx::{MockTx, run_transaction};
-use super::{mock_tx::ExpectedOutput};
+use super::mock_tx::ExpectedOutput;
+use super::mock_tx::{run_transaction, MockTx};
 
 #[cfg(test)]
 impl Module {

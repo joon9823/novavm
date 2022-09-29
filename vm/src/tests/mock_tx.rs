@@ -1,18 +1,10 @@
-use super::{mock_chain::MockChain};
+use super::mock_chain::MockChain;
 
 use crate::{
-    message::{Message},
-    gas::Gas,
-    nova_vm::NovaVM,
-    storage::data_view_resolver::DataViewResolver,
+    gas::Gas, message::Message, nova_vm::NovaVM, storage::data_view_resolver::DataViewResolver,
 };
 
-use move_deps::{
-    move_core_types::{
-        vm_status::{VMStatus},
-    },
-};
-
+use move_deps::move_core_types::vm_status::VMStatus;
 
 pub struct MockTx {
     pub msg_tests: Vec<(Message, ExpectedOutput)>,
@@ -80,7 +72,6 @@ impl ExpectedOutput {
     }
 }
 
-
 pub fn run_transaction(testcases: Vec<MockTx>) {
     let mut chain = MockChain::new();
     let mut vm = NovaVM::new();
@@ -98,6 +89,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
         should_commit,
     } in testcases
     {
+        println!("tx start");
         let mut state = chain.create_state();
 
         for (msg, exp_output) in msg_tests {
@@ -113,15 +105,15 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
 
             let result_bytes =
                 result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-            
-            println!("result_bytes: {:?}", result_bytes);            
+
+            println!("result_bytes: {:?}", result_bytes);
             assert!(result_bytes == *exp_output.result_bytes());
 
             if status != VMStatus::Executed {
                 continue;
             }
             // apply output into state
-            state.push_write_set(output.change_set().clone(),output.table_change_set());
+            state.push_write_set(output.change_set().clone(), output.table_change_set());
         }
 
         if should_commit {
