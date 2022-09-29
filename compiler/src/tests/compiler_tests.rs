@@ -87,3 +87,23 @@ fn test_move_clean() {
     let res = compile(move_args, Command::Clean(c)).expect("compiler err");
     assert!(res==Vec::from("ok"));
 }
+
+#[test]
+#[serial]
+fn test_move_info() {
+    // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+    let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+    let wd = Path::new(&md);
+    let path = Path::new(&"../vm/move-test");
+    let package_path = wd.join(path);
+
+    let build_config = BuildConfig::default();
+    let move_args = Move{
+        package_path: Some(package_path.canonicalize().unwrap()),
+        verbose: true,
+        build_config,
+    };
+
+    let res = compile(move_args, Command::Info(move_deps::move_cli::base::info::Info)).expect("compiler err");
+    assert!(res==Vec::from("ok"));
+}

@@ -336,3 +336,12 @@ func Test_TestContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
+
+func Test_GetInfoContract(t *testing.T) {
+	buildConfig := types.DefaultBuildConfig()
+	buildConfig.PackagePath = []byte(package_path)
+
+	res, err := api.BuildContract(buildConfig)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}

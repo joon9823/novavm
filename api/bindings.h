@@ -297,6 +297,19 @@ UnmanagedVector execute_script(vm_t *vm_ptr,
                                ByteSliceView sender,
                                ByteSliceView message);
 
+UnmanagedVector get_info_move_package(UnmanagedVector *errmsg, ByteSliceView package_path);
+
+UnmanagedVector info_move_package(UnmanagedVector *errmsg,
+                                  ByteSliceView package_path,
+                                  bool verbose,
+                                  bool dev_mode,
+                                  bool test_mode,
+                                  bool generate_docs,
+                                  bool generate_abis,
+                                  ByteSliceView install_dir,
+                                  bool force_recompilation,
+                                  bool fetch_deps_only);
+
 void initialize(vm_t *vm_ptr,
                 Db db,
                 bool _verbose,

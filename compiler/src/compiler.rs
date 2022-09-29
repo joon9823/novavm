@@ -114,8 +114,7 @@ fn run_compiler(
     match cmd {
         Command::Build(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Test(c) => c.execute(move_args.package_path, move_args.build_config, natives),
-        Command::Clean(c) => c.execute(move_args.package_path),
-        c => Err(anyhow!("unimplemented function: {}", c)),
+        Command::Info(c) => c.execute(move_args.package_path, move_args.build_config),
         /* TODO: unsupported yet
         Command::Coverage(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Disassemble(c) => c.execute(move_args.package_path, move_args.build_config),
@@ -135,6 +134,9 @@ fn run_compiler(
         Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
         Command::MoveyLogin(c) => c.execute(),
         */
+		Command::Clean(c) => c.execute(move_args.package_path),
+		c => Err(anyhow!("unimplemented function: {}", c)),
+
     }
 }
 

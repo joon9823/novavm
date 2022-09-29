@@ -9,6 +9,7 @@ use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
+use move_deps::move_cli::base::info::Info;
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
     build::Build,
@@ -355,6 +356,80 @@ pub extern "C" fn test_move_package(
         compute_coverage,
     };
     let cmd = Command::Test(test_arg);
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+
+#[no_mangle]
+pub extern "C" fn info_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+    verbose: bool,
+    dev_mode: bool,
+    test_mode: bool,
+    generate_docs: bool,
+    generate_abis: bool,
+    install_dir: ByteSliceView,
+    force_recompilation: bool,
+    fetch_deps_only: bool,
+) -> UnmanagedVector {
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
+    let install_dir_buf = if install_dir_str.len() > 0 {
+        Some(Path::new(&install_dir_str).to_path_buf())
+    } else {
+        None
+    };
+
+    let build_config = BuildConfig {
+        dev_mode,
+        test_mode,
+        generate_docs,
+        generate_abis,
+        install_dir: install_dir_buf,
+        force_recompilation,
+        additional_named_addresses: BTreeMap::new(),
+        architecture: Some(Architecture::Move),
+        fetch_deps_only,
+    };
+
+    let move_args = Move {
+        package_path: Some(package_path_buf.to_path_buf()),
+        verbose,
+        build_config,
+    };
+    let cmd = Command::Info(Info);
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn get_info_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+) -> UnmanagedVector {
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let move_args = Move {
+        package_path: Some(package_path_buf.to_path_buf()),
+        verbose: false,
+        build_config: BuildConfig::default(),
+    };
+    let cmd = Command::Info(Info);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
