@@ -1,7 +1,7 @@
 // from move-language/move/tools/move-cli/src/lib.rs
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, bail};
 use clap::Parser;
 use move_deps::move_cli::{sandbox, experimental, Move};
 use move_deps::move_cli::base::{
@@ -16,7 +16,8 @@ use move_deps::move_vm_runtime::native_functions::NativeFunction;
 use novavm::gas::NativeGasParameters;
 use novavm::natives::nova_natives;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
+use move_deps::move_command_line_common::env::MOVE_HOME;
 
 use crate::error::Error;
 
@@ -25,25 +26,6 @@ use crate::error::Error;
 pub const DEFAULT_STORAGE_DIR: &str = "storage";
 
 type NativeFunctionRecord = (AccountAddress, Identifier, Identifier, NativeFunction);
-
-/*  identical with move_deps::move_cli::Move
-use move_deps::move_package::BuildConfig;
-#[derive(Parser)]
-#[clap(author, version, about)]
-pub struct Move {
-    /// Path to a package which the command should be run with respect to.
-    #[clap(long = "path", short = 'p', global = true, parse(from_os_str))]
-    pub package_path: Option<PathBuf>,
-
-    /// Print additional diagnostics if available.
-    #[clap(short = 'v', global = true)]
-    pub verbose: bool,
-
-    /// Package build options
-    #[clap(flatten)]
-    pub build_config: BuildConfig,
-}
-*/
 
 /// MoveCLI is the CLI that will be executed by the `move-cli` command
 /// The `cmd` argument is added here rather than in `Move` to make it
@@ -55,6 +37,37 @@ pub struct MoveCLI {
 
     #[clap(subcommand)]
     pub cmd: Command,
+}
+
+#[derive(Parser)]
+#[clap(name = "clean")]
+pub struct Clean {
+    clean_cache: bool
+}
+
+impl Clean {
+    pub fn execute(self, path: Option<PathBuf>) -> anyhow::Result<()> { 
+        let path = match path{
+            Some(p) => p,
+            None => Path::new(".").to_path_buf(),
+        }.join("build");
+
+        let res = std::fs::remove_dir_all(path);
+        match res {
+            Err(e) => bail!("failed to clean the package: {}", e),
+            Ok(_) => {
+                let move_home = &*MOVE_HOME;
+                if self.clean_cache {
+                    match std::fs::remove_dir_all(PathBuf::from(move_home)) {
+                        Err(e) => bail!("failed to clean cache: {}", e),
+                        Ok(_) => Ok(()),
+                    }
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
 }
 
 #[derive(Parser)]
@@ -91,6 +104,8 @@ pub enum Command {
     },
     #[clap(name = "movey-login")]
     MoveyLogin(MoveyLogin),
+    #[clap(name = "clean")]
+    Clean(Clean),
 }
 
 impl fmt::Display for Command {
@@ -109,6 +124,7 @@ impl fmt::Display for Command {
             Command::MoveyLogin(_) => write!(f, "movey login"),
             Command::Sandbox { storage_dir: _, cmd: _ } => write!(f, "sandbox"),
             Command::Experimental { storage_dir: _, cmd: _ } => write!(f, "experimental"),
+            Command::Clean(_) => write!(f, "clean"),
         }
     }
 }
@@ -126,6 +142,7 @@ pub fn run_compiler(
     match cmd {
         Command::Build(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Test(c) => c.execute(move_args.package_path, move_args.build_config, natives),
+        Command::Clean(c) => c.execute(move_args.package_path),
         c => Err(anyhow!("unimplemented function: {}", c)),
         /* TODO: unsupported yet
         Command::Coverage(c) => c.execute(move_args.package_path, move_args.build_config),
@@ -171,16 +188,15 @@ pub fn move_compiler(
     }
 }
 
-/*
- * FIXME: [CAUTION] if uncomment these tests, go test might fail... check later
- *  
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
     use std::env;
     use move_deps::{move_package::BuildConfig, move_cli::{Move, base::test::Test}};
     use serial_test::serial;
+
+    use crate::move_api::compiler::Clean;
+
     use super::{move_compiler, Command};
 
     #[test]
@@ -229,11 +245,8 @@ mod tests {
         let wd = Path::new(&md);
         let path = Path::new(&"../vm/move-test");
         let package_path = wd.join(path);
-        eprint!("COMP::PACKPATH: {:?}", package_path.to_str());
 
-        let mut build_config = BuildConfig::default();
-        build_config.test_mode = true;
-        build_config.dev_mode = true;
+        let build_config = BuildConfig::default();
         let move_args = Move{
             package_path: Some(package_path.canonicalize().unwrap()),
             verbose: true,
@@ -243,5 +256,28 @@ mod tests {
         let res = move_compiler(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
         assert!(res==Vec::from("ok"));
     }
+
+    #[test]
+    #[serial]
+    fn test_move_clean() {
+        // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+        let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+        let wd = Path::new(&md);
+        let path = Path::new(&"../vm/move-test");
+        let package_path = wd.join(path);
+       
+        let build_config = BuildConfig::default();
+        let move_args = Move{
+            package_path: Some(package_path.canonicalize().unwrap()),
+            verbose: true,
+            build_config,
+        };
+
+        let c = Clean{
+            clean_cache: true,
+        };
+
+        let res = move_compiler(move_args, Command::Clean(c)).expect("compiler err");
+        assert!(res==Vec::from("ok"));
+    }
 }
-*/
