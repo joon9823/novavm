@@ -90,7 +90,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
         should_commit,
     } in testcases
     {
-        println!("tx start");
+        println!("\n\ntx start");
         let mut state = chain.create_state();
 
         for (msg, exp_output) in msg_tests {

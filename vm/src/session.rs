@@ -78,7 +78,6 @@ where
             account_size_change.insert(addr.clone(), account_delta);
         });
 
-        // TODO: find owner account of table and merge to it
         for (handle, change) in table_change_set.changes.iter() {
             for (key, op) in &change.entries {
                 let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());

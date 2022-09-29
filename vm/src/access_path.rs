@@ -37,18 +37,23 @@
 
 // use crate::parser::parse_struct_tag;
 use anyhow::{bail, Result};
-use move_deps::move_core_types::{
-    account_address::AccountAddress,
-    identifier::Identifier,
-    language_storage::{ModuleId, ResourceKey, StructTag, TypeTag},
-    parser::parse_type_tag,
+use move_deps::{
+    move_core_types::{
+        account_address::AccountAddress,
+        identifier::Identifier,
+        language_storage::{ModuleId, ResourceKey, StructTag, TypeTag},
+        parser::parse_type_tag,
+    },
+    move_table_extension::TableHandle,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 
-use std::fmt;
 use std::str::FromStr;
+use std::{fmt, hash};
 use std::{fmt::Write, num::ParseIntError};
+
+use crate::{genesis_address, CORE_CODE_ADDRESS};
 #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct AccessPath {
     pub address: AccountAddress,
@@ -68,9 +73,22 @@ impl AccessPath {
         AccessPath::new(address, Self::code_data_path(module_name))
     }
 
-    pub fn table_item_access_path(address/* Table Address */: AccountAddress, key: Vec<u8>) -> AccessPath {
+    pub fn table_item_access_path(
+        address /* Table Address */: AccountAddress,
+        key: Vec<u8>,
+    ) -> AccessPath {
         // table address created uniquely in move table extension
         AccessPath::new(address, Self::table_item_data_path(key))
+    }
+
+    pub fn table_owner_access_path(address /* Table Address */: AccountAddress) -> AccessPath {
+        // table address created uniquely in move table extension
+        AccessPath::new(CORE_CODE_ADDRESS, Self::table_owner_data_path(address))
+    }
+
+    pub fn table_val_type_access_path(address /* Table Address */: AccountAddress) -> AccessPath {
+        // table address created uniquely in move table extension
+        AccessPath::new(CORE_CODE_ADDRESS, Self::table_val_type_data_path(address))
     }
 
     pub fn resource_data_path(tag: StructTag) -> DataPath {
@@ -83,6 +101,14 @@ impl AccessPath {
 
     pub fn table_item_data_path(key: Vec<u8>) -> DataPath {
         DataPath::TableItem(key)
+    }
+
+    pub fn table_owner_data_path(handle: AccountAddress) -> DataPath {
+        DataPath::TableOwner(handle)
+    }
+
+    pub fn table_val_type_data_path(handle: AccountAddress) -> DataPath {
+        DataPath::TableValType(handle)
     }
 
     pub fn into_inner(self) -> (AccountAddress, DataPath) {
@@ -133,6 +159,8 @@ pub enum DataType {
     CODE,
     RESOURCE,
     TABLE_ITEM,
+    TABLE_OWNER,
+    TABLE_VAL_TYPE,
 }
 
 impl DataType {
@@ -168,6 +196,8 @@ pub enum DataPath {
     Code(ModuleName),
     Resource(StructTag),
     TableItem(Vec<u8>),
+    TableOwner(AccountAddress),
+    TableValType(AccountAddress),
 }
 
 impl DataPath {
@@ -195,6 +225,8 @@ impl DataPath {
             DataPath::Code(_) => DataType::CODE,
             DataPath::Resource(_) => DataType::RESOURCE,
             DataPath::TableItem(_) => DataType::TABLE_ITEM,
+            DataPath::TableOwner(_) => DataType::TABLE_OWNER,
+            DataPath::TableValType(_) => DataType::TABLE_VAL_TYPE,
         }
     }
 }
@@ -211,6 +243,12 @@ impl fmt::Display for DataPath {
             }
             DataPath::TableItem(key) => {
                 write!(f, "{}/{}", storage_index, encode_hex(key))
+            }
+            DataPath::TableOwner(handle) => {
+                write!(f, "{}/{}", storage_index, handle)
+            }
+            DataPath::TableValType(handle) => {
+                write!(f, "{}/{}", storage_index, handle)
             }
         }
     }
@@ -230,6 +268,12 @@ impl FromStr for AccessPath {
             DataType::CODE => AccessPath::code_data_path(Identifier::new(parts[2])?),
             DataType::RESOURCE => AccessPath::resource_data_path(parse_struct_tag(parts[2])?),
             DataType::TABLE_ITEM => AccessPath::table_item_data_path(decode_hex(parts[2])?),
+            DataType::TABLE_OWNER => {
+                AccessPath::table_owner_data_path(AccountAddress::from_str(parts[2])?)
+            }
+            DataType::TABLE_VAL_TYPE => {
+                AccessPath::table_val_type_data_path(AccountAddress::from_str(parts[2])?)
+            }
         };
         Ok(AccessPath::new(address, data_path))
     }

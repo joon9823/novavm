@@ -6,24 +6,36 @@ use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
 use log::error;
-use move_deps::move_core_types::{
-    account_address::AccountAddress,
-    language_storage::{ModuleId, StructTag},
-    resolver::{ModuleResolver, ResourceResolver},
-    vm_status::StatusCode,
-};
 use move_deps::{
     move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
+    move_compiler::expansion::ast::Address,
+    move_core_types::value::MoveValue,
     move_table_extension::{TableHandle, TableResolver},
+};
+use move_deps::{
+    move_core_types::{
+        account_address::AccountAddress,
+        language_storage::{ModuleId, StructTag, TypeTag},
+        resolver::{ModuleResolver, ResourceResolver},
+        value::MoveTypeLayout,
+        vm_status::StatusCode,
+    },
+    move_vm_types::values::Value,
 };
 
 pub trait StoredSizeResolver {
     fn get_size(&self, access_path: &AccessPath) -> Option<usize>;
 }
 
+pub trait TableOwnerResolver {
+    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<AccountAddress>>;
+    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<TypeTag>>;
+}
+
 pub struct DataViewResolver<'a, S> {
     data_view: &'a S,
     pub size_cache: RefCell<BTreeMap<AccessPath, usize>>,
+    pub val_type_map: RefCell<BTreeMap<TableHandle, TypeTag>>, //FIXME: should persist
 }
 
 impl<'a, S: StateView> DataViewResolver<'a, S> {
@@ -31,6 +43,7 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
         Self {
             data_view,
             size_cache: RefCell::new(BTreeMap::default()),
+            val_type_map: RefCell::new(BTreeMap::default()),
         }
     }
 
@@ -62,7 +75,6 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
 }
 
 impl<'block, S: StateView> StoredSizeResolver for DataViewResolver<'block, S> {
-
     //TODO: should it return Result rather than Option?
     fn get_size(&self, access_path: &AccessPath) -> Option<usize> {
         self.size_cache.borrow().get(access_path).cloned()
@@ -99,5 +111,41 @@ impl<'block, S: StateView> TableResolver for DataViewResolver<'block, S> {
     ) -> Result<Option<Vec<u8>>, anyhow::Error> {
         let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
         self.get(&ap)
+    }
+}
+
+impl<'block, S: StateView> TableOwnerResolver for DataViewResolver<'block, S> {
+    // type Error = VMError;
+    //
+    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<AccountAddress>> {
+        let ap = AccessPath::table_owner_access_path(handle.0);
+        let r = self
+            .get(&ap)
+            // AccountAddress::from_bytes(vec).unwrap()))
+            .map_err(|_| {
+                PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined)
+            })?;
+
+        let rr: VMResult<Option<AccountAddress>> = if let Some(vec) = r {
+            let ty_layout = MoveTypeLayout::Address;
+            let v = MoveValue::simple_deserialize(&vec, &ty_layout).unwrap();
+            if let MoveValue::Address(a) = v {
+                Ok(Some(a))
+            } else {
+                Err(PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
+            }
+        } else {
+            Ok(None)
+        };
+
+        rr
+    }
+
+    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<TypeTag>> {
+        Ok(self.val_type_map.borrow().get(handle).cloned())
+        // let ap = AccessPath::table_owner_access_path(handle.0);
+        // self.get(&ap)
+        //     .map(|v| v.map(|vec| bcs::from_bytes(&vec).unwrap()))
+        //     .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
     }
 }

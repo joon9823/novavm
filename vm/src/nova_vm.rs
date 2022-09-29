@@ -1,28 +1,27 @@
 use anyhow::Result;
 use move_deps::{
     move_core_types::{
-        account_address::AccountAddress, effects::{ChangeSet, Event}, vm_status::StatusCode, 
+        account_address::AccountAddress, effects::{ChangeSet}, vm_status::StatusCode, language_storage::TypeTag, 
     },
     move_vm_runtime::{move_vm::MoveVM, session::{Session, SerializedReturnValues}, native_extensions::NativeContextExtensions},
     move_vm_types::gas::UnmeteredGasMeter, move_bytecode_utils::Modules,
-    move_table_extension::{NativeTableContext, TableResolver, TableChangeSet}, move_binary_format::CompiledModule,
+    move_table_extension::{NativeTableContext, TableResolver, TableChangeSet, TableHandle}, move_binary_format::CompiledModule,
     move_binary_format::{access::ModuleAccess, errors::{Location, VMError, PartialVMError, VMResult}},
 };
-use std::{sync::Arc, collections::{BTreeSet, BTreeMap}};
+use std::{sync::Arc, collections::{BTreeSet, BTreeMap}, borrow::{Borrow}, cell::RefCell};
 pub use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
 };
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
-
 use crate::{
     natives::{nova_natives, code::{NativeCodeContext, PublishRequest}}, 
     gas::{InitialGasSchedule}, 
     NovaVMError, 
-    storage::{ data_view_resolver::StoredSizeResolver}, 
+    storage::data_view_resolver::StoredSizeResolver, 
     session::{SessionExt, SessionOutput}, 
-    size_change_set::SizeChangeSet
+    size_change_set::SizeChangeSet, table_owner::find_all_address_occur
 };
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
 use crate::args_validator::validate_combine_signer_and_txn_args;
@@ -40,6 +39,7 @@ use crate::asset::{
 pub struct NovaVM {
     move_vm: Arc<MoveVM>,
     gas_params: NovaGasParameters,
+    owner_map: RefCell<BTreeMap<TableHandle, AccountAddress>> //FIXME: should persist in chain
 }
 
 impl NovaVM {
@@ -49,8 +49,9 @@ impl NovaVM {
 
         Self {
             move_vm: Arc::new(inner),
-            gas_params: NovaGasParameters::initial()
-        }   
+            gas_params: NovaGasParameters::initial(),
+            owner_map: RefCell::new(BTreeMap::default()),
+        }  
     }
 
     fn create_session<'r, S: MoveResolver + TableResolver + StoredSizeResolver>(&self, remote: &'r S, session_id: Vec<u8>) -> SessionExt<'r, '_, S> {
@@ -208,7 +209,7 @@ impl NovaVM {
         payload: &MessagePayload,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache, session_id);
+        let mut session = self.create_session(remote_cache, session_id.clone());
 
         let senders = match sender {
             Some(s) => vec![s],
@@ -263,6 +264,12 @@ impl NovaVM {
         self.resolve_pending_code_publish(&mut session, gas_meter)?;
 
         let session_output = session.finish()?;
+
+        self.get_table_ownership( session_id, &session_output.0, &session_output.2, remote_cache)
+            .map_err(|e| {
+                println!("[VM] get_table_ownership error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+                e.into_vm_status()
+            })?;
         
         // Charge for change set
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
@@ -410,6 +417,79 @@ impl NovaVM {
         PartialVMError::new(StatusCode::CONSTRAINT_NOT_SATISFIED)
             .with_message(format!("metadata and code bundle mismatch: {}", msg))
             .finish(Location::Undefined)
+    }
+
+    //TODO: should return table owner change set & table value type change set
+    fn get_table_ownership<S: StateView>(&self, 
+        session_id: Vec<u8>,
+        change_set: &ChangeSet,
+        table_change_set: &TableChangeSet,
+        remote_cache: &DataViewResolver<'_, S>,
+    ) -> VMResult<()> {
+        let temporary_session = self.create_session(remote_cache, session_id);
+        let mut val_type_map = remote_cache.val_type_map.borrow_mut();
+
+        // store new tables' value type
+        let new_tables = &table_change_set.borrow().new_tables;
+        for (handle, info) in new_tables.iter() {
+            val_type_map.insert(handle.clone(), info.value_type.clone());
+        }
+
+        println!("new table {:?}", table_change_set.new_tables);
+        println!("remove table {:?}", table_change_set.removed_tables);
+
+        for i in table_change_set.removed_tables.iter() {
+            self.owner_map.borrow_mut().remove(i);
+            val_type_map.remove(i);
+        }
+
+        for (addr, account_change_set) in change_set.borrow().accounts().iter() {
+            println!("checking changeset for {}", addr);
+            for (i, op) in account_change_set.resources().iter() {
+                let ty_tag = TypeTag::Struct(i.clone());
+                let res = find_all_address_occur(op, &temporary_session, &ty_tag)?;
+                
+                for address_found in res.into_iter() {
+                    let found_handle = TableHandle(address_found);
+                    // address is new table's handle or 
+                    // already stored table's handle
+                    if new_tables.contains_key(&found_handle) || self.owner_map.borrow().contains_key(&found_handle) {
+                        // this is addr's table
+                        self.owner_map.borrow_mut().insert(found_handle, addr.clone());
+                    }
+                }
+            }
+        }
+
+        let mut table_in_table_ownership: BTreeMap<TableHandle, TableHandle> = BTreeMap::default();
+        for (handle, change) in table_change_set.changes.iter() {
+            let val_ty_tag = val_type_map.get(handle).unwrap();
+            for (_key, op) in &change.entries {
+                let res = find_all_address_occur(op, &temporary_session, val_ty_tag)?;
+                
+                for address_found in res.iter() {
+                    let found_handle = TableHandle(*address_found);
+                    if new_tables.contains_key(&handle) || self.owner_map.borrow().contains_key(&found_handle) {
+                        // will figure out who owns this table below
+                        table_in_table_ownership.insert(found_handle, handle.clone()); 
+                    }
+                }
+            }
+        }
+
+        for (inner, outter) in table_in_table_ownership.iter() {
+            let real_owner = self.owner_map.borrow().get(outter).cloned().unwrap();
+            self.owner_map.borrow_mut().insert(inner.clone(), real_owner);
+        }
+
+
+        println!("{:?}",self.owner_map);
+
+
+        temporary_session.finish();
+
+        Ok(())
+
     }
 }
 
