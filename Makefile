@@ -25,6 +25,7 @@ else
 	endif
 endif
 
+
 all: test-filenames build test
 
 test-filenames:
@@ -35,7 +36,7 @@ test-filenames:
 test: test-rust test-go
 
 test-go: 
-	RUST_BACKTRACE=1 go test -v -count=1 ./...
+	RUST_BACKTRACE=full go test -v -count=1 ./...
 
 test-safety:
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.

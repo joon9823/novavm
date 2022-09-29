@@ -62,6 +62,10 @@ enum GoError {
 };
 typedef int32_t GoError;
 
+typedef struct {
+
+} vm_t;
+
 /**
  * An optional Vector type that requires explicit creation and destruction
  * and can be sent via FFI.
@@ -247,6 +251,19 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
+vm_t *allocate_vm(void);
+
+UnmanagedVector build_move_package(UnmanagedVector *errmsg,
+                                   ByteSliceView package_path,
+                                   bool verbose,
+                                   bool dev_mode,
+                                   bool test_mode,
+                                   bool generate_docs,
+                                   bool generate_abis,
+                                   ByteSliceView install_dir,
+                                   bool force_recompilation,
+                                   bool fetch_deps_only);
+
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
 UnmanagedVector decode_move_resource(Db db,
@@ -258,50 +275,78 @@ UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView scrip
 
 void destroy_unmanaged_vector(UnmanagedVector v);
 
-UnmanagedVector execute_contract(Db db,
+UnmanagedVector execute_contract(vm_t *vm_ptr,
+                                 Db db,
                                  GoApi _api,
                                  GoQuerier _querier,
-                                 bool _is_verbose,
+                                 bool _verbose,
                                  uint64_t gas_limit,
                                  UnmanagedVector *errmsg,
                                  ByteSliceView session_id,
                                  ByteSliceView sender,
                                  ByteSliceView message);
 
-UnmanagedVector execute_script(Db db,
+UnmanagedVector execute_script(vm_t *vm_ptr,
+                               Db db,
                                GoApi _api,
                                GoQuerier _querier,
-                               bool _is_verbose,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView session_id,
                                ByteSliceView sender,
                                ByteSliceView message);
 
-UnmanagedVector initialize(Db db,
-                           bool _is_verbose,
-                           UnmanagedVector *errmsg,
-                           ByteSliceView module_bundle);
+void initialize(vm_t *vm_ptr,
+                Db db,
+                bool _verbose,
+                UnmanagedVector *errmsg,
+                ByteSliceView module_bundle);
 
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 /**
  * exported function to publish a module
  */
-UnmanagedVector publish_module(Db db,
-                               bool _is_verbose,
+UnmanagedVector publish_module(vm_t *vm_ptr,
+                               Db db,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
                                ByteSliceView module_bytes);
 
-UnmanagedVector query_contract(Db db,
+UnmanagedVector query_contract(vm_t *vm_ptr,
+                               Db db,
                                GoApi _api,
                                GoQuerier _querier,
-                               bool _is_verbose,
+                               bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView message);
+
+void release_vm(vm_t *vm);
+
+UnmanagedVector test_move_package(UnmanagedVector *errmsg,
+                                  ByteSliceView package_path,
+                                  bool verbose,
+                                  bool dev_mode,
+                                  bool test_mode,
+                                  bool generate_docs,
+                                  bool generate_abis,
+                                  ByteSliceView install_dir,
+                                  bool force_recompilation,
+                                  bool fetch_deps_only,
+                                  uint64_t instruction_execution_bound,
+                                  ByteSliceView filter,
+                                  bool list,
+                                  size_t num_threads,
+                                  bool report_statistics,
+                                  bool report_storage_on_error,
+                                  bool ignore_compile_warnings,
+                                  bool check_stackless_vm,
+                                  bool verbose_mode,
+                                  bool compute_coverage);
 
 /**
  * Returns a version number of this library as a C string.
