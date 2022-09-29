@@ -44,10 +44,10 @@ impl SizeDelta {
         if self.is_decrease == delta.is_decrease {
             self.amount += delta.amount;
         } else {
-            self.amount = self.amount.abs_diff(delta.amount);
             if self.amount < delta.amount {
                 self.is_decrease = !self.is_decrease;
             }
+            self.amount = self.amount.abs_diff(delta.amount);
         }
     }
 }
@@ -58,6 +58,11 @@ mod test {
 
     #[test]
     fn test_size_delta() {
+        let mut z = SizeDelta::zero();
+        z.merge(SizeDelta::new(10, 0));
+        assert_eq!(z.amount, 10);
+        assert_eq!(z.is_decrease, true);
+
         //a is 1
         let mut a = SizeDelta::new(2, 3);
         assert_eq!(a.amount, 1);
