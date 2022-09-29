@@ -1,5 +1,4 @@
 pub mod handler;
-pub mod compiler;
 
 mod address;
 mod bytecode;

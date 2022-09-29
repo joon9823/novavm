@@ -19,3 +19,9 @@ Cargo.lock
 # no static libraries (35MB+)
 lib*.a
 
+
+
+# Added by cargo
+
+/target
+/Cargo.lock

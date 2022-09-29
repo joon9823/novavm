@@ -49,6 +49,7 @@ test-vm:
 	(cd vm && cargo test)
 
 test-lib:
+	(cd compiler && cargo test)
 	(cd libnovaproc && cargo test)
 
 build: build-rust build-go

@@ -5,13 +5,11 @@ use std::path::Path;
 use crate::args::VM_ARG;
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
-use crate::move_api::compiler::{move_compiler, Command};
 use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
 use move_deps::move_core_types::account_address::AccountAddress;
-
 use move_deps::move_cli::base::{
     build::Build,
     test::Test,
@@ -20,7 +18,9 @@ use move_deps::move_cli::base::{
     // info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
 };
 use move_deps::move_package::{Architecture, BuildConfig};
+use crate::compiler::{compile, Command};
 use novavm::NovaVM;
+
 
 #[repr(C)]
 pub struct vm_t {}
@@ -233,6 +233,7 @@ pub extern "C" fn decode_script_bytes(
     UnmanagedVector::new(Some(ret))
 }
 
+
 #[no_mangle]
 pub extern "C" fn build_move_package(
     errmsg: Option<&mut UnmanagedVector>,
@@ -276,7 +277,7 @@ pub extern "C" fn build_move_package(
     };
     let cmd = Command::Build(Build);
 
-    let res = catch_unwind(AssertUnwindSafe(move || move_compiler(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -355,7 +356,7 @@ pub extern "C" fn test_move_package(
     };
     let cmd = Command::Test(test_arg);
 
-    let res = catch_unwind(AssertUnwindSafe(move || move_compiler(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);

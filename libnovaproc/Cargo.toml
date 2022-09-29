@@ -40,10 +40,9 @@ thiserror = "1.0.34"
 novavm = { path = "../vm", features = ["backtraces"] }
 move-deps = { path = "../move-deps", features = ["address20"] }
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_warn"] }
-clap = { version = "3.2.22", features = ["derive"] }
+nova-compiler = { version = "0.1.0", path = "../compiler" }
 
 [dev-dependencies]
-serial_test = "0.9.0"
 
 [build-dependencies]
 cbindgen = "0.24.3"
