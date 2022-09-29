@@ -9,12 +9,14 @@ import (
 
 // VM struct is the core of novavm.
 type VM struct {
+	inner      api.VM
 	printDebug bool
 }
 
 // NewVm return VM instance
 func NewVM(printDebug bool) VM {
-	return VM{printDebug}
+	inner := api.AllocateVM()
+	return VM{inner, printDebug}
 }
 
 // Initialize deploys std libs and move libs
@@ -28,7 +30,8 @@ func (vm *VM) Initialize(
 		return err
 	}
 
-	_, err = api.Initialize(
+	err = api.Initialize(
+		vm.inner,
 		kvStore,
 		vm.printDebug,
 		bz,
@@ -39,7 +42,9 @@ func (vm *VM) Initialize(
 
 // VM Destroyer
 // TODO: add params and returns
-func (vm *VM) Destroy() {}
+func (vm *VM) Destroy() {
+	api.ReleaseVM(vm.inner)
+}
 
 // PublishModule will publish a given module.
 // TODO: add params and returns
@@ -50,6 +55,7 @@ func (vm *VM) PublishModule(
 	moduleBytes []byte,
 ) (uint64, error) {
 	res, err := api.PublishModule(
+		vm.inner,
 		kvStore,
 		vm.printDebug,
 		gasLimit,
@@ -81,6 +87,7 @@ func (vm *VM) QueryEntryFunction(
 	}
 
 	res, err := api.QueryContract(
+		vm.inner,
 		kvStore,
 		goApi,
 		querier,
@@ -116,6 +123,7 @@ func (vm *VM) ExecuteEntryFunction(
 	}
 
 	res, err := api.ExecuteContract(
+		vm.inner,
 		kvStore,
 		goApi,
 		querier,
@@ -152,6 +160,7 @@ func (vm *VM) ExecuteScript(
 	}
 
 	res, err := api.ExecuteScript(
+		vm.inner,
 		kvStore,
 		goApi,
 		querier,

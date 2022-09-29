@@ -62,6 +62,10 @@ enum GoError {
 };
 typedef int32_t GoError;
 
+typedef struct {
+
+} vm_t;
+
 /**
  * An optional Vector type that requires explicit creation and destruction
  * and can be sent via FFI.
@@ -247,6 +251,8 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
+vm_t *allocate_vm(void);
+
 UnmanagedVector build_move_package(UnmanagedVector *errmsg,
                                    ByteSliceView package_path,
                                    bool verbose,
@@ -269,7 +275,8 @@ UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView scrip
 
 void destroy_unmanaged_vector(UnmanagedVector v);
 
-UnmanagedVector execute_contract(Db db,
+UnmanagedVector execute_contract(vm_t *vm_ptr,
+                                 Db db,
                                  GoApi _api,
                                  GoQuerier _querier,
                                  bool _verbose,
@@ -279,7 +286,8 @@ UnmanagedVector execute_contract(Db db,
                                  ByteSliceView sender,
                                  ByteSliceView message);
 
-UnmanagedVector execute_script(Db db,
+UnmanagedVector execute_script(vm_t *vm_ptr,
+                               Db db,
                                GoApi _api,
                                GoQuerier _querier,
                                bool _verbose,
@@ -289,30 +297,35 @@ UnmanagedVector execute_script(Db db,
                                ByteSliceView sender,
                                ByteSliceView message);
 
-UnmanagedVector initialize(Db db,
-                           bool _verbose,
-                           UnmanagedVector *errmsg,
-                           ByteSliceView module_bundle);
+void initialize(vm_t *vm_ptr,
+                Db db,
+                bool _verbose,
+                UnmanagedVector *errmsg,
+                ByteSliceView module_bundle);
 
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 /**
  * exported function to publish a module
  */
-UnmanagedVector publish_module(Db db,
+UnmanagedVector publish_module(vm_t *vm_ptr,
+                               Db db,
                                bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView sender,
                                ByteSliceView module_bytes);
 
-UnmanagedVector query_contract(Db db,
+UnmanagedVector query_contract(vm_t *vm_ptr,
+                               Db db,
                                GoApi _api,
                                GoQuerier _querier,
                                bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
                                ByteSliceView message);
+
+void release_vm(vm_t *vm);
 
 UnmanagedVector test_move_package(UnmanagedVector *errmsg,
                                   ByteSliceView package_path,

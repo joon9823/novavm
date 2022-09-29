@@ -13,6 +13,7 @@ mod result;
 mod storage;
 mod version;
 mod vm;
+mod args;
 
 pub use db::{db_t, Db};
 pub use memory::{

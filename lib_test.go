@@ -95,17 +95,21 @@ func mintCoin(
 }
 
 func Test_InitializeVM(t *testing.T) {
-	_, _ = initializeVM(t)
+	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 }
 
 func Test_PublishModule(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
 
 	publishModule(t, vm, kvStore)
 }
 
 func Test_ExecuteContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	minter, err := types.NewAccountAddress("0x2")
@@ -116,6 +120,8 @@ func Test_ExecuteContract(t *testing.T) {
 
 func Test_FailOnExecute(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	amount := uint64(100)
@@ -150,6 +156,8 @@ func Test_FailOnExecute(t *testing.T) {
 
 func Test_OutOfGas(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	amount := uint64(100)
@@ -182,6 +190,8 @@ func Test_OutOfGas(t *testing.T) {
 
 func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	testAccount, err := types.NewAccountAddress("0x2")
@@ -216,6 +226,8 @@ func Test_QueryContract(t *testing.T) {
 
 func Test_DecodeResource(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	bz, err := base64.StdEncoding.DecodeString("LAEAAAAAAAAB")
@@ -228,6 +240,7 @@ func Test_DecodeResource(t *testing.T) {
 
 func Test_DecodeModule(t *testing.T) {
 	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
 	require.NoError(t, err)
@@ -239,6 +252,7 @@ func Test_DecodeModule(t *testing.T) {
 
 func Test_DecodeScript(t *testing.T) {
 	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
 	require.NoError(t, err)
@@ -250,6 +264,8 @@ func Test_DecodeScript(t *testing.T) {
 
 func Test_ExecuteScript(t *testing.T) {
 	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
 	publishModule(t, vm, kvStore)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
@@ -319,5 +335,4 @@ func Test_TestContract(t *testing.T) {
 	res, err := api.TestContract(buildConfig, testConfig)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
-
 }
