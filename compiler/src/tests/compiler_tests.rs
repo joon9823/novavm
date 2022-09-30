@@ -1,6 +1,7 @@
 
 use std::{path::Path, env::temp_dir};
 use std::env;
+use move_deps::move_cli::base::coverage::{CoverageSummaryOptions, Coverage};
 use move_deps::{move_package::BuildConfig, move_cli::{Move, base::{test::Test, info::Info}}};
 use serial_test::serial;
 
@@ -14,7 +15,7 @@ fn test_move_test() {
     // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
     let md= env::var("CARGO_MANIFEST_DIR").unwrap();
     let wd = Path::new(&md);
-    let path = Path::new(&"../vm/move-test");
+	let path = Path::new(&"testdata/general");
     let package_path = wd.join(path);
     
     let mut build_config = BuildConfig::default();
@@ -52,7 +53,7 @@ fn test_move_compile() {
     // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
     let md= env::var("CARGO_MANIFEST_DIR").unwrap();
     let wd = Path::new(&md);
-    let path = Path::new(&"../vm/move-test");
+	let path = Path::new(&"testdata/general");
     let package_path = wd.join(path);
 
     let build_config = BuildConfig::default();
@@ -72,7 +73,7 @@ fn test_move_clean() {
     // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
     let md= env::var("CARGO_MANIFEST_DIR").unwrap();
     let wd = Path::new(&md);
-    let path = Path::new(&"../vm/move-test");
+	let path = Path::new(&"testdata/general");
     let package_path = wd.join(path);
    
     let build_config = BuildConfig::default();
@@ -96,7 +97,7 @@ fn test_move_info() {
     // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
     let md= env::var("CARGO_MANIFEST_DIR").unwrap();
     let wd = Path::new(&md);
-    let path = Path::new(&"../vm/move-test");
+	let path = Path::new(&"testdata/general");
     let package_path = wd.join(path);
 
     let build_config = BuildConfig::default();
@@ -163,3 +164,31 @@ fn test_move_new() {
     // remove temporary package
     assert!(std::fs::remove_dir_all(temp_package_path).is_ok());
 }
+
+#[test]
+#[serial]
+fn test_move_coverage() { // with prebuilt `.trace` file
+	// FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+	let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+	let wd = Path::new(&md);
+	let path = Path::new(&"testdata/coverage");
+	let package_path = wd.join(path);
+	
+	let mut build_config = BuildConfig::default();
+    build_config.test_mode = true;
+	build_config.dev_mode = true;
+
+	let move_args = Move{
+		package_path: Some(package_path.canonicalize().unwrap()),
+		verbose: true,
+		build_config,
+	};
+
+	let cs_opt = CoverageSummaryOptions::Summary { functions: true, output_csv: true };
+	let cmd = Command::Coverage(Coverage{options: cs_opt});
+	
+	let res = compile(move_args, cmd).expect("compiler err");
+	assert!(res==Vec::from("ok"));
+
+}
+

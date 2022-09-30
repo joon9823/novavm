@@ -337,11 +337,16 @@ func Test_TestContract(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
-func Test_GetInfoContract(t *testing.T) {
-	buildConfig := types.DefaultBuildConfig()
-	buildConfig.PackagePath = []byte(package_path)
+func Test_GetContractInfo(t *testing.T) {
+	res, err := api.GetContractInfo(package_path)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
 
-	res, err := api.BuildContract(buildConfig)
+func Test_CreateNewContract(t *testing.T) {
+	tmpPath := package_path + "-tmp"
+	res, err := api.CreateContractPackage(tmpPath)
+	defer os.RemoveAll(tmpPath)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }

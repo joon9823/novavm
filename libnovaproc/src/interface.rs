@@ -9,6 +9,7 @@ use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
+use move_deps::move_cli::base::coverage::{Coverage, CoverageSummaryOptions};
 use move_deps::move_cli::base::info::Info;
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
@@ -19,7 +20,8 @@ use move_deps::move_cli::base::{
     // info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
 };
 use move_deps::move_package::{Architecture, BuildConfig};
-use crate::compiler::{compile, Command};
+use nova_compiler::New;
+use crate::compiler::{compile, Command, self};
 use novavm::NovaVM;
 
 
@@ -365,58 +367,9 @@ pub extern "C" fn test_move_package(
 }
 
 
-#[no_mangle]
-pub extern "C" fn info_move_package(
-    errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
-    verbose: bool,
-    dev_mode: bool,
-    test_mode: bool,
-    generate_docs: bool,
-    generate_abis: bool,
-    install_dir: ByteSliceView,
-    force_recompilation: bool,
-    fetch_deps_only: bool,
-) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
-    let install_dir_buf = if install_dir_str.len() > 0 {
-        Some(Path::new(&install_dir_str).to_path_buf())
-    } else {
-        None
-    };
-
-    let build_config = BuildConfig {
-        dev_mode,
-        test_mode,
-        generate_docs,
-        generate_abis,
-        install_dir: install_dir_buf,
-        force_recompilation,
-        additional_named_addresses: BTreeMap::new(),
-        architecture: Some(Architecture::Move),
-        fetch_deps_only,
-    };
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose,
-        build_config,
-    };
-    let cmd = Command::Info(Info);
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
 
 #[no_mangle]
-pub extern "C" fn get_info_move_package(
+pub extern "C" fn get_move_package_info(
     errmsg: Option<&mut UnmanagedVector>,
     /* for build config */
     package_path: ByteSliceView,
@@ -430,6 +383,66 @@ pub extern "C" fn get_info_move_package(
         build_config: BuildConfig::default(),
     };
     let cmd = Command::Info(Info);
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn create_new_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+) -> UnmanagedVector {
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let move_args = Move {
+        package_path: Some(package_path_buf.to_path_buf()),
+        verbose: false,
+        build_config: BuildConfig::default(),
+    };
+
+    let cmd = Command::New(New{name: package_path_str});
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn check_coverage_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+    summary_mode: compiler::CoverageOption,
+    functions: bool, // Whether function coverage summaries should be displayed
+    output_csv: bool, // Output CSV data of coverage
+    module_name_view : ByteSliceView, // Display coverage information about the module against source code or dissambled bytecode
+    /* for test coverage options */
+) -> UnmanagedVector {
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+    let module_name = String::from_utf8(module_name_view.read().unwrap().to_vec()).unwrap();
+
+    let move_args = Move {
+        package_path: Some(package_path_buf.to_path_buf()),
+        verbose: false,
+        build_config: BuildConfig::default(),
+    };
+
+    let options = match summary_mode {
+        compiler::CoverageOption::Summary => CoverageSummaryOptions::Summary { functions, output_csv },
+        compiler::CoverageOption::Source => CoverageSummaryOptions::Source { module_name },
+        compiler::CoverageOption::Bytecode => CoverageSummaryOptions::Bytecode { module_name },
+    };
+
+    let cmd = Command::Coverage(Coverage{ options });
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

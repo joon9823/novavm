@@ -14,6 +14,22 @@
 #include <stdlib.h>
 
 
+enum CoverageOption {
+  /**
+   * Display a coverage summary for all modules in this package
+   */
+  CoverageOption_Summary = 1,
+  /**
+   * Display coverage information about the module against source code
+   */
+  CoverageOption_Source = 2,
+  /**
+   * Display coverage information about the module against disassembled bytecode
+   */
+  CoverageOption_Bytecode = 3,
+};
+typedef uint8_t CoverageOption;
+
 enum ErrnoValue {
   ErrnoValue_Success = 0,
   ErrnoValue_Other = 1,
@@ -251,6 +267,49 @@ typedef struct {
   Querier_vtable vtable;
 } GoQuerier;
 
+typedef enum {
+  /**
+   * Display a coverage summary for all modules in this package
+   */
+  Summary,
+  /**
+   * Display coverage information about the module against source code
+   */
+  Source,
+  /**
+   * Display coverage information about the module against disassembled bytecode
+   */
+  Bytecode,
+} CoverageSummaryOptions_Tag;
+
+typedef struct {
+  /**
+   * Whether function coverage summaries should be displayed
+   */
+  bool functions;
+  /**
+   * Output CSV data of coverage
+   */
+  bool output_csv;
+} Summary_Body;
+
+typedef struct {
+  ByteSliceView module_name;
+} Source_Body;
+
+typedef struct {
+  ByteSliceView module_name;
+} Bytecode_Body;
+
+typedef struct {
+  CoverageSummaryOptions_Tag tag;
+  union {
+    Summary_Body summary;
+    Source_Body source;
+    Bytecode_Body bytecode;
+  };
+} CoverageSummaryOptions;
+
 vm_t *allocate_vm(void);
 
 UnmanagedVector build_move_package(UnmanagedVector *errmsg,
@@ -263,6 +322,15 @@ UnmanagedVector build_move_package(UnmanagedVector *errmsg,
                                    ByteSliceView install_dir,
                                    bool force_recompilation,
                                    bool fetch_deps_only);
+
+UnmanagedVector check_coverage_move_package(UnmanagedVector *errmsg,
+                                            ByteSliceView package_path,
+                                            CoverageOption summary_mode,
+                                            bool functions,
+                                            bool output_csv,
+                                            ByteSliceView module_name_view);
+
+UnmanagedVector create_new_move_package(UnmanagedVector *errmsg, ByteSliceView package_path);
 
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
@@ -297,18 +365,7 @@ UnmanagedVector execute_script(vm_t *vm_ptr,
                                ByteSliceView sender,
                                ByteSliceView message);
 
-UnmanagedVector get_info_move_package(UnmanagedVector *errmsg, ByteSliceView package_path);
-
-UnmanagedVector info_move_package(UnmanagedVector *errmsg,
-                                  ByteSliceView package_path,
-                                  bool verbose,
-                                  bool dev_mode,
-                                  bool test_mode,
-                                  bool generate_docs,
-                                  bool generate_abis,
-                                  ByteSliceView install_dir,
-                                  bool force_recompilation,
-                                  bool fetch_deps_only);
+UnmanagedVector get_move_package_info(UnmanagedVector *errmsg, ByteSliceView package_path);
 
 void initialize(vm_t *vm_ptr,
                 Db db,
