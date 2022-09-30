@@ -1,7 +1,12 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use move_deps::move_binary_format::access::ModuleAccess;
+use move_deps::move_binary_format::CompiledModule;
+use move_deps::move_core_types::language_storage::ModuleId;
+
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fmt;
 
 #[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -13,6 +18,7 @@ impl From<Module> for Vec<u8> {
         m.code
     }
 }
+
 impl Module {
     pub fn new(code: Vec<u8>) -> Module {
         Module { code }
@@ -49,7 +55,7 @@ impl ModuleBundle {
 
     pub fn singleton(code: Vec<u8>) -> ModuleBundle {
         ModuleBundle {
-            codes: vec![Module::new(code)],
+            codes: vec![Module::new(code.clone())],
         }
     }
 
@@ -57,8 +63,59 @@ impl ModuleBundle {
         self.codes.into_iter().map(Module::into_inner).collect()
     }
 
+    pub fn res(&mut self) -> Vec<Vec<u8>> {
+        self.codes.iter().map(|m| m.code.clone()).collect()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Module> {
         self.codes.iter()
+    }
+
+    pub fn sorted_code_and_modules(&self) -> ModuleBundle {
+        let codes = self.clone().into_inner();
+        let mut map = codes
+            .iter()
+            .map(|c| {
+                let m = CompiledModule::deserialize(c).unwrap();
+                (m.self_id(), (c.as_slice(), m))
+            })
+            .collect::<BTreeMap<_, _>>();
+        let mut order = vec![];
+        for id in map.keys() {
+            self.sort_by_deps(&map, &mut order, id.clone());
+        }
+        let mut modules = vec![];
+        for id in order {
+            let (code, module) = map.remove(&id).unwrap();
+            modules.push((code, module))
+        }
+
+        let sorted_codes = modules
+            .into_iter()
+            .map(|(c, _)| c.to_vec())
+            .collect::<Vec<_>>();
+        ModuleBundle::new(sorted_codes)
+    }
+
+    pub fn sort_by_deps(
+        &self,
+        map: &BTreeMap<ModuleId, (&[u8], CompiledModule)>,
+        order: &mut Vec<ModuleId>,
+        id: ModuleId,
+    ) {
+        if order.contains(&id) {
+            return;
+        }
+        let compiled = &map.get(&id).unwrap().1;
+        for dep in compiled.immediate_dependencies() {
+            // Only consider deps which are actually in this package. Deps for outside
+            // packages are considered fine because of package deployment order. Note
+            // that because of this detail, we can't use existing topsort from Move utils.
+            if map.contains_key(&dep) {
+                self.sort_by_deps(map, order, dep);
+            }
+        }
+        order.push(id)
     }
 }
 

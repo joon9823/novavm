@@ -70,23 +70,25 @@ pub extern "C" fn initialize(
     handle_c_error_default(res, errmsg)
 }
 
-/// exported function to publish a module
+/// exported function to publish module bundle
 #[no_mangle]
-pub extern "C" fn publish_module(
+pub extern "C" fn publish_module_bundle(
     vm_ptr: *mut vm_t,
     db: Db,
     _verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
+    session_id: ByteSliceView,
     sender: ByteSliceView,
-    module_bytes: ByteSliceView,
+    module_bundle: ByteSliceView,
 ) -> UnmanagedVector {
-    let mb = module_bytes.read().unwrap();
+    let sid = session_id.read().unwrap();
+    let module_bundle = module_bundle.read().unwrap();
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
-
+    
     let res = match to_vm(vm_ptr) {
         Some(vm) => catch_unwind(AssertUnwindSafe(move || {
-            vm::publish_module(vm, addr, mb.to_vec(), db, gas_limit)
+            vm::publish_module_bundle(vm, sid.to_vec(), addr, module_bundle,  db, gas_limit)
         }))
         .unwrap_or_else(|_| Err(Error::panic())),
         None => Err(Error::unset_arg(VM_ARG)),
@@ -95,6 +97,7 @@ pub extern "C" fn publish_module(
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
 }
+
 
 // exported function to execute (an entrypoint of) contract
 #[no_mangle]
