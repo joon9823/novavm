@@ -6,12 +6,18 @@ module nova_std::account {
     #[test_only]
     use std::bcs;
 
+    friend nova_std::coin;
+
     /// The provided authentication had an invalid length
     const EMALFORMED_AUTHENTICATION_KEY: u64 = 1;
     const ECANNOT_CREATE_ADDRESS: u64 = 2;
 
     native fun create_address(bytes: vector<u8>): address;
     native fun create_signer(addr: address): signer;
+
+    public(friend) fun create_signer_for_friend(addr: address): signer {
+        create_signer(addr)
+    }
 
     #[test]
     public fun test_create_address(){
