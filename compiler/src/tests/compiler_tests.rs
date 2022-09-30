@@ -70,6 +70,7 @@ fn test_move_compile() {
 #[test]
 #[serial]
 fn test_move_clean() {
+    test_move_compile();
     // FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
     let md= env::var("CARGO_MANIFEST_DIR").unwrap();
     let wd = Path::new(&md);
