@@ -11,8 +11,7 @@ use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::BackendResult;
 use novavm::Message;
-use novavm::Module;
-use novavm::ModuleBundle;
+use novavm::{ModuleBundle};
 use novavm::NovaVM;
 use novavm::{EntryFunction, Script};
 
@@ -43,19 +42,20 @@ pub(crate) fn initialize_vm(vm: &mut NovaVM, db_handle: Db, payload: &[u8]) -> R
     Ok(())
 }
 
-pub(crate) fn publish_module(
+pub(crate) fn publish_module_bundle(
     vm: &mut NovaVM,
+    session_id: Vec<u8>, // seed for global unique session id
     sender: AccountAddress,
-    payload: Vec<u8>,
+    payload: &[u8],
     db_handle: Db,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
-    let module: ModuleBundle = ModuleBundle::from(Module::new(payload));
-    let message: Message = Message::new_module(vec![0; 32], Some(sender), module);
+    let module_bundle: ModuleBundle = serde_json::from_slice(payload).unwrap();
+    let sorted_module_bundle = module_bundle.sorted_code_and_modules();
 
-    //let cv = CosmosView::new(&db_handle);
+    let message: Message = Message::new_module(session_id, Some(sender), sorted_module_bundle);
     let mut storage = GoStorage::new(db_handle);
     let data_view = DataViewResolver::new(&storage);
 
@@ -73,6 +73,7 @@ pub(crate) fn publish_module(
         _ => Err(Error::from(status)),
     }
 }
+
 
 pub(crate) fn execute_script(
     vm: &mut NovaVM,

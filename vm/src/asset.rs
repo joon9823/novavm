@@ -56,6 +56,11 @@ fn compile_modules(
 
 const MODULES_DIR: &str = "src/nova_stdlib/sources";
 
+pub fn move_files(relative : &str) -> Vec<String> {
+    let path = path_in_crate(relative);
+    find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
+}
+
 fn move_nova_stdlib_files() -> Vec<String> {
     let path = path_in_crate(MODULES_DIR);
     find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()

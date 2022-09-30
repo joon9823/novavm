@@ -93,23 +93,12 @@ impl NovaVM {
 
         let lib = Modules::new(&modules);
         let dep_graph = lib.compute_dependency_graph();
-        let mut addr_opt: Option<AccountAddress> = None;
+        let mut addr: Option<AccountAddress> = None;
         let modules = dep_graph
             .compute_topological_order()
             .unwrap()
             .map(|m| {
-                let addr = *m.self_id().address();
-                if let Some(a) = addr_opt {
-                    assert_eq!(
-                        a,
-                        addr,
-                        "All genesis modules must be published under the same address, but found modules under both {} and {}",
-                        a.short_str_lossless(),
-                        addr.short_str_lossless(),
-                    );
-                } else {
-                    addr_opt = Some(addr)
-                }
+                addr = Some(*m.self_id().address());
                 let mut bytes = vec![];
                 m.serialize(&mut bytes).unwrap();
                 bytes
@@ -117,7 +106,7 @@ impl NovaVM {
             .collect::<Vec<Vec<u8>>>();
 
         session
-                .publish_module_bundle(modules, addr_opt.unwrap(), &mut UnmeteredGasMeter)
+                .publish_module_bundle(modules, addr.unwrap(), &mut UnmeteredGasMeter)
                 .map_err(|e| {
                     self.move_vm.mark_loader_cache_as_invalid();
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
