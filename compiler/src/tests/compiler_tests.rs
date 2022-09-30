@@ -1,10 +1,12 @@
 
-use std::path::Path;
+use std::{path::Path, env::temp_dir};
 use std::env;
-use move_deps::{move_package::BuildConfig, move_cli::{Move, base::test::Test}};
+use move_deps::{move_package::BuildConfig, move_cli::{Move, base::{test::Test, info::Info}}};
 use serial_test::serial;
 
-use crate::compiler::{Command, compile, Clean};
+use crate::compiler::{Command, compile};
+use crate::clean::Clean;
+use crate::new::New;
 
 #[test]
 #[serial]
@@ -104,6 +106,60 @@ fn test_move_info() {
         build_config,
     };
 
-    let res = compile(move_args, Command::Info(move_deps::move_cli::base::info::Info)).expect("compiler err");
+    let res = compile(move_args, Command::Info(Info)).expect("compiler err");
     assert!(res==Vec::from("ok"));
+}
+
+#[test]
+#[serial]
+fn test_move_new() {
+    let build_config = BuildConfig::default();
+    let temp_package_path = temp_dir().join("test_move_package"); 
+    eprint!("TEMPORARY MOVE PACKAGE PATH: {}", temp_package_path.display());
+    let move_args = Move{
+        package_path: Some(temp_package_path.clone()),
+        verbose: true,
+        build_config,
+    };
+
+    let res = compile(move_args, Command::New(New{name: String::from("testpackage")})).expect("compiler err");
+    assert!(res==Vec::from("ok"));
+
+    // test new package
+    let build_config = BuildConfig::default();
+        let move_args = Move{
+        package_path: Some(temp_package_path.clone()),
+        verbose: true,
+        build_config,
+    };
+
+    let test_arg = Test{ 
+        instruction_execution_bound: None, 
+        filter: None, 
+        list: false, 
+        num_threads: 8, // 8 is from clap trait of base/tests.rs
+        report_statistics: true, 
+        report_storage_on_error: true,
+        ignore_compile_warnings: false, 
+        check_stackless_vm: false, 
+        verbose_mode: true, 
+        compute_coverage: false,
+    };
+    let cmd = Command::Test(test_arg);
+
+    let res = compile(move_args, cmd).expect("compiler err");
+    assert!(res==Vec::from("ok"));
+
+    let build_config = BuildConfig::default();
+    let move_args = Move{
+        package_path: Some(temp_package_path.clone()),
+        verbose: true,
+        build_config,
+    };
+
+    let res = compile(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
+    assert!(res==Vec::from("ok"));
+
+    // remove temporary package
+    assert!(std::fs::remove_dir_all(temp_package_path).is_ok());
 }

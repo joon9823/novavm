@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail};
 use move_deps::move_cli::{sandbox, experimental, Move};
 use move_deps::move_cli::base::{
     build::Build, coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
-    info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
+    info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, prove::Prove,
     test::Test,
 };
 use move_deps::move_core_types::{
@@ -14,42 +14,15 @@ use move_deps::move_vm_runtime::native_functions::NativeFunction;
 use novavm::gas::NativeGasParameters;
 use novavm::natives::nova_natives;
 use std::fmt;
-use std::path::{PathBuf, Path};
-use move_deps::move_command_line_common::env::MOVE_HOME;
+use std::path::{PathBuf};
+
+use crate::Clean;
+use crate::New;
 
 /// Default directory where saved Move resources live
 pub const DEFAULT_STORAGE_DIR: &str = "storage";
 
 type NativeFunctionRecord = (AccountAddress, Identifier, Identifier, NativeFunction);
-
-pub struct Clean {
-    pub clean_cache: bool
-}
-
-impl Clean {
-    pub fn execute(self, path: Option<PathBuf>) -> anyhow::Result<()> { 
-        let path = match path{
-            Some(p) => p,
-            None => Path::new(".").to_path_buf(),
-        }.join("build");
-
-        let res = std::fs::remove_dir_all(path);
-        match res {
-            Err(e) => bail!("failed to clean the package: {}", e),
-            Ok(_) => {
-                let move_home = &*MOVE_HOME;
-                if self.clean_cache {
-                    match std::fs::remove_dir_all(PathBuf::from(move_home)) {
-                        Err(e) => bail!("failed to clean cache: {}", e),
-                        Ok(_) => Ok(()),
-                    }
-                } else {
-                    Ok(())
-                }
-            }
-        }
-    }
-}
 
 pub enum Command {
     Build(Build),
@@ -112,17 +85,18 @@ fn run_compiler(
     //         1. It's still using the old CostTable.
     //         2. The CostTable only affects sandbox runs, but not unit tests, which use a unit cost table.
     match cmd {
+        // supported by move-cli
         Command::Build(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Test(c) => c.execute(move_args.package_path, move_args.build_config, natives),
         Command::Info(c) => c.execute(move_args.package_path, move_args.build_config),
-        /* TODO: unsupported yet
         Command::Coverage(c) => c.execute(move_args.package_path, move_args.build_config),
+        Command::New(c) => c.execute_with_defaults(move_args.package_path),
+        /* TODO: unsupported yet
         Command::Disassemble(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Info(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::MoveyUpload(c) => c.execute(move_args.package_path),
-        Command::New(c) => c.execute_with_defaults(move_args.package_path),
         Command::Prove(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Sandbox { storage_dir, cmd } => cmd.handle_command(
             natives,
@@ -134,6 +108,7 @@ fn run_compiler(
         Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
         Command::MoveyLogin(c) => c.execute(),
         */
+        // custom actions
 		Command::Clean(c) => c.execute(move_args.package_path),
 		c => Err(anyhow!("unimplemented function: {}", c)),
 

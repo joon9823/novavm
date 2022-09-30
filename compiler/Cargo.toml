@@ -13,3 +13,4 @@ novavm = { version = "0.1.0", path = "../vm", features = ["backtraces"] }
 
 [dev-dependencies]
 serial_test = "0.9.0"
+tempdir = "0.3.7"
