@@ -46,21 +46,27 @@ func (vm *VM) Destroy() {
 	api.ReleaseVM(vm.inner)
 }
 
-// PublishModule will publish a given module.
-// TODO: add params and returns
-func (vm *VM) PublishModule(
+// PublishModuleBundle will publish a given module.
+func (vm *VM) PublishModuleBundle(
 	kvStore api.KVStore,
 	gasLimit uint64,
+	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
-	moduleBytes []byte,
+	moduleBundle types.ModuleBundle,
 ) (uint64, error) {
-	res, err := api.PublishModule(
+	bz, err := json.Marshal(moduleBundle)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := api.PublishModuleBundle(
 		vm.inner,
 		kvStore,
 		vm.printDebug,
 		gasLimit,
+		txHash,
 		sender,
-		moduleBytes,
+		bz,
 	)
 	if err != nil {
 		return 0, err
@@ -70,7 +76,6 @@ func (vm *VM) PublishModule(
 	err = json.Unmarshal(res, &execRes)
 
 	return execRes.GasUsed, err
-
 }
 
 // Query will do a query request to VM

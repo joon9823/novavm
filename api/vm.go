@@ -53,28 +53,31 @@ func Initialize(
 	return err
 }
 
-// PublishModule call ffi(`publish_module`) to store module
-func PublishModule(
+// PublishModuleBundle call ffi(`publish_module_bundle`) to store module bundle
+func PublishModuleBundle(
 	vm VM,
 	store KVStore,
-	verbose bool,
+	isVerbose bool,
 	gasLimit uint64,
+	sessionID []byte,
 	sender []byte,
-	module []byte,
+	moduleBundle []byte,
 ) ([]byte, error) {
 	var err error
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 
-	mb := makeView(module)
-	defer runtime.KeepAlive(mb)
+	sid := makeView(sessionID)
+	defer runtime.KeepAlive(sid)
 	senderView := makeView([]byte(sender))
 	defer runtime.KeepAlive(senderView)
+	moduleBundleView := makeView(moduleBundle)
+	defer runtime.KeepAlive(moduleBundleView)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.publish_module(vm.ptr, db, cbool(verbose), cu64(gasLimit), &errmsg, senderView, mb)
+	res, err := C.publish_module_bundle(vm.ptr, db, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, moduleBundleView)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)

@@ -19,7 +19,6 @@ module std::BasicCoin {
         amount: u64,
     }
 
-
     public entry fun mint<CoinType>(account: signer, value: u64) acquires Coin,TestEvents {
         let account_addr = signer::address_of(&account);
         if (!exists<Coin<CoinType>>(account_addr)) {

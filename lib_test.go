@@ -20,7 +20,6 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 
 	kvStore := api.NewLookup()
 	vm := vm.NewVM(true)
-
 	err = vm.Initialize(
 		kvStore,
 		types.ModuleBundle{
@@ -36,22 +35,51 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	return vm, kvStore
 }
 
-func publishModule(
+func Test_PublishModuleBundle(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
+}
+
+func publishModuleBundle(
 	t *testing.T,
 	vm vm.VM,
 	kvStore *api.Lookup,
 ) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
-	require.NoError(t, err)
-
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	usedGas, err := vm.PublishModule(
+	f0, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	require.NoError(t, err)
+	f1, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle1.mv")
+	require.NoError(t, err)
+	f2, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle2.mv")
+	require.NoError(t, err)
+	f3, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle3.mv")
+	require.NoError(t, err)
+
+	usedGas, err := vm.PublishModuleBundle(
 		kvStore,
-		10000,
+		100000000,
+		bytes.Repeat([]byte{0}, 32),
 		testAccount,
-		f,
+		types.ModuleBundle{
+			Codes: []types.Module{
+				{
+					Code: f0,
+				},
+				{
+					Code: f1,
+				},
+				{
+					Code: f3,
+				},
+				{
+					Code: f2,
+				},
+			},
+		},
 	)
 	require.NoError(t, err)
 	require.NotZero(t, usedGas)
@@ -99,18 +127,11 @@ func Test_InitializeVM(t *testing.T) {
 	defer vm.Destroy()
 }
 
-func Test_PublishModule(t *testing.T) {
-	vm, kvStore := initializeVM(t)
-	defer vm.Destroy()
-
-	publishModule(t, vm, kvStore)
-}
-
 func Test_ExecuteContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	minter, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -122,7 +143,7 @@ func Test_FailOnExecute(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	amount := uint64(100)
 
@@ -158,7 +179,7 @@ func Test_OutOfGas(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	amount := uint64(100)
 
@@ -192,7 +213,7 @@ func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -228,7 +249,7 @@ func Test_DecodeResource(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	bz, err := base64.StdEncoding.DecodeString("LAEAAAAAAAAB")
 	require.NoError(t, err)
@@ -266,7 +287,7 @@ func Test_ExecuteScript(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
 
-	publishModule(t, vm, kvStore)
+	publishModuleBundle(t, vm, kvStore)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
 	require.NoError(t, err)

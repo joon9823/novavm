@@ -376,15 +376,16 @@ void initialize(vm_t *vm_ptr,
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 /**
- * exported function to publish a module
+ * exported function to publish module bundle
  */
-UnmanagedVector publish_module(vm_t *vm_ptr,
-                               Db db,
-                               bool _verbose,
-                               uint64_t gas_limit,
-                               UnmanagedVector *errmsg,
-                               ByteSliceView sender,
-                               ByteSliceView module_bytes);
+UnmanagedVector publish_module_bundle(vm_t *vm_ptr,
+                                      Db db,
+                                      bool _verbose,
+                                      uint64_t gas_limit,
+                                      UnmanagedVector *errmsg,
+                                      ByteSliceView session_id,
+                                      ByteSliceView sender,
+                                      ByteSliceView module_bundle);
 
 UnmanagedVector query_contract(vm_t *vm_ptr,
                                Db db,
