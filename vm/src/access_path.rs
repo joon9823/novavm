@@ -36,24 +36,21 @@
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
 // use crate::parser::parse_struct_tag;
+use crate::CORE_CODE_ADDRESS;
 use anyhow::{bail, Result};
-use move_deps::{
-    move_core_types::{
-        account_address::AccountAddress,
-        identifier::Identifier,
-        language_storage::{ModuleId, ResourceKey, StructTag, TypeTag},
-        parser::parse_type_tag,
-    },
-    move_table_extension::TableHandle,
+use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    identifier::Identifier,
+    language_storage::{ModuleId, ResourceKey, StructTag, TypeTag},
+    parser::parse_type_tag,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 
+use std::fmt;
 use std::str::FromStr;
-use std::{fmt, hash};
 use std::{fmt::Write, num::ParseIntError};
 
-use crate::{genesis_address, CORE_CODE_ADDRESS};
 #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct AccessPath {
     pub address: AccountAddress,

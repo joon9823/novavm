@@ -79,6 +79,7 @@ where
         });
 
         for (handle, change) in table_change_set.changes.iter() {
+            let mut table_delta = SizeDelta::zero();
             for (key, op) in &change.entries {
                 let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
                 let prev = self.remote.get_size(&ap).expect("hey").clone();
@@ -86,8 +87,9 @@ where
                 let delta = SizeDelta::new(prev, new);
 
                 println!("table size {} : {} => {} : {}", ap, prev, new, delta);
-                table_size_change.insert(handle.clone(), delta);
+                table_delta.merge(delta);
             }
+            table_size_change.insert(handle.clone(), table_delta);
         }
 
         Ok((

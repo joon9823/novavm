@@ -6,21 +6,15 @@ use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
 use log::error;
-use move_deps::{
-    move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
-    move_compiler::expansion::ast::Address,
-    move_core_types::value::MoveValue,
-    move_table_extension::{TableHandle, TableResolver},
+use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    language_storage::{ModuleId, StructTag, TypeTag},
+    resolver::{ModuleResolver, ResourceResolver},
+    vm_status::StatusCode,
 };
 use move_deps::{
-    move_core_types::{
-        account_address::AccountAddress,
-        language_storage::{ModuleId, StructTag, TypeTag},
-        resolver::{ModuleResolver, ResourceResolver},
-        value::MoveTypeLayout,
-        vm_status::StatusCode,
-    },
-    move_vm_types::values::Value,
+    move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
+    move_table_extension::{TableHandle, TableResolver},
 };
 
 pub trait StoredSizeResolver {
@@ -48,8 +42,6 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
     }
 
     pub(crate) fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
-        //FIXME: remove
-        println!("getting ac {}", access_path);
         match self.data_view.get(access_path) {
             Ok(remote_data) => {
                 let mut cache = self.size_cache.borrow_mut();

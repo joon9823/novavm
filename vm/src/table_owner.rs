@@ -34,8 +34,6 @@ pub fn find_all_address_occur<S: MoveResolver + TableResolver + StoredSizeResolv
             let mut visitor = FindingAddressVisitor::new();
             val.visit(&mut visitor);
             let res = visitor.finish();
-            println!("visiting result : {:?}", res);
-
             res
         }
         None => Vec::default(),
@@ -189,7 +187,7 @@ impl<'r, S: TableOwnerResolver> TableOwnerDataCache<'r, S> {
                 let val = self.remote.get_owner(handle)?;
 
                 match val {
-                    Some(blob) => Ok(true),
+                    Some(_) => Ok(true),
                     None => Ok(false),
                 }
             }
@@ -246,7 +244,7 @@ impl WriteCache {
     fn get_type(&self) -> Option<&TypeTag> {
         match self {
             WriteCache::Updated(val) => match val {
-                WriteCacheValue::Owner(owner) => panic!(),
+                WriteCacheValue::Owner(_) => panic!(),
                 WriteCacheValue::TypeTag(t) => Some(t),
             },
             WriteCache::Deleted => None,
