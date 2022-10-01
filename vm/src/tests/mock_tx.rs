@@ -81,7 +81,8 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     let resolver = DataViewResolver::new(&state);
     let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
     assert!(status == VMStatus::Executed);
-    state.push_write_set(output.change_set().clone(), output.table_change_set());
+    let inner_output = output.into_inner();
+    state.push_write_set(inner_output.0, inner_output.1, inner_output.2);
     chain.commit(state);
 
     let gas_limit = Gas::new(100_000u64);
@@ -113,8 +114,13 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
             if status != VMStatus::Executed {
                 continue;
             }
+
             // apply output into state
-            state.push_write_set(output.change_set().clone(), output.table_change_set());
+            let inner_output = output.into_inner();
+            state.push_write_set(inner_output.0, inner_output.1, inner_output.2);
+
+            println!("size change of accounts {:?}", &inner_output.3.accounts);
+            println!("size change of tables {:?}", &inner_output.3.tables);
         }
 
         if should_commit {

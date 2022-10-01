@@ -1,3 +1,4 @@
+use crate::table_owner::TableOwnerChangeSet;
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
@@ -9,6 +10,7 @@ use move_deps::{
     move_table_extension::TableChangeSet,
 };
 
+#[derive(Debug)]
 pub struct MockChain {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
 }
@@ -48,7 +50,12 @@ impl MockState {
         }
     }
 
-    pub fn push_write_set(&mut self, changeset: ChangeSet, table_change_set: &TableChangeSet) {
+    pub fn push_write_set(
+        &mut self,
+        changeset: ChangeSet,
+        table_change_set: TableChangeSet,
+        table_owner_change_set: TableOwnerChangeSet,
+    ) {
         for (addr, account_changeset) in changeset.into_inner() {
             let (modules, resources) = account_changeset.into_inner();
             for (struct_tag, blob_opt) in resources {
@@ -62,11 +69,23 @@ impl MockState {
             }
         }
 
-        for (handle, change) in &table_change_set.changes {
-            for (key, blob_opt) in &change.entries {
+        for (handle, change) in table_change_set.changes {
+            for (key, blob_opt) in change.entries {
                 let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
                 self.write_op(ap, blob_opt.clone())
             }
+        }
+
+        let TableOwnerChangeSet { owner, value_type } = table_owner_change_set;
+        println!("table owner changes {:?}", owner);
+        for (handle, op) in owner {
+            let ap = AccessPath::table_owner_access_path(handle.0);
+            self.write_op(ap, op);
+        }
+
+        for (handle, op) in value_type {
+            let ap = AccessPath::table_val_type_access_path(handle.0);
+            self.write_op(ap, op);
         }
     }
 }

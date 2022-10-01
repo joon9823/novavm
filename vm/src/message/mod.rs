@@ -291,7 +291,25 @@ impl MessageOutput {
         &self.status
     }
 
-    pub fn into_inner(self) -> (ChangeSet, Vec<Event>, u64, MessageStatus) {
-        (self.change_set, self.events, self.gas_used, self.status)
+    pub fn into_inner(
+        self,
+    ) -> (
+        ChangeSet,
+        TableChangeSet,
+        TableOwnerChangeSet,
+        SizeChangeSet,
+        Vec<Event>,
+        u64,
+        MessageStatus,
+    ) {
+        (
+            self.change_set,
+            self.table_change_set,
+            self.table_owner_change_set,
+            self.size_change_set,
+            self.events,
+            self.gas_used,
+            self.status,
+        )
     }
 }

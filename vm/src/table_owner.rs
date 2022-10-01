@@ -152,8 +152,6 @@ impl<'r, S: TableOwnerResolver> TableOwnerDataCache<'r, S> {
             value_type.insert(handle, serialize_op(op)?);
         }
 
-        println!("owner changeset {:?}", owner);
-        println!("value type changeset {:?}", value_type);
         Ok(TableOwnerChangeSet { owner, value_type })
     }
 

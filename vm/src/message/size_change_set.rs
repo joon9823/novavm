@@ -19,6 +19,7 @@ impl SizeChangeSet {
     }
 }
 
+#[derive(Debug)]
 pub struct SizeDelta {
     amount: usize,
     is_decrease: bool,
