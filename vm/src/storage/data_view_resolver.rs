@@ -28,8 +28,8 @@ pub trait StoredSizeResolver {
 }
 
 pub trait TableOwnerResolver {
-    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<AccountAddress>>;
-    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<TypeTag>>;
+    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>>;
+    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>>;
 }
 
 pub struct DataViewResolver<'a, S> {
@@ -117,35 +117,15 @@ impl<'block, S: StateView> TableResolver for DataViewResolver<'block, S> {
 impl<'block, S: StateView> TableOwnerResolver for DataViewResolver<'block, S> {
     // type Error = VMError;
     //
-    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<AccountAddress>> {
+    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>> {
         let ap = AccessPath::table_owner_access_path(handle.0);
-        let r = self
-            .get(&ap)
-            // AccountAddress::from_bytes(vec).unwrap()))
-            .map_err(|_| {
-                PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined)
-            })?;
-
-        let rr: VMResult<Option<AccountAddress>> = if let Some(vec) = r {
-            let ty_layout = MoveTypeLayout::Address;
-            let v = MoveValue::simple_deserialize(&vec, &ty_layout).unwrap();
-            if let MoveValue::Address(a) = v {
-                Ok(Some(a))
-            } else {
-                Err(PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
-            }
-        } else {
-            Ok(None)
-        };
-
-        rr
+        self.get(&ap)
+            .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
     }
 
-    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<TypeTag>> {
-        Ok(self.val_type_map.borrow().get(handle).cloned())
-        // let ap = AccessPath::table_owner_access_path(handle.0);
-        // self.get(&ap)
-        //     .map(|v| v.map(|vec| bcs::from_bytes(&vec).unwrap()))
-        //     .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
+    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>> {
+        let ap = AccessPath::table_owner_access_path(handle.0);
+        self.get(&ap)
+            .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
     }
 }

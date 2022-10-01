@@ -17,11 +17,11 @@ pub mod message;
 pub mod natives;
 pub mod storage;
 pub mod table;
+pub mod table_owner;
 
 mod args_validator;
 mod errors;
 mod nova_vm;
-mod table_owner;
 
 #[cfg(test)]
 mod tests;
