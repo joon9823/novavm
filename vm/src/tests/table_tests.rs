@@ -1,25 +1,22 @@
-use crate::{
-    message::{EntryFunction, Message, Module, ModuleBundle},
-};
+use crate::message::{EntryFunction, Message, Module, ModuleBundle};
 
 use move_deps::{
     move_binary_format::CompiledModule,
     move_core_types::{
-        account_address::AccountAddress,
-        identifier::Identifier,
-        language_storage::ModuleId,
+        account_address::AccountAddress, identifier::Identifier, language_storage::ModuleId,
         vm_status::VMStatus,
     },
 };
 
-use super::mock_tx::{MockTx, run_transaction};
-use super::{mock_tx::ExpectedOutput};
+use super::mock_tx::ExpectedOutput;
+use super::mock_tx::{run_transaction, MockTx};
 
 #[cfg(test)]
 impl Module {
     fn create_table_test_data() -> Self {
         let s = Self::new(
-            include_bytes!("../../move-test/build/test1/bytecode_modules/TableTestData.mv").to_vec(),
+            include_bytes!("../../move-test/build/test1/bytecode_modules/TableTestData.mv")
+                .to_vec(),
         );
         let _compiled_module = CompiledModule::deserialize(s.code()).unwrap();
 
@@ -50,6 +47,15 @@ impl EntryFunction {
             Identifier::new("table_len").unwrap(),
             vec![],
             vec![],
+        )
+    }
+    fn move_table() -> Self {
+        let account_two = generate_account("0x2");
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("move_table").unwrap(),
+            vec![],
+            vec![account_two.to_vec()],
         )
     }
     fn table_of_tables() -> Self {
@@ -107,12 +113,13 @@ impl EntryFunction {
     }
 }
 
-fn generate_account(literal : &str) -> AccountAddress {
+fn generate_account(literal: &str) -> AccountAddress {
     AccountAddress::from_hex_literal(literal).expect("account should be created")
 }
 #[test]
 fn test_tables() {
     let account_two = generate_account("0x2");
+    let account_three = generate_account("0x3");
 
     let testcases: Vec<MockTx> = vec![
         MockTx::one(
@@ -135,12 +142,16 @@ fn test_tables() {
         ),
         MockTx::one(
             // get table length
-            Message::new_entry_function(
-                vec![3; 32],
-                Some(account_two),
-                EntryFunction::table_len(),
-            ),
+            Message::new_entry_function(vec![3; 32], Some(account_two), EntryFunction::table_len()),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![3, 0, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            Message::new_entry_function(
+                vec![10; 32],
+                Some(account_three),
+                EntryFunction::move_table(),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, 2, Some(vec![])),
         ),
         MockTx::one(
             // tables in table

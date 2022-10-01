@@ -27,6 +27,16 @@ module TestAccount::TableTestData {
         len
     }
 
+    public entry fun move_table(s:signer, from:address) acquires S {
+        let S { t } = move_from<S<u64, u64>>(from); 
+
+
+        let tt = T::new<address, T::Table<u64, u64>>();
+        T::add(&mut tt, @0xAA, t);
+
+        move_to(&s, S {t: tt});
+    }
+
     public entry fun table_of_tables(s: signer): vector<u8>{
         let t = T::new<address, T::Table<address, u8>>();
         let val_1 = 11;
@@ -47,6 +57,7 @@ module TestAccount::TableTestData {
         T::add(T::borrow_mut(&mut t, @0x12), @0xEF, val_3);
 
         let val = T::remove(T::borrow_mut(&mut t, @0x34), @0xCD);
+        T::add(T::borrow_mut(&mut t, @0x34), @0xEE, 22);
 
         let vec_u8 = vector::empty<u8>();
         vector::push_back(&mut vec_u8, *T::borrow(T::borrow(&t, @0x12), @0xEF)); // == val_3
