@@ -343,6 +343,12 @@ UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView scrip
 
 void destroy_unmanaged_vector(UnmanagedVector v);
 
+UnmanagedVector disassemble_move_package(UnmanagedVector *errmsg,
+                                         ByteSliceView package_path,
+                                         ByteSliceView package_name,
+                                         ByteSliceView module_or_script_name,
+                                         bool interactive);
+
 UnmanagedVector execute_contract(vm_t *vm_ptr,
                                  Db db,
                                  GoApi _api,
@@ -378,8 +384,8 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
 UnmanagedVector prove_move_package(UnmanagedVector *errmsg,
                                    ByteSliceView package_path,
                                    ByteSliceView filter,
-                                   bool for_test,
-                                   ByteSliceView prove_options);
+                                   ByteSliceView prove_options,
+                                   bool for_test);
 
 /**
  * exported function to publish module bundle

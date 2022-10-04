@@ -376,8 +376,14 @@ func Test_CreateNewContract(t *testing.T) {
 func Test_ProveContract(t *testing.T) {
 	tmpPath := "compiler/testdata/prove"
 	res, err := api.ProveContractPackage(tmpPath, "", "", true)
-	defer os.RemoveAll(tmpPath)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 */
+
+func Test_DisassembleContract(t *testing.T) {
+	//tmpPath := "compiler/testdata/general"
+	res, err := api.DisassembleContractPackage(package_path, "", "BasicCoin", false)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}

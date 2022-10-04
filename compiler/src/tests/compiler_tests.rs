@@ -2,6 +2,8 @@
 use std::{path::Path, env::temp_dir};
 use std::env;
 use move_deps::move_cli::base::coverage::{CoverageSummaryOptions, Coverage};
+use move_deps::move_cli::base::disassemble::Disassemble;
+#[allow(unused_imports)]
 use move_deps::move_cli::base::prove::Prove;
 use move_deps::{move_package::BuildConfig, move_cli::{Move, base::{test::Test, info::Info}}};
 use serial_test::serial;
@@ -211,10 +213,34 @@ fn test_move_prove() { // with preconfigured Prover.toml
 		build_config,
 	};
 
-	let cmd = Command::Prove(Prove{for_test:true, target_filter: Some("BasicCoin".to_string()), options: None});
+	let cmd = Command::Prove(Prove{for_test:true, target_filter: None, options: None});
 	
 	let res = compile(move_args, cmd).expect("compiler err");
 	assert!(res==Vec::from("ok"));
 
 }
 */
+
+
+#[test]
+#[serial]
+fn test_move_disassemble() { // with prebuilt `.trace` file
+	// FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+	let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+	let wd = Path::new(&md);
+	let path = Path::new(&"testdata/general");
+	let package_path = wd.join(path);
+	
+	let build_config = BuildConfig::default();
+
+	let move_args = Move{
+		package_path: Some(package_path.canonicalize().unwrap()),
+		verbose: true,
+		build_config,
+	};
+
+	let cmd = Command::Disassemble(Disassemble{ interactive: false, package_name: None, module_or_script_name: "BasicCoin".to_string()});
+	
+	let res = compile(move_args, cmd).expect("compiler err");
+	assert!(res==Vec::from("ok"));
+}

@@ -119,7 +119,7 @@ func CreateContractPackage(packagePath string) ([]byte, error) {
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func ProveContractPackage(packagePath, filter, options string, for_test bool) ([]byte, error) {
+func ProveContractPackage(packagePath, filter, options string, forTest bool) ([]byte, error) {
 	var err error
 
 	errmsg := newUnmanagedVector(nil)
@@ -134,8 +134,34 @@ func ProveContractPackage(packagePath, filter, options string, for_test bool) ([
 	res, err := C.prove_move_package(&errmsg,
 		pathBytesView,
 		filterBytesView,
-		cbool(for_test),
 		optionsBytesView,
+		cbool(forTest),
+	)
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
+func DisassembleContractPackage(packagePath, packageName, moduleOrScriptName string, interactive bool) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(packagePath))
+	defer runtime.KeepAlive(pathBytesView)
+	packageNameView := makeView([]byte(packageName))
+	defer runtime.KeepAlive(packageNameView)
+	MoSNameView := makeView([]byte(moduleOrScriptName))
+	defer runtime.KeepAlive(MoSNameView)
+
+	res, err := C.disassemble_move_package(&errmsg,
+		pathBytesView,
+		packageNameView,
+		MoSNameView,
+		cbool(interactive),
 	)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
