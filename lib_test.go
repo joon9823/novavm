@@ -387,3 +387,11 @@ func Test_DisassembleContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
+
+/* Don't test movey-login. It'll overwrite previous token.
+func Test_MoveyLogin(t *testing.T) {
+	res, err := api.MoveyLogin()
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+*/

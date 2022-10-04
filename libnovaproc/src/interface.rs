@@ -12,6 +12,7 @@ use move_deps::move_cli::Move;
 use move_deps::move_cli::base::coverage::{Coverage, CoverageSummaryOptions};
 use move_deps::move_cli::base::disassemble::Disassemble;
 use move_deps::move_cli::base::info::Info;
+use move_deps::move_cli::base::movey_login::MoveyLogin;
 use move_deps::move_cli::base::prove::{Prove, ProverOptions};
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
@@ -240,7 +241,6 @@ pub extern "C" fn decode_script_bytes(
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
 }
-
 
 #[no_mangle]
 pub extern "C" fn build_move_package(
@@ -526,6 +526,20 @@ pub extern "C" fn disassemble_move_package(
 
     let disassemble_option = Disassemble{ interactive, package_name, module_or_script_name };
     let cmd = Command::Disassemble(disassemble_option);
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn movey_login(
+    errmsg: Option<&mut UnmanagedVector>,
+) -> UnmanagedVector {
+    let move_args = Move{ package_path: None, verbose: false, build_config: BuildConfig::default() };
+    let cmd = Command::MoveyLogin(MoveyLogin);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

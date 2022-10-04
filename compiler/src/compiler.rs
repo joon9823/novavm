@@ -93,10 +93,11 @@ fn run_compiler(
         Command::New(c) => c.execute_with_defaults(move_args.package_path),
         Command::Prove(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Disassemble(c) => c.execute(move_args.package_path, move_args.build_config),
+        Command::MoveyLogin(c) => c.execute(),
         /* TODO: unsupported yet
+        Command::MoveyUpload(c) => c.execute(move_args.package_path),
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
-        Command::MoveyUpload(c) => c.execute(move_args.package_path),
         Command::Sandbox { storage_dir, cmd } => cmd.handle_command(
             natives,
             cost_table,
@@ -105,7 +106,6 @@ fn run_compiler(
             &storage_dir,
         ),
         Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
-        Command::MoveyLogin(c) => c.execute(),
         */
         // custom actions
 		Command::Clean(c) => c.execute(move_args.package_path),
