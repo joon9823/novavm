@@ -4,21 +4,21 @@ spec nova_std::table {
     // Make most of the public API intrinsic. Those functions have custom specifications in the prover.
 
     spec Table {
-        pragma intrinsic = map,
-            map_new = new,
-            map_destroy_empty = destroy_empty,
-            map_len = length,
-            map_is_empty = empty,
-            map_has_key = contains,
-            map_add_no_override = add,
-            map_del_must_exist = remove,
-            map_borrow = borrow,
-            map_borrow_mut = borrow_mut,
-            map_spec_get = spec_get,
-            map_spec_set = spec_add,
-            map_spec_del = spec_remove,
-            map_spec_len = spec_len,
-            map_spec_has_key = spec_contains;
+		pragma intrinsic = map,
+		map_new = new,
+		map_destroy_empty = destroy_empty,
+		map_len = length,
+		map_is_empty = empty,
+		map_has_key = contains,
+		map_add_no_override = add,
+		map_del_must_exist = remove,
+		map_borrow = borrow,
+		map_borrow_mut = borrow_mut,
+		map_spec_get = spec_get,
+		map_spec_set = spec_add,
+		map_spec_del = spec_remove,
+		map_spec_len = spec_len,
+		map_spec_has_key = spec_contains;
     }
 
     spec new {

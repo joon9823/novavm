@@ -11,6 +11,7 @@ use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVect
 use move_deps::move_cli::Move;
 use move_deps::move_cli::base::coverage::{Coverage, CoverageSummaryOptions};
 use move_deps::move_cli::base::info::Info;
+use move_deps::move_cli::base::prove::{Prove, ProverOptions};
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
     build::Build,
@@ -446,6 +447,46 @@ pub extern "C" fn check_coverage_move_package(
     };
 
     let cmd = Command::Coverage(Coverage{ options });
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+
+#[no_mangle]
+pub extern "C" fn prove_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+    /* for prove config */
+    filter: ByteSliceView,
+    for_test: bool,
+    prove_options: ByteSliceView,
+) -> UnmanagedVector {
+    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
+    let package_path_buf = Path::new(&package_path_str);
+
+    let target_filter= match filter.read() {
+        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+        None => None,
+    };
+    
+    let options= match prove_options.read() {
+        Some(s) => Some(ProverOptions::Options(String::from_utf8(s.to_vec()).unwrap().split(' ').map(|o| o.to_string()).collect::<Vec<String>>())),
+        None => None,
+    };
+
+    let move_args = Move {
+        package_path: Some(package_path_buf.to_path_buf()),
+        verbose: false,
+        build_config: BuildConfig::default(),
+    };
+
+    let prove_option = Prove{target_filter, for_test, options};
+    let cmd = Command::Prove(prove_option);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

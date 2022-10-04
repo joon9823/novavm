@@ -23,10 +23,10 @@ pub fn compile(
 /// cbindgen:prefix-with-name
 #[repr(u8)] // This makes it so the enum looks like a simple u32 to Go
 #[derive(PartialEq)]
+#[allow(dead_code)]
 pub enum CoverageOption{
-    // no 0 for the purpose
     /// Display a coverage summary for all modules in this package
-    Summary = 1,
+    Summary = 1, // no 0 for the purpose
     /// Display coverage information about the module against source code
     Source = 2,
     /// Display coverage information about the module against disassembled bytecode
@@ -35,6 +35,7 @@ pub enum CoverageOption{
 
 // similar with the one from move-cli. we don't union in c but still it's useful anyway.
 #[repr(C)] 
+#[allow(dead_code)]
 pub enum CoverageSummaryOptions {
     /// Display a coverage summary for all modules in this package
     Summary {

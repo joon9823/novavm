@@ -375,6 +375,12 @@ void initialize(vm_t *vm_ptr,
 
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
+UnmanagedVector prove_move_package(UnmanagedVector *errmsg,
+                                   ByteSliceView package_path,
+                                   ByteSliceView filter,
+                                   bool for_test,
+                                   ByteSliceView prove_options);
+
 /**
  * exported function to publish module bundle
  */
