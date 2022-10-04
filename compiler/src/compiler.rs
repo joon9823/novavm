@@ -94,10 +94,10 @@ fn run_compiler(
         Command::Prove(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Disassemble(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::MoveyLogin(c) => c.execute(),
+        Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
         /* TODO: unsupported yet
         Command::MoveyUpload(c) => c.execute(move_args.package_path),
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
-        Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Sandbox { storage_dir, cmd } => cmd.handle_command(
             natives,
             cost_table,

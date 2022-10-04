@@ -328,6 +328,19 @@ UnmanagedVector execute_script(vm_t *vm_ptr,
                                ByteSliceView sender,
                                ByteSliceView message);
 
+UnmanagedVector generate_error_map(UnmanagedVector *errmsg,
+                                   ByteSliceView package_path,
+                                   bool verbose,
+                                   bool dev_mode,
+                                   bool test_mode,
+                                   bool generate_docs,
+                                   bool generate_abis,
+                                   ByteSliceView install_dir,
+                                   bool force_recompilation,
+                                   bool fetch_deps_only,
+                                   ByteSliceView error_prefix_slice,
+                                   ByteSliceView output_file_slice);
+
 UnmanagedVector get_move_package_info(UnmanagedVector *errmsg, ByteSliceView package_path);
 
 void initialize(vm_t *vm_ptr,

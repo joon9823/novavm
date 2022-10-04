@@ -120,7 +120,7 @@ func CreateContractPackage(packagePath string) ([]byte, error) {
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func CheckContractPackageCoverage(packagePath string, summaryOpt interface{}) ([]byte, error) {
+func CheckCoverageContractPackage(packagePath string, summaryOpt interface{}) ([]byte, error) {
 	var err error
 
 	var optType C.CoverageOption
@@ -231,5 +231,28 @@ func MoveyLogin() ([]byte, error) {
 	}
 
 	return copyAndDestroyUnmanagedVector(res), err
-
 }
+
+/*
+func GenerateErrorMap(config types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+
+	errorPrefixView := makeView([]byte(errorPrefix))
+	defer runtime.KeepAlive(errorPrefixView)
+	outputFileView := makeView([]byte(outputFile))
+	defer runtime.KeepAlive(outputFileView)
+
+	res, err := C.generate_error_map(&errmsg,
+		errorPrefixView,
+		outputFileView,
+	)
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+*/

@@ -397,9 +397,21 @@ func Test_MoveyLogin(t *testing.T) {
 }
 */
 
+/*
 func Test_CheckContractCoverage(t *testing.T) {
 	covPackagePath := path.Join(workingDir, "compiler/testdata/coverage")
 	res, err := api.CheckContractPackageCoverage(covPackagePath, types.CoverageSummary{Function: true, OutputCSV: true})
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
+*/
+
+/*
+func Test_GenerateErrorMap(T *testing.T) {
+	covPackagePath := path.Join(workingDir, "compiler/testdata/general")
+	res, err := api.GenerateErrorMap("", "error_map")
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+
+}
+*/

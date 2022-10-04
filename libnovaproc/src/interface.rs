@@ -12,6 +12,7 @@ use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVect
 use move_deps::move_cli::Move;
 use move_deps::move_cli::base::coverage::{Coverage, CoverageSummaryOptions};
 use move_deps::move_cli::base::disassemble::Disassemble;
+use move_deps::move_cli::base::errmap::Errmap;
 use move_deps::move_cli::base::info::Info;
 use move_deps::move_cli::base::movey_login::MoveyLogin;
 use move_deps::move_cli::base::prove::{Prove, ProverOptions};
@@ -258,33 +259,7 @@ pub extern "C" fn build_move_package(
     force_recompilation: bool,
     fetch_deps_only: bool,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
-    let install_dir_buf = if install_dir_str.len() > 0 {
-        Some(Path::new(&install_dir_str).to_path_buf())
-    } else {
-        None
-    };
-
-    let build_config = BuildConfig {
-        dev_mode,
-        test_mode,
-        generate_docs,
-        generate_abis,
-        install_dir: install_dir_buf,
-        force_recompilation,
-        additional_named_addresses: BTreeMap::new(),
-        architecture: Some(Architecture::Move),
-        fetch_deps_only,
-    };
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose,
-        build_config,
-    };
+    let move_args = generate_move_cli(package_path, verbose, dev_mode, test_mode, generate_docs, generate_abis, install_dir, force_recompilation, fetch_deps_only);
     let cmd = Command::Build(Build);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
@@ -319,33 +294,7 @@ pub extern "C" fn test_move_package(
     verbose_mode: bool,
     compute_coverage: bool,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
-    let install_dir_buf = if install_dir_str.len() > 0 {
-        Some(Path::new(&install_dir_str).to_path_buf())
-    } else {
-        None
-    };
-
-    let build_config = BuildConfig {
-        dev_mode,
-        test_mode,
-        generate_docs,
-        generate_abis,
-        install_dir: install_dir_buf,
-        force_recompilation,
-        additional_named_addresses: BTreeMap::new(),
-        architecture: Some(Architecture::Move),
-        fetch_deps_only,
-    };
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose,
-        build_config,
-    };
+    let move_args = generate_move_cli(package_path, verbose, dev_mode, test_mode, generate_docs, generate_abis, install_dir, force_recompilation, fetch_deps_only);
 
     let filter_opt = match filter.read() {
         Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
@@ -381,14 +330,7 @@ pub extern "C" fn get_move_package_info(
     /* for build config */
     package_path: ByteSliceView,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose: false,
-        build_config: BuildConfig::default(),
-    };
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
     let cmd = Command::Info(Info);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
@@ -404,16 +346,11 @@ pub extern "C" fn create_new_move_package(
     /* for build config */
     package_path: ByteSliceView,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
 
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose: false,
-        build_config: BuildConfig::default(),
-    };
-
-    let cmd = Command::New(New{name: package_path_str});
+    let cmd = Command::New(
+        New{name: move_args.package_path.as_ref().expect("package path unset").to_str().expect("package path invalid").to_string()}
+    );
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
@@ -433,19 +370,12 @@ pub extern "C" fn check_coverage_move_package(
     module_name_view : ByteSliceView, // Display coverage information about the module against source code or dissambled bytecode
     /* for test coverage options */
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
     let module_name = match module_name_view.read() {
         Some(s) => String::from_utf8(s.to_vec()).unwrap(),
         None => String::new(),
     };
 
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose: false,
-        build_config: BuildConfig::default(),
-    };
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
 
     let options = match summary_mode {
         CoverageOption::Summary => CoverageSummaryOptions::Summary { functions, output_csv },
@@ -473,9 +403,6 @@ pub extern "C" fn prove_move_package(
     prove_options: ByteSliceView,
     for_test: bool,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
     let target_filter= match filter.read() {
         Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
         None => None,
@@ -486,11 +413,7 @@ pub extern "C" fn prove_move_package(
         None => None,
     };
 
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose: false,
-        build_config: BuildConfig::default(),
-    };
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
 
     let prove_option = Prove{target_filter, for_test, options};
     let cmd = Command::Prove(prove_option);
@@ -513,10 +436,6 @@ pub extern "C" fn disassemble_move_package(
     module_or_script_name: ByteSliceView,
     interactive: bool,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    
     let module_or_script_name = String::from_utf8(module_or_script_name.read().unwrap().to_vec()).unwrap();
 
     let package_name= match package_name.read() {
@@ -524,14 +443,10 @@ pub extern "C" fn disassemble_move_package(
         None => None,
     };
 
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose: false,
-        build_config: BuildConfig::default(),
-    };
-
     let disassemble_option = Disassemble{ interactive, package_name, module_or_script_name };
     let cmd = Command::Disassemble(disassemble_option);
+
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
@@ -544,7 +459,7 @@ pub extern "C" fn disassemble_move_package(
 pub extern "C" fn movey_login(
     errmsg: Option<&mut UnmanagedVector>,
 ) -> UnmanagedVector {
-    let move_args = Move{ package_path: None, verbose: false, build_config: BuildConfig::default() };
+    let move_args = generate_move_cli_with_default(None, false);
     let cmd = Command::MoveyLogin(MoveyLogin);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
@@ -552,4 +467,98 @@ pub extern "C" fn movey_login(
 
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn generate_error_map(
+    errmsg: Option<&mut UnmanagedVector>,
+    /* for build config */
+    package_path: ByteSliceView,
+    verbose: bool,
+    dev_mode: bool,
+    test_mode: bool,
+    generate_docs: bool,
+    generate_abis: bool,
+    install_dir: ByteSliceView,
+    force_recompilation: bool,
+    fetch_deps_only: bool,
+    /* for generate errmap config */
+    error_prefix_slice: ByteSliceView,
+    output_file_slice: ByteSliceView
+) -> UnmanagedVector {
+
+    let move_args = generate_move_cli(package_path, verbose, dev_mode, test_mode, generate_docs, generate_abis, install_dir, force_recompilation, fetch_deps_only);
+
+    let error_prefix= match error_prefix_slice.read() {
+        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+        None => None,
+    };
+
+    let output_file = Path::new(&String::from_utf8(output_file_slice.read().unwrap().to_vec()).unwrap()).to_path_buf();
+
+    let cmd = Command::Errmap(Errmap{ error_prefix, output_file });
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+// internal functions
+
+fn generate_move_cli_with_default(package_path_slice: Option<ByteSliceView>, verbose: bool) -> Move {
+    let package_path = match package_path_slice {
+        None => None,
+        Some(slice) => match slice.read(){
+            Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
+            None => None,
+        }
+    };
+    Move{
+        package_path,
+        verbose,
+        build_config: BuildConfig::default()
+    }
+}
+
+// REFACTORRRRRRRR!!!
+fn generate_move_cli(
+    package_path_slice: ByteSliceView,
+    verbose: bool,
+    dev_mode: bool,
+    test_mode: bool,
+    generate_docs: bool,
+    generate_abis: bool,
+    install_dir_slice: ByteSliceView,
+    force_recompilation: bool,
+    fetch_deps_only: bool,
+) -> Move {
+    let package_path = match package_path_slice.read() {
+        Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
+        None => None,
+    };
+
+    let install_dir = match install_dir_slice.read() {
+        Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
+        None => None,
+    };
+
+    let build_config = BuildConfig {
+        dev_mode,
+        test_mode,
+        generate_docs,
+        generate_abis,
+        install_dir,
+        force_recompilation,
+        additional_named_addresses: BTreeMap::new(),
+        architecture: Some(Architecture::Move),
+        fetch_deps_only,
+    };
+
+    Move{
+        package_path,
+        verbose,
+        build_config
+    }
 }
