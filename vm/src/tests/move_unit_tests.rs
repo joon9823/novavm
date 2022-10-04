@@ -10,11 +10,14 @@ use move_deps::{
         native_extensions::NativeContextExtensions, native_functions::NativeFunctionTable,
     },
 };
-
+use crate::tests::mock_chain::BlankStorage;
 use crate::gas::NativeGasParameters;
-use crate::natives::{code::NativeCodeContext, nova_natives};
+use crate::natives::{code::NativeCodeContext, nova_natives, table::NativeTableContext};
 use std::path::PathBuf;
 use tempfile::tempdir;
+use once_cell::sync::Lazy;
+
+static DUMMY_RESOLVER: Lazy<BlankStorage> = Lazy::new(|| BlankStorage);
 
 pub fn configure_for_unit_test() {
     move_unit_test::extensions::set_extension_hook(Box::new(unit_test_extensions_hook))
@@ -22,6 +25,7 @@ pub fn configure_for_unit_test() {
 
 fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
     exts.add(NativeCodeContext::default());
+    exts.add(NativeTableContext::new([0;32], &*DUMMY_RESOLVER));
 }
 
 fn nova_test_natives() -> NativeFunctionTable {

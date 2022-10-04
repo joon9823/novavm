@@ -12,15 +12,15 @@ use move_deps::move_core_types::effects::Event;
 use move_deps::move_core_types::vm_status::*;
 use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
-use move_deps::move_table_extension::TableChangeSet;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
 
 pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
 use crate::table_owner::TableOwnerChangeSet;
-
+use crate::natives::table::TableChangeSet;
 use self::size_change_set::SizeChangeSet;
 
 mod module;

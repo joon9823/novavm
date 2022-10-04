@@ -5,7 +5,7 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
-use move_deps::move_table_extension::TableChangeSet;
+use novavm::natives::table::TableChangeSet;
 use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;

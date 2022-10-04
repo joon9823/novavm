@@ -3,7 +3,7 @@ use crate::move_api::move_types::MoveResource;
 use anyhow::Result;
 use move_deps::move_core_types::{language_storage::StructTag, resolver::MoveResolver};
 use move_deps::move_resource_viewer::MoveValueAnnotator;
-use move_deps::move_table_extension::TableResolver;
+use novavm::natives::table::TableResolver;
 
 use std::str::FromStr;
 

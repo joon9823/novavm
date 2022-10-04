@@ -6,13 +6,12 @@ use move_deps::{
         account_address::AccountAddress, effects::Op, language_storage::TypeTag,
         resolver::MoveResolver, vm_status::StatusCode,
     },
-    move_table_extension::{TableHandle, TableResolver},
     move_vm_types::{
         values::Value,
         views::{ValueView, ValueVisitor},
     },
 };
-
+use crate::natives::table::{TableHandle, TableResolver};
 use crate::{
     session::SessionExt,
     storage::data_view_resolver::{StoredSizeResolver, TableOwnerResolver},
