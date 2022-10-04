@@ -18,15 +18,15 @@ enum CoverageOption {
   /**
    * Display a coverage summary for all modules in this package
    */
-  CoverageOption_Summary = 1,
+  CoverageOption_Summary = 0,
   /**
    * Display coverage information about the module against source code
    */
-  CoverageOption_Source = 2,
+  CoverageOption_Source = 1,
   /**
    * Display coverage information about the module against disassembled bytecode
    */
-  CoverageOption_Bytecode = 3,
+  CoverageOption_Bytecode = 2,
 };
 typedef uint8_t CoverageOption;
 
@@ -266,49 +266,6 @@ typedef struct {
   const querier_t *state;
   Querier_vtable vtable;
 } GoQuerier;
-
-typedef enum {
-  /**
-   * Display a coverage summary for all modules in this package
-   */
-  Summary,
-  /**
-   * Display coverage information about the module against source code
-   */
-  Source,
-  /**
-   * Display coverage information about the module against disassembled bytecode
-   */
-  Bytecode,
-} CoverageSummaryOptions_Tag;
-
-typedef struct {
-  /**
-   * Whether function coverage summaries should be displayed
-   */
-  bool functions;
-  /**
-   * Output CSV data of coverage
-   */
-  bool output_csv;
-} Summary_Body;
-
-typedef struct {
-  ByteSliceView module_name;
-} Source_Body;
-
-typedef struct {
-  ByteSliceView module_name;
-} Bytecode_Body;
-
-typedef struct {
-  CoverageSummaryOptions_Tag tag;
-  union {
-    Summary_Body summary;
-    Source_Body source;
-    Bytecode_Body bytecode;
-  };
-} CoverageSummaryOptions;
 
 vm_t *allocate_vm(void);
 

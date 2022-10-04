@@ -5,6 +5,7 @@ package api
 import "C"
 
 import (
+	"fmt"
 	"runtime"
 	"syscall"
 
@@ -110,6 +111,53 @@ func CreateContractPackage(packagePath string) ([]byte, error) {
 
 	res, err := C.create_new_move_package(&errmsg,
 		pathBytesView,
+	)
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
+func CheckContractPackageCoverage(packagePath string, summaryOpt interface{}) ([]byte, error) {
+	var err error
+
+	var optType C.CoverageOption
+	var moduleName string
+	summaryFunction := false
+	summaryOutputCSV := false
+
+	switch typ := summaryOpt.(type) {
+	case types.CoverageSummary:
+		optType = C.CoverageOption_Summary
+		goOpt := summaryOpt.(types.CoverageSummary)
+		summaryFunction = goOpt.Function
+		summaryOutputCSV = goOpt.OutputCSV
+	case types.CoverageSource:
+		optType = C.CoverageOption_Source
+		moduleName = string(summaryOpt.(types.CoverageSource))
+	case types.CoverageBytecode:
+		optType = C.CoverageOption_Bytecode
+		moduleName = string(summaryOpt.(types.CoverageBytecode))
+	default:
+		return nil, fmt.Errorf("%+v is not accceptable", typ)
+	}
+
+	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(packagePath))
+	defer runtime.KeepAlive(pathBytesView)
+
+	moduleNameBytesView := makeView([]byte(moduleName))
+	defer runtime.KeepAlive(moduleNameBytesView)
+
+	res, err := C.check_coverage_move_package(&errmsg,
+		pathBytesView,
+		cu8(optType),
+		cbool(summaryFunction),
+		cbool(summaryOutputCSV),
+		moduleNameBytesView,
 	)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,

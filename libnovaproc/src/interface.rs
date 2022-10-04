@@ -3,6 +3,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
+use crate::compiler::CoverageOption;
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
@@ -28,6 +29,7 @@ use crate::compiler::{compile, Command, self};
 use novavm::NovaVM;
 
 
+#[allow(non_camel_case_types)]
 #[repr(C)]
 pub struct vm_t {}
 
@@ -433,7 +435,11 @@ pub extern "C" fn check_coverage_move_package(
 ) -> UnmanagedVector {
     let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
     let package_path_buf = Path::new(&package_path_str);
-    let module_name = String::from_utf8(module_name_view.read().unwrap().to_vec()).unwrap();
+
+    let module_name = match module_name_view.read() {
+        Some(s) => String::from_utf8(s.to_vec()).unwrap(),
+        None => String::new(),
+    };
 
     let move_args = Move {
         package_path: Some(package_path_buf.to_path_buf()),
@@ -442,9 +448,9 @@ pub extern "C" fn check_coverage_move_package(
     };
 
     let options = match summary_mode {
-        compiler::CoverageOption::Summary => CoverageSummaryOptions::Summary { functions, output_csv },
-        compiler::CoverageOption::Source => CoverageSummaryOptions::Source { module_name },
-        compiler::CoverageOption::Bytecode => CoverageSummaryOptions::Bytecode { module_name },
+        CoverageOption::Summary => CoverageSummaryOptions::Summary { functions, output_csv },
+        CoverageOption::Source => CoverageSummaryOptions::Source { module_name },
+        CoverageOption::Bytecode => CoverageSummaryOptions::Bytecode { module_name },
     };
 
     let cmd = Command::Coverage(Coverage{ options });

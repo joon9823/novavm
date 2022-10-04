@@ -444,3 +444,12 @@ func WithComputeCoverage() func(*TestConfig) {
 		tc.ComputeCoverage = true
 	}
 }
+
+type CoverageSummary struct {
+	Function  bool
+	OutputCSV bool
+}
+
+type CoverageSource string
+
+type CoverageBytecode string

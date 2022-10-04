@@ -319,17 +319,18 @@ func Test_ExecuteScript(t *testing.T) {
 	require.NotZero(t, usedGas)
 }
 
-var package_path string
+var workingDir string
+var packagePath string
 
 func init() {
-	wd, _ := os.Getwd()
-	package_path = path.Join(wd, "vm/move-test")
+	workingDir, _ = os.Getwd()
+	packagePath = path.Join(workingDir, "vm/move-test")
 }
 
 func Test_BuildContract(t *testing.T) {
 	buildConfig := types.NewBuildConfig(
-		types.WithPackagePath(package_path),
-		types.WithInstallDir(package_path),
+		types.WithPackagePath(packagePath),
+		types.WithInstallDir(packagePath),
 		types.WithDevMode(),
 		types.WithTestMode(),
 	)
@@ -341,8 +342,8 @@ func Test_BuildContract(t *testing.T) {
 
 func Test_TestContract(t *testing.T) {
 	buildConfig := types.NewBuildConfig(
-		types.WithPackagePath(package_path),
-		types.WithInstallDir(package_path),
+		types.WithPackagePath(packagePath),
+		types.WithInstallDir(packagePath),
 		types.WithVerboseBuildConfig(),
 		types.WithDevMode(),
 		types.WithTestMode(),
@@ -359,13 +360,13 @@ func Test_TestContract(t *testing.T) {
 }
 
 func Test_GetContractInfo(t *testing.T) {
-	res, err := api.GetContractInfo(package_path)
+	res, err := api.GetContractInfo(packagePath)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 
 func Test_CreateNewContract(t *testing.T) {
-	tmpPath := package_path + "-tmp"
+	tmpPath := packagePath + "-tmp"
 	res, err := api.CreateContractPackage(tmpPath)
 	defer os.RemoveAll(tmpPath)
 	require.NoError(t, err)
@@ -383,7 +384,7 @@ func Test_ProveContract(t *testing.T) {
 
 func Test_DisassembleContract(t *testing.T) {
 	//tmpPath := "compiler/testdata/general"
-	res, err := api.DisassembleContractPackage(package_path, "", "BasicCoin", false)
+	res, err := api.DisassembleContractPackage(packagePath, "", "BasicCoin", false)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
@@ -395,3 +396,10 @@ func Test_MoveyLogin(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 */
+
+func Test_CheckContractCoverage(t *testing.T) {
+	covPackagePath := path.Join(workingDir, "compiler/testdata/coverage")
+	res, err := api.CheckContractPackageCoverage(covPackagePath, types.CoverageSummary{Function: true, OutputCSV: true})
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
