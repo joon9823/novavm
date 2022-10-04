@@ -15,7 +15,6 @@ use move_deps::{
         account_address::AccountAddress, effects::ChangeSet, language_storage::TypeTag,
         vm_status::StatusCode,
     },
-    move_table_extension::{NativeTableContext, TableChangeSet, TableHandle, TableResolver},
     move_vm_runtime::{
         move_vm::MoveVM,
         native_extensions::NativeContextExtensions,
@@ -23,6 +22,7 @@ use move_deps::{
     },
     move_vm_types::gas::UnmeteredGasMeter,
 };
+use crate::natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver};
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet},

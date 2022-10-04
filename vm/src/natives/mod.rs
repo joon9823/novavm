@@ -8,6 +8,7 @@ pub mod signature;
 pub mod type_info;
 pub mod util;
 pub mod account;
+pub mod table;
 
 use move_deps::{
     move_core_types::language_storage::CORE_CODE_ADDRESS,
@@ -15,10 +16,10 @@ use move_deps::{
     move_stdlib::natives::{
         all_natives as move_natives, nursery_natives as move_nursery_natives, NurseryGasParameters,
     },
-    move_table_extension::{table_natives, GasParameters as TableGasParameter},
     move_vm_runtime::native_functions::{make_table_from_iter, NativeFunctionTable},
 };
 
+use table::{table_natives, GasParameters as TableGasParameter};
 use crate::gas::NativeGasParameters;
 
 pub mod status {

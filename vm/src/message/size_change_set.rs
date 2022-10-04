@@ -1,5 +1,5 @@
 use move_deps::move_core_types::account_address::AccountAddress;
-use move_deps::move_table_extension::TableHandle;
+use crate::natives::table::TableHandle;
 
 use std::collections::BTreeMap;
 use std::fmt;

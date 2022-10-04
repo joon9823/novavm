@@ -14,8 +14,8 @@ use move_deps::move_core_types::{
 };
 use move_deps::{
     move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
-    move_table_extension::{TableHandle, TableResolver},
 };
+use crate::natives::table::{TableHandle, TableResolver};
 
 pub trait StoredSizeResolver {
     fn get_size(&self, access_path: &AccessPath) -> Option<usize>;

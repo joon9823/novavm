@@ -26,8 +26,8 @@ impl FromStr for TableHandle {
     }
 }
 
-impl From<move_deps::move_table_extension::TableHandle> for TableHandle {
-    fn from(hdl: move_deps::move_table_extension::TableHandle) -> Self {
+impl From<crate::natives::table::TableHandle> for TableHandle {
+    fn from(hdl: crate::natives::table::TableHandle) -> Self {
         Self(hdl.0)
     }
 }

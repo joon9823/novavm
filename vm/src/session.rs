@@ -13,10 +13,9 @@ use move_deps::{
         resolver::MoveResolver,
         vm_status::VMStatus,
     },
-    move_table_extension::{NativeTableContext, TableChangeSet, TableHandle, TableResolver},
     move_vm_runtime::session::Session,
 };
-
+use crate::natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver};
 use crate::{
     access_path::AccessPath,
     size_change_set::{SizeChangeSet, SizeDelta},

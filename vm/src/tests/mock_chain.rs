@@ -6,9 +6,17 @@ use move_deps::{
     move_core_types::{
         effects::{ChangeSet, Op},
         language_storage::ModuleId,
+        account_address::AccountAddress,
+        language_storage::{StructTag},
+        resolver::{ModuleResolver, ResourceResolver},
     },
-    move_table_extension::TableChangeSet,
 };
+use {
+    anyhow::Error,
+    crate::natives::table::{TableHandle, TableResolver},
+};
+
+use crate::natives::table::TableChangeSet;
 
 #[derive(Debug)]
 pub struct MockChain {
@@ -96,5 +104,46 @@ impl StateView for MockState {
             Some(opt_data) => Ok(opt_data.clone()),
             None => Ok(None),
         }
+    }
+}
+
+
+/// A dummy storage containing no modules or resources.
+#[derive(Debug, Clone)]
+pub struct BlankStorage;
+
+impl BlankStorage {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl ModuleResolver for BlankStorage {
+    type Error = ();
+
+    fn get_module(&self, _module_id: &ModuleId) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(None)
+    }
+}
+
+impl ResourceResolver for BlankStorage {
+    type Error = ();
+
+    fn get_resource(
+        &self,
+        _address: &AccountAddress,
+        _tag: &StructTag,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(None)
+    }
+}
+
+impl TableResolver for BlankStorage {
+    fn resolve_table_entry(
+        &self,
+        _handle: &TableHandle,
+        _key: &[u8],
+    ) -> Result<Option<Vec<u8>>, Error> {
+        Ok(None)
     }
 }
