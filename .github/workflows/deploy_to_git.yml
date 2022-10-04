@@ -1,0 +1,25 @@
+name: Test
+on:
+  push:
+    branches:
+      - main
+      - "release/*"
+jobs:
+  test:
+    name: Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build shared library for Linux
+        run: make release-build-linux
+      - name: Build shared library for macOS
+        run: make release-build-macos
+      - name: Upload shared libraries
+        uses: test-room-7/action-update-file@v1
+        with:
+          file-path: |
+            api/libnovaproc.dylib
+            api/libnovaproc.aarch64.so
+            api/libnovaproc.x86_64.so
+          commit-msg: Update shared libraries
+          github-token: ${{ secrets.GITHUB_TOKEN }}

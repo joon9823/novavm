@@ -1,6 +1,6 @@
 # Versioned by a simple counter that is not bound to a specific CosmWasm version
 # See builders/README.md
-BUILDERS_PREFIX := nova/go-ext-builder:0012
+BUILDERS_PREFIX := novavm/go-ext-builder:0001
 
 .PHONY: docker-image-centos7
 docker-image-centos7:
