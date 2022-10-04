@@ -2,8 +2,6 @@ package api
 
 import (
 	dbm "github.com/tendermint/tm-db"
-
-	"github.com/Kernel-Labs/novavm/types"
 )
 
 /*** Mock KVStore ****/
@@ -44,30 +42,6 @@ func (l Lookup) Delete(key []byte) {
 
 var _ KVStore = (*Lookup)(nil)
 
-/**** MockQuerier ****/
-
-const DEFAULT_QUERIER_GAS_LIMIT = 1_000_000
-
-type MockQuerier struct {
-	usedGas uint64
-}
-
-var _ Querier = MockQuerier{}
-
-func DefaultQuerier(contractAddr string, coins types.Coins) Querier {
-	return MockQuerier{
-		usedGas: 0,
-	}
-}
-
-func (q MockQuerier) Query(request types.QueryRequest) ([]byte, error) {
-	return nil, types.Unknown{}
-}
-
-func (q MockQuerier) GasConsumed() uint64 {
-	return q.usedGas
-}
-
 /***** Mock GoAPI ****/
 
 const CanonicalLength = 32
@@ -79,25 +53,29 @@ const (
 var _ GoAPI = MockAPI{}
 
 type MockAPI struct {
-	BankModule *MockBankModule
+	BlockInfo *MockBlockInfo
 }
 
-func NewMockAPI(bankModule *MockBankModule) *MockAPI {
+func NewMockAPI(blockInfo *MockBlockInfo) *MockAPI {
 	return &MockAPI{
-		BankModule: bankModule,
+		BlockInfo: blockInfo,
 	}
 }
 
-func (m MockAPI) BankTransfer(recipient []byte, amount types.Coin) error {
-	err := m.BankModule.Transfer(string(recipient), amount)
-	return err
+func (m MockAPI) GetBlockInfo() (uint64, uint64) {
+	return m.BlockInfo.GetBlockInfo()
 }
 
-type MockBankModule struct {
-	balance map[string]types.Coin
+type MockBlockInfo struct {
+	height    uint64
+	timestamp uint64
 }
 
-func (m MockBankModule) Transfer(recipient string, amount types.Coin) error {
-	m.balance[recipient] = amount
-	return nil
+// NewMockBlockInfo return MockBlockInfo instance
+func NewMockBlockInfo(height uint64, timestamp uint64) MockBlockInfo {
+	return MockBlockInfo{height, timestamp}
+}
+
+func (m MockBlockInfo) GetBlockInfo() (uint64, uint64) {
+	return m.height, m.timestamp
 }

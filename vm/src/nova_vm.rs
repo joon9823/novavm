@@ -16,8 +16,9 @@ pub use move_deps::move_core_types::{
 pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
 
 
-use crate::{natives::{nova_natives, code::{NativeCodeContext, PublishRequest}}, gas::{InitialGasSchedule}, NovaVMError};
+use crate::{natives::{nova_natives, code::{NativeCodeContext, PublishRequest}, block::NativeBlockContext}, gas::{InitialGasSchedule}, NovaVMError};
 use crate::storage::{data_view_resolver::DataViewResolver, state_view::StateView};
+use crate::api::ChainApi;
 use crate::args_validator::validate_combine_signer_and_txn_args;
 use crate::message::*;
 use crate::gas::{
@@ -58,9 +59,15 @@ impl NovaVM {
         self.move_vm.new_session_with_extensions(remote, extensions)
     }
 
+    fn create_session_with_api<'r, S: MoveResolver + TableResolver, A: ChainApi>(&self, remote: &'r S, api: &'r A, session_id: Vec<u8>) -> Session<'r, '_, S> {
+        let mut session = self.create_session(remote, session_id);
+        session.get_native_extensions().add(NativeBlockContext::new(api));
+        session
+    }
+
     fn finish_session<'r, S: MoveResolver + TableResolver>(&self, session: Session<'r, '_, S>) -> Result<(ChangeSet, Vec<Event>, TableChangeSet), VMStatus> {
         let (change_set, events, mut extensions) = session.finish_with_extensions().map_err(|e| e.into_vm_status())?;
-        let table_context: NativeTableContext = extensions.remove();
+        let table_context: NativeTableContext = extensions.remove::<NativeTableContext>();
         let table_change_set = table_context
             .into_change_set()
             .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;
@@ -123,10 +130,11 @@ impl NovaVM {
         Ok((VMStatus::Executed, output, None))
     }
 
-    pub fn execute_message<S: StateView>(
+    pub fn execute_message<S: StateView, A: ChainApi>(
         &mut self,
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
+        api: Option<&A>,
         gas_limit : Gas
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         let sender = msg.sender();
@@ -141,7 +149,12 @@ impl NovaVM {
         
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(msg.session_id().to_vec(), sender, remote_cache, payload, &mut gas_meter)
+                let api = match api {
+                    Some(api) => Ok(api),
+                    None => Err(NovaVMError::generic_err("need ChainApi"))
+                }?;
+
+                self.execute_script_or_entry_function(msg.session_id().to_vec(), sender, remote_cache, api, payload, &mut gas_meter)
             }
             MessagePayload::ModuleBundle(m) => {
                 match sender {
@@ -197,15 +210,16 @@ impl NovaVM {
         Ok((status, output, None))
     }
 
-    fn execute_script_or_entry_function<S: StateView>(
+    fn execute_script_or_entry_function<S: StateView, A: ChainApi>(
         &self,
         session_id: Vec<u8>,
         sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
+        api: &A,
         payload: &MessagePayload,
         gas_meter : &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache, session_id);
+        let mut session = self.create_session_with_api(remote_cache, api, session_id);
 
         // TODO: verification
 

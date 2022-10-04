@@ -230,26 +230,13 @@ typedef struct {
 } api_t;
 
 typedef struct {
-  int32_t (*bank_transfer)(const api_t*, U8SliceView, U8SliceView, U8SliceView, UnmanagedVector*);
+  int32_t (*get_block_info)(const api_t*, uint64_t*, uint64_t*, UnmanagedVector*);
 } GoApi_vtable;
 
 typedef struct {
   const api_t *state;
   GoApi_vtable vtable;
 } GoApi;
-
-typedef struct {
-  uint8_t _private[0];
-} querier_t;
-
-typedef struct {
-  int32_t (*query_external)(const querier_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
-} Querier_vtable;
-
-typedef struct {
-  const querier_t *state;
-  Querier_vtable vtable;
-} GoQuerier;
 
 vm_t *allocate_vm(void);
 
@@ -277,8 +264,7 @@ void destroy_unmanaged_vector(UnmanagedVector v);
 
 UnmanagedVector execute_contract(vm_t *vm_ptr,
                                  Db db,
-                                 GoApi _api,
-                                 GoQuerier _querier,
+                                 GoApi api,
                                  bool _verbose,
                                  uint64_t gas_limit,
                                  UnmanagedVector *errmsg,
@@ -288,8 +274,7 @@ UnmanagedVector execute_contract(vm_t *vm_ptr,
 
 UnmanagedVector execute_script(vm_t *vm_ptr,
                                Db db,
-                               GoApi _api,
-                               GoQuerier _querier,
+                               GoApi api,
                                bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,
@@ -319,8 +304,7 @@ UnmanagedVector publish_module_bundle(vm_t *vm_ptr,
 
 UnmanagedVector query_contract(vm_t *vm_ptr,
                                Db db,
-                               GoApi _api,
-                               GoQuerier _querier,
+                               GoApi api,
                                bool _verbose,
                                uint64_t gas_limit,
                                UnmanagedVector *errmsg,

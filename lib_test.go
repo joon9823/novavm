@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	vm "github.com/Kernel-Labs/novavm"
 	"github.com/Kernel-Labs/novavm/api"
@@ -105,10 +106,10 @@ func mintCoin(
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	usedGas, events, err := vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		api.NewMockAPI(&mockAPI),
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
 		minter,
@@ -162,10 +163,10 @@ func Test_FailOnExecute(t *testing.T) {
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	_, _, err = vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
@@ -196,10 +197,10 @@ func Test_OutOfGas(t *testing.T) {
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	_, _, err = vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		1,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
@@ -231,10 +232,10 @@ func Test_QueryContract(t *testing.T) {
 		Args:     []types.Bytes{types.Bytes(testAccount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	res, err := vm.QueryEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		10000,
 		payload,
 	)
@@ -301,10 +302,10 @@ func Test_ExecuteScript(t *testing.T) {
 		Args:   []types.Bytes{},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	usedGas, events, err := vm.ExecuteScript(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		15000,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,

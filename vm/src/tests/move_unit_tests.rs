@@ -12,9 +12,11 @@ use move_deps::{
 };
 
 use crate::gas::NativeGasParameters;
-use crate::natives::{code::NativeCodeContext, nova_natives};
+use crate::natives::{block::NativeBlockContext, code::NativeCodeContext, nova_natives};
 use std::path::PathBuf;
 use tempfile::tempdir;
+
+use super::mock_chain::MockApi;
 
 pub fn configure_for_unit_test() {
     move_unit_test::extensions::set_extension_hook(Box::new(unit_test_extensions_hook))
@@ -22,6 +24,10 @@ pub fn configure_for_unit_test() {
 
 fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
     exts.add(NativeCodeContext::default());
+    exts.add(NativeBlockContext::new(&MockApi {
+        height: 100,
+        timestamp: 100,
+    }));
 }
 
 fn nova_test_natives() -> NativeFunctionTable {

@@ -3,6 +3,8 @@ use crate::natives::GasParameters;
 crate::gas::natives::define_gas_parameters_for_natives!(GasParameters, "nova_natives", [
     [.account.create_address.base_cost, "account.create_address.base", 1],
     [.account.create_signer.base_cost, "account.create_signer.base", 1],
+
+    [.block.get_block_info.base_cost, "block.get_block_info.base", 1],
     
     [.signature.ed25519.base, "signature.ed25519.base", 1],
     [.signature.ed25519.per_pubkey_deserialize, "signature.ed25519_verify.per_pubkey_deserialize", 1],

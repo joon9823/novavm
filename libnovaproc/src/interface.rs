@@ -7,7 +7,7 @@ use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::compiler::{move_compiler, Command};
 use crate::move_api::handler as api_handler;
-use crate::{api::GoApi, querier::GoQuerier, vm, ByteSliceView, Db, UnmanagedVector};
+use crate::{api::GoApi, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
 use move_deps::move_core_types::account_address::AccountAddress;
@@ -85,10 +85,10 @@ pub extern "C" fn publish_module_bundle(
     let sid = session_id.read().unwrap();
     let module_bundle = module_bundle.read().unwrap();
     let addr = AccountAddress::from_bytes(sender.read().unwrap()).unwrap();
-    
+
     let res = match to_vm(vm_ptr) {
         Some(vm) => catch_unwind(AssertUnwindSafe(move || {
-            vm::publish_module_bundle(vm, sid.to_vec(), addr, module_bundle,  db, gas_limit)
+            vm::publish_module_bundle(vm, sid.to_vec(), addr, module_bundle, db, gas_limit)
         }))
         .unwrap_or_else(|_| Err(Error::panic())),
         None => Err(Error::unset_arg(VM_ARG)),
@@ -98,14 +98,12 @@ pub extern "C" fn publish_module_bundle(
     UnmanagedVector::new(Some(ret))
 }
 
-
 // exported function to execute (an entrypoint of) contract
 #[no_mangle]
 pub extern "C" fn execute_contract(
     vm_ptr: *mut vm_t,
     db: Db,
-    _api: GoApi,
-    _querier: GoQuerier,
+    api: GoApi,
     _verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
@@ -119,7 +117,7 @@ pub extern "C" fn execute_contract(
 
     let res = match to_vm(vm_ptr) {
         Some(vm) => catch_unwind(AssertUnwindSafe(move || {
-            vm::execute_contract(vm, sid.to_vec(), addr, payload.to_vec(), db, gas_limit)
+            vm::execute_contract(vm, sid.to_vec(), addr, payload.to_vec(), db, api, gas_limit)
         }))
         .unwrap_or_else(|_| Err(Error::panic())),
         None => Err(Error::unset_arg(VM_ARG)),
@@ -134,8 +132,7 @@ pub extern "C" fn execute_contract(
 pub extern "C" fn query_contract(
     vm_ptr: *mut vm_t,
     db: Db,
-    _api: GoApi,
-    _querier: GoQuerier,
+    api: GoApi,
     _verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
@@ -145,7 +142,7 @@ pub extern "C" fn query_contract(
 
     let res = match to_vm(vm_ptr) {
         Some(vm) => catch_unwind(AssertUnwindSafe(move || {
-            vm::query_contract(vm, payload.to_vec(), db, gas_limit)
+            vm::query_contract(vm, payload.to_vec(), db, api, gas_limit)
         }))
         .unwrap_or_else(|_| Err(Error::panic())),
         None => Err(Error::unset_arg(VM_ARG)),
@@ -160,8 +157,7 @@ pub extern "C" fn query_contract(
 pub extern "C" fn execute_script(
     vm_ptr: *mut vm_t,
     db: Db,
-    _api: GoApi,
-    _querier: GoQuerier,
+    api: GoApi,
     _verbose: bool,
     gas_limit: u64,
     errmsg: Option<&mut UnmanagedVector>,
@@ -175,7 +171,7 @@ pub extern "C" fn execute_script(
 
     let res = match to_vm(vm_ptr) {
         Some(vm) => catch_unwind(AssertUnwindSafe(move || {
-            vm::execute_script(vm, sid.to_vec(), addr, payload.to_vec(), db, gas_limit)
+            vm::execute_script(vm, sid.to_vec(), addr, payload.to_vec(), db, api, gas_limit)
         }))
         .unwrap_or_else(|_| Err(Error::panic())),
         None => Err(Error::unset_arg(VM_ARG)),

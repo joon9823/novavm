@@ -2,20 +2,21 @@
 
 pub mod serde_helper;
 
+pub use crate::backend::*;
 pub use crate::errors::BackendError;
 pub use crate::errors::NovaVMError;
-pub use crate::nova_vm::NovaVM;
 pub use crate::message::*;
-pub use crate::backend::*;
+pub use crate::nova_vm::NovaVM;
 
-pub mod table;
 pub mod access_path;
+pub mod api;
+pub mod asset;
 pub mod backend;
 pub mod gas;
 pub mod message;
-pub mod storage;
 pub mod natives;
-pub mod asset;
+pub mod storage;
+pub mod table;
 
 mod args_validator;
 mod errors;

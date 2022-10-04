@@ -1,6 +1,8 @@
 use crate::error::GoError;
-use crate::memory::{U8SliceView, UnmanagedVector};
-use novavm::backend::{BackendApi, BackendResult};
+use crate::memory::UnmanagedVector;
+
+use anyhow::anyhow;
+use novavm::api::ChainApi;
 
 // this represents something passed in from the caller side of FFI
 // in this case a struct with go function pointers
@@ -14,12 +16,11 @@ pub struct api_t {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct GoApi_vtable {
-    pub bank_transfer: extern "C" fn(
+    pub get_block_info: extern "C" fn(
         *const api_t,
-        U8SliceView,
-        U8SliceView,
-        U8SliceView,
-        *mut UnmanagedVector, // error message output
+        *mut u64,             // height
+        *mut u64,             // timestamp
+        *mut UnmanagedVector, // error_msg
     ) -> i32,
 }
 
@@ -37,26 +38,25 @@ pub struct GoApi {
 // see: https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe
 unsafe impl Send for GoApi {}
 
-impl BackendApi for GoApi {
-    fn bank_transfer(&self, recipient: &[u8], denom: &str, amount: &str) -> BackendResult<()> {
+impl ChainApi for GoApi {
+    // return latest block height and timestamp
+    fn get_block_info(&self) -> anyhow::Result<(u64, u64)> {
+        let mut height = 0_u64;
+        let mut timestamp = 0_u64;
         let mut error_msg = UnmanagedVector::default();
-        let go_error: GoError = (self.vtable.bank_transfer)(
-            self.state,
-            U8SliceView::new(Some(recipient)),
-            U8SliceView::new(Some(denom.as_bytes())),
-            U8SliceView::new(Some(amount.as_bytes())),
-            &mut error_msg as *mut UnmanagedVector,
-        )
-        .into();
+
+        let go_error: GoError =
+            (self.vtable.get_block_info)(self.state, &mut height, &mut timestamp, &mut error_msg)
+                .into();
 
         // return complete error message (reading from buffer for GoError::Other)
-        let default = || format!("Failed to transfer coin to the address: {:?}", recipient);
+        let default = || "Failed to get latest block info".to_string();
         unsafe {
             if let Err(err) = go_error.into_result(error_msg, default) {
-                return Err(err);
+                return Err(anyhow!(err));
             }
         }
 
-        Ok(())
+        Ok((height, timestamp))
     }
 }
