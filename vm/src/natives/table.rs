@@ -1,4 +1,3 @@
-
 use better_any::{Tid, TidAble};
 use move_deps::move_binary_format::errors::{PartialVMError, PartialVMResult};
 use move_deps::move_core_types::{
@@ -74,6 +73,7 @@ pub struct TableChangeSet {
 
 /// A change of a single table.
 pub struct TableChange {
+    pub value_layout: MoveTypeLayout,
     pub entries: BTreeMap<Vec<u8>, Op<Vec<u8>>>,
 }
 
@@ -191,7 +191,13 @@ impl<'a> NativeTableContext<'a> {
                 }
             }
             if !entries.is_empty() {
-                changes.insert(handle, TableChange { entries });
+                changes.insert(
+                    handle,
+                    TableChange {
+                        value_layout,
+                        entries,
+                    },
+                );
             }
         }
         Ok(TableChangeSet {

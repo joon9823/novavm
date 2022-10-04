@@ -480,23 +480,20 @@ impl NovaVM {
     ) -> VMResult<TableOwnerChangeSet> {
         // store new tables' value type
         let new_tables = &table_change_set.borrow().new_tables;
-        for (handle, info) in new_tables.iter() {
-            table_owner_data_cache.set_table_value_type(handle, &info.value_type);
-        }
 
         println!("new table {:?}", table_change_set.new_tables);
         println!("remove table {:?}", table_change_set.removed_tables);
 
         for i in table_change_set.removed_tables.iter() {
             table_owner_data_cache.del_owner(i);
-            table_owner_data_cache.del_table_value_type(i);
         }
 
         for (addr, account_change_set) in change_set.borrow().accounts().iter() {
             println!("checking changeset for {}", addr);
             for (i, op) in account_change_set.resources().iter() {
                 let ty_tag = TypeTag::Struct(i.clone());
-                let res = find_all_address_occur(op, &session, &ty_tag)?;
+                let ty_layout = session.get_type_layout(&ty_tag)?;
+                let res = find_all_address_occur(op, &ty_layout)?;
 
                 for address_found in res.into_iter() {
                     let found_handle = TableHandle(address_found);
@@ -514,11 +511,8 @@ impl NovaVM {
 
         let mut table_in_table_ownership: BTreeMap<TableHandle, TableHandle> = BTreeMap::default();
         for (handle, change) in table_change_set.changes.iter() {
-            let val_ty_tag = table_owner_data_cache
-                .get_table_value_type(handle)?
-                .unwrap();
             for (_key, op) in &change.entries {
-                let res = find_all_address_occur(op, &session, &val_ty_tag)?;
+                let res = find_all_address_occur(op,  &change.value_layout)?;
 
                 for address_found in res.iter() {
                     let found_handle = TableHandle(*address_found);

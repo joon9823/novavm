@@ -2,18 +2,16 @@ use crate::table_owner::TableOwnerChangeSet;
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
-use move_deps::{
-    move_core_types::{
-        effects::{ChangeSet, Op},
-        language_storage::ModuleId,
-        account_address::AccountAddress,
-        language_storage::{StructTag},
-        resolver::{ModuleResolver, ResourceResolver},
-    },
+use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    effects::{ChangeSet, Op},
+    language_storage::ModuleId,
+    language_storage::StructTag,
+    resolver::{ModuleResolver, ResourceResolver},
 };
 use {
-    anyhow::Error,
     crate::natives::table::{TableHandle, TableResolver},
+    anyhow::Error,
 };
 
 use crate::natives::table::TableChangeSet;
@@ -84,15 +82,10 @@ impl MockState {
             }
         }
 
-        let TableOwnerChangeSet { owner, value_type } = table_owner_change_set;
+        let TableOwnerChangeSet { owner } = table_owner_change_set;
         println!("table owner changes {:?}", owner);
         for (handle, op) in owner {
             let ap = AccessPath::table_owner_access_path(handle.0);
-            self.write_op(ap, op);
-        }
-
-        for (handle, op) in value_type {
-            let ap = AccessPath::table_val_type_access_path(handle.0);
             self.write_op(ap, op);
         }
     }
@@ -106,7 +99,6 @@ impl StateView for MockState {
         }
     }
 }
-
 
 /// A dummy storage containing no modules or resources.
 #[derive(Debug, Clone)]

@@ -5,9 +5,9 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
-use novavm::natives::table::TableChangeSet;
 use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
+use novavm::natives::table::TableChangeSet;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::table_owner::TableOwnerChangeSet;
 use novavm::BackendResult;
@@ -205,11 +205,6 @@ pub fn push_write_set(
 
     for (handle, op) in &table_owner_change_set.owner {
         let ap = AccessPath::table_owner_access_path(handle.0);
-        write_op(go_storage, &ap, &op)?;
-    }
-
-    for (handle, op) in &table_owner_change_set.value_type {
-        let ap = AccessPath::table_val_type_access_path(handle.0);
         write_op(go_storage, &ap, &op)?;
     }
 
