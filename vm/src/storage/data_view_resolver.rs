@@ -5,17 +5,15 @@ use std::{borrow::Borrow, cell::RefCell, collections::BTreeMap};
 use crate::access_path::AccessPath;
 
 use super::state_view::StateView;
+use crate::natives::table::{TableHandle, TableResolver};
 use log::error;
+use move_deps::move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
     language_storage::{ModuleId, StructTag, TypeTag},
     resolver::{ModuleResolver, ResourceResolver},
     vm_status::StatusCode,
 };
-use move_deps::{
-    move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
-};
-use crate::natives::table::{TableHandle, TableResolver};
 
 pub trait StoredSizeResolver {
     fn get_size(&self, access_path: &AccessPath) -> Option<usize>;
@@ -23,13 +21,11 @@ pub trait StoredSizeResolver {
 
 pub trait TableOwnerResolver {
     fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>>;
-    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>>;
 }
 
 pub struct DataViewResolver<'a, S> {
     data_view: &'a S,
     pub size_cache: RefCell<BTreeMap<AccessPath, usize>>,
-    pub val_type_map: RefCell<BTreeMap<TableHandle, TypeTag>>, //FIXME: should persist
 }
 
 impl<'a, S: StateView> DataViewResolver<'a, S> {
@@ -37,7 +33,6 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
         Self {
             data_view,
             size_cache: RefCell::new(BTreeMap::default()),
-            val_type_map: RefCell::new(BTreeMap::default()),
         }
     }
 
@@ -110,12 +105,6 @@ impl<'block, S: StateView> TableOwnerResolver for DataViewResolver<'block, S> {
     // type Error = VMError;
     //
     fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>> {
-        let ap = AccessPath::table_owner_access_path(handle.0);
-        self.get(&ap)
-            .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
-    }
-
-    fn get_table_value_type(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>> {
         let ap = AccessPath::table_owner_access_path(handle.0);
         self.get(&ap)
             .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))

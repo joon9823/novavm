@@ -83,11 +83,6 @@ impl AccessPath {
         AccessPath::new(CORE_CODE_ADDRESS, Self::table_owner_data_path(address))
     }
 
-    pub fn table_val_type_access_path(address /* Table Address */: AccountAddress) -> AccessPath {
-        // table address created uniquely in move table extension
-        AccessPath::new(CORE_CODE_ADDRESS, Self::table_val_type_data_path(address))
-    }
-
     pub fn resource_data_path(tag: StructTag) -> DataPath {
         DataPath::Resource(tag)
     }
@@ -102,10 +97,6 @@ impl AccessPath {
 
     pub fn table_owner_data_path(handle: AccountAddress) -> DataPath {
         DataPath::TableOwner(handle)
-    }
-
-    pub fn table_val_type_data_path(handle: AccountAddress) -> DataPath {
-        DataPath::TableValType(handle)
     }
 
     pub fn into_inner(self) -> (AccountAddress, DataPath) {
@@ -157,7 +148,6 @@ pub enum DataType {
     RESOURCE,
     TABLE_ITEM,
     TABLE_OWNER,
-    TABLE_VAL_TYPE,
 }
 
 impl DataType {
@@ -194,7 +184,6 @@ pub enum DataPath {
     Resource(StructTag),
     TableItem(Vec<u8>),
     TableOwner(AccountAddress),
-    TableValType(AccountAddress),
 }
 
 impl DataPath {
@@ -223,7 +212,6 @@ impl DataPath {
             DataPath::Resource(_) => DataType::RESOURCE,
             DataPath::TableItem(_) => DataType::TABLE_ITEM,
             DataPath::TableOwner(_) => DataType::TABLE_OWNER,
-            DataPath::TableValType(_) => DataType::TABLE_VAL_TYPE,
         }
     }
 }
@@ -242,9 +230,6 @@ impl fmt::Display for DataPath {
                 write!(f, "{}/{}", storage_index, encode_hex(key))
             }
             DataPath::TableOwner(handle) => {
-                write!(f, "{}/{}", storage_index, handle)
-            }
-            DataPath::TableValType(handle) => {
                 write!(f, "{}/{}", storage_index, handle)
             }
         }
@@ -267,9 +252,6 @@ impl FromStr for AccessPath {
             DataType::TABLE_ITEM => AccessPath::table_item_data_path(decode_hex(parts[2])?),
             DataType::TABLE_OWNER => {
                 AccessPath::table_owner_data_path(AccountAddress::from_str(parts[2])?)
-            }
-            DataType::TABLE_VAL_TYPE => {
-                AccessPath::table_val_type_data_path(AccountAddress::from_str(parts[2])?)
             }
         };
         Ok(AccessPath::new(address, data_path))

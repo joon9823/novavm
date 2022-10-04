@@ -92,7 +92,6 @@ impl<'a> ValueVisitor for FindingAddressVisitor {
 
     #[inline]
     fn visit_vec_address(&mut self, _depth: usize, vals: &[AccountAddress]) {
-        // let mut m = vals.clone().to_vec();
         self.addresses.append(vals.to_vec().as_mut());
     }
 
@@ -231,19 +230,19 @@ impl Display for WriteCacheValue {
 }
 
 fn serialize_op(op: Op<WriteCacheValue>) -> PartialVMResult<Op<Vec<u8>>> {
-    fn serialize_or_error(v: WriteCacheValue) -> PartialVMResult<Vec<u8>> {
-        match v.serialize() {
-            Some(d) => Ok(d),
-            None => Err(PartialVMError::new(
-                StatusCode::FAILED_TO_SERIALIZE_WRITE_SET_CHANGES,
-            )),
-        }
-    }
-
     match op {
         Op::New(v) => Ok(Op::New(serialize_or_error(v)?)),
         Op::Modify(v) => Ok(Op::Modify(serialize_or_error(v)?)),
         Op::Delete => Ok(Op::Delete),
+    }
+}
+
+fn serialize_or_error(v: WriteCacheValue) -> PartialVMResult<Vec<u8>> {
+    match v.serialize() {
+        Some(d) => Ok(d),
+        None => Err(PartialVMError::new(
+            StatusCode::FAILED_TO_SERIALIZE_WRITE_SET_CHANGES,
+        )),
     }
 }
 
