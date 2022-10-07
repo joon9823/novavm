@@ -15,6 +15,7 @@ use move_deps::move_cli::base::disassemble::Disassemble;
 use move_deps::move_cli::base::errmap::Errmap;
 use move_deps::move_cli::base::info::Info;
 use move_deps::move_cli::base::movey_login::MoveyLogin;
+use move_deps::move_cli::base::movey_upload::MoveyUpload;
 use move_deps::move_cli::base::prove::{Prove, ProverOptions};
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
@@ -459,8 +460,24 @@ pub extern "C" fn disassemble_move_package(
 pub extern "C" fn movey_login(
     errmsg: Option<&mut UnmanagedVector>,
 ) -> UnmanagedVector {
+
     let move_args = generate_move_cli_with_default(None, false);
     let cmd = Command::MoveyLogin(MoveyLogin);
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn movey_upload(
+    errmsg: Option<&mut UnmanagedVector>,
+    package_path: ByteSliceView,
+) -> UnmanagedVector {
+    let move_args = generate_move_cli_with_default(Some(package_path), false);
+    let cmd = Command::MoveyUpload(MoveyUpload);
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

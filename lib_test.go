@@ -397,6 +397,14 @@ func Test_MoveyLogin(t *testing.T) {
 }
 */
 
+/* Don't test movey-upload with valid token
+func Test_MoveyUpload(t *testing.T) {
+	res, err := api.MoveyUpload(packagePath)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+*/
+
 /*
 func Test_CheckContractCoverage(t *testing.T) {
 	covPackagePath := path.Join(workingDir, "compiler/testdata/coverage")

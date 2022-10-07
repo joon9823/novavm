@@ -351,6 +351,8 @@ void initialize(vm_t *vm_ptr,
 
 UnmanagedVector movey_login(UnmanagedVector *errmsg);
 
+UnmanagedVector movey_upload(UnmanagedVector *errmsg, ByteSliceView package_path);
+
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 UnmanagedVector prove_move_package(UnmanagedVector *errmsg,

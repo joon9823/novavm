@@ -233,11 +233,32 @@ func MoveyLogin() ([]byte, error) {
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-/*
-func GenerateErrorMap(config types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
+func MoveyUpload(packagePath string) ([]byte, error) {
 	var err error
 
 	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(packagePath))
+	defer runtime.KeepAlive(pathBytesView)
+
+	res, err := C.movey_upload(&errmsg, pathBytesView)
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
+func GenerateErrorMap(buildConfig types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+
+	pathBytesView := makeView([]byte(buildConfig.PackagePath))
+	defer runtime.KeepAlive(pathBytesView)
+	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+	defer runtime.KeepAlive(installDirBytesView)
 
 	errorPrefixView := makeView([]byte(errorPrefix))
 	defer runtime.KeepAlive(errorPrefixView)
@@ -245,6 +266,15 @@ func GenerateErrorMap(config types.BuildConfig, errorPrefix, outputFile string) 
 	defer runtime.KeepAlive(outputFileView)
 
 	res, err := C.generate_error_map(&errmsg,
+		pathBytesView,
+		cbool(buildConfig.Verbose),
+		cbool(buildConfig.DevMode),
+		cbool(buildConfig.TestMode),
+		cbool(buildConfig.GenerateDocs),
+		cbool(buildConfig.GenerateABIs),
+		installDirBytesView,
+		cbool(buildConfig.ForceRecompilation),
+		cbool(buildConfig.FetchDepsOnly),
 		errorPrefixView,
 		outputFileView,
 	)
@@ -255,4 +285,3 @@ func GenerateErrorMap(config types.BuildConfig, errorPrefix, outputFile string) 
 
 	return copyAndDestroyUnmanagedVector(res), err
 }
-*/
