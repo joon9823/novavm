@@ -522,7 +522,6 @@ fn generate_move_cli_with_default(package_path_slice: Option<ByteSliceView>, ver
     }
 }
 
-// REFACTORRRRRRRR!!!
 fn generate_move_cli(
     package_path_slice: ByteSliceView,
     verbose: bool,
