@@ -46,11 +46,11 @@ impl GasParameters {
                 },
                 create_signer: account::CreateSignerGasParameters {
                     base_cost: 0.into(),
-                },
-                block: block::GasParameters {
-                    get_block_info: block::GetBlockInfoGasParameters {
-                        base_cost: 0.into(),
-                    },
+                },  
+            },
+            block: block::GasParameters {
+                get_block_info: block::GetBlockInfoGasParameters {
+                    base_cost: 0.into(),
                 },
             },
             type_info: type_info::GasParameters {
