@@ -58,7 +58,7 @@ RUN wget http://mirror.centos.org/altarch/7/os/aarch64/Packages/libgcc-4.8.5-44.
   && cp /code/lib64/libgcc_s-4.8.5-20150702.so.1 /usr/lib/gcc/aarch64-linux-gnu/4.8.5/libgcc_s.so \
   && rm libgcc-*.el7.aarch64.rpm
 
-# Install openssl for cross-compilation. THis is required by Move
+# Install openssl for cross-compilation. This is required by Move
 RUN wget "https://www.openssl.org/source/openssl-1.1.1k.tar.gz" \
   && tar -zxvf ./openssl-1.1.1k.tar.gz \
   && cd openssl-1.1.1k \

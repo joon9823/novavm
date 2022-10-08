@@ -6,7 +6,6 @@ mod helpers;
 pub mod account;
 pub mod block;
 pub mod code;
-pub mod signature;
 pub mod type_info;
 pub mod util;
 
@@ -33,7 +32,6 @@ pub mod status {
 pub struct GasParameters {
     pub account: account::GasParameters,
     pub block: block::GasParameters,
-    pub signature: signature::GasParameters,
     pub type_info: type_info::GasParameters,
     pub util: util::GasParameters,
     pub code: code::GasParameters,
@@ -49,39 +47,10 @@ impl GasParameters {
                 create_signer: account::CreateSignerGasParameters {
                     base_cost: 0.into(),
                 },
-            },
-            block: block::GasParameters {
-                get_block_info: block::GetBlockInfoGasParameters {
-                    base_cost: 0.into(),
-                },
-            },
-            signature: signature::GasParameters {
-                bls12381: signature::Bls12381GasParameters {
-                    base: 0.into(),
-                    per_pairing: 0.into(),
-                    per_msg: 0.into(),
-                    per_byte: 0.into(),
-                    per_pubkey_deserialize: 0.into(),
-                    per_pubkey_aggregate: 0.into(),
-                    per_pubkey_subgroup_check: 0.into(),
-                    per_sig_verify: 0.into(),
-                    per_sig_deserialize: 0.into(),
-                    per_sig_aggregate: 0.into(),
-                    per_sig_subgroup_check: 0.into(),
-                    per_proof_of_possession_verify: 0.into(),
-                },
-                ed25519: signature::Ed25519GasParameters {
-                    base: 0.into(),
-                    per_pubkey_deserialize: 0.into(),
-                    per_pubkey_small_order_check: 0.into(),
-                    per_sig_deserialize: 0.into(),
-                    per_sig_strict_verify: 0.into(),
-                    per_msg_hashing_base: 0.into(),
-                    per_msg_byte_hashing: 0.into(),
-                },
-                secp256k1: signature::Secp256k1GasParameters {
-                    base: 0.into(),
-                    ecdsa_recover: 0.into(),
+                block: block::GasParameters {
+                    get_block_info: block::GetBlockInfoGasParameters {
+                        base_cost: 0.into(),
+                    },
                 },
             },
             type_info: type_info::GasParameters {
@@ -126,7 +95,6 @@ pub fn all_natives(
 
     add_natives_from_module!("account", account::make_all(gas_params.account));
     add_natives_from_module!("block", block::make_all(gas_params.block));
-    add_natives_from_module!("signature", signature::make_all(gas_params.signature));
     add_natives_from_module!("type_info", type_info::make_all(gas_params.type_info));
     add_natives_from_module!("util", util::make_all(gas_params.util.clone()));
     add_natives_from_module!("code", code::make_all(gas_params.code));

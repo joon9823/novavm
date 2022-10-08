@@ -2,7 +2,7 @@
 name = "novaproc"
 version = "0.1.0"
 edition = "2021"
-#rust-version = "1.63"
+rust-version = "1.63"
 description = "Nova VM Engine"
 homepage = "https://www.kernellabs.co"
 repository = "https://github.com/Kernel-Labs/novavm"
