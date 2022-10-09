@@ -308,29 +308,14 @@ impl NovaVM {
         let session_output = session.finish()?;
 
         let temporary_session = self.create_session(remote_cache, session_id);
-        let mut data_cache = TableOwnerDataCache::new(remote_cache);
+        let data_cache = TableOwnerDataCache::new(remote_cache);
 
-        for (handle, size_delta) in &session_output.3.tables {
-            let s = remote_cache.get_table_meta(&handle, crate::table_owner::TableMetaType::Size)?;
-            let current_size: usize = match s {
-                Some(v) => bcs::from_bytes(&v).map_err(|e| VMStatus::Error(StatusCode::ABORTED))?,
-                None => 0,
-            };
-
-            let mut delta = SizeDelta::new(0, current_size);
-            delta.merge(size_delta.clone());
-            if delta.is_decrease {
-                panic!("dsdads");
-            }
-            let new_size = delta.amount;
-        
-            data_cache.set_size(&handle, new_size);
-        }
-
+        // TODO: return account size changes
         let owner_change_set = self.get_table_ownership(
-                temporary_session, 
+                temporary_session,
                 &session_output.0,
                 &session_output.2, 
+                &session_output.3,
                 data_cache
             )
             .map_err(|e| {
@@ -503,8 +488,10 @@ impl NovaVM {
         session: SessionExt<'_, '_, S>,
         change_set: &ChangeSet,
         table_change_set: &TableChangeSet,
+        size_change_set: &SizeChangeSet,
         mut table_owner_data_cache: TableOwnerDataCache<'_, S>,
     ) -> VMResult<TableMetaChangeSet> {
+        let mut accounts_delta: BTreeMap<AccountAddress, SizeDelta> = BTreeMap::default();
         // store new tables' value type
         let new_tables = &table_change_set.borrow().new_tables;
 
@@ -512,7 +499,14 @@ impl NovaVM {
         println!("remove table {:?}", table_change_set.removed_tables);
 
         for i in table_change_set.removed_tables.iter() {
+            if let Some(removing_size) = table_owner_data_cache.get_size(i)? {
+                let acc = table_owner_data_cache.get_root_owner(i)?.unwrap();
+                let delta = SizeDelta::new(removing_size, 0);
+                accounts_delta.insert(acc, delta);
+            };
+
             table_owner_data_cache.del_owner(i);
+            table_owner_data_cache.del_size(i);
         }
 
         for (addr, account_change_set) in change_set.borrow().accounts().iter() {
@@ -526,10 +520,16 @@ impl NovaVM {
                     let found_handle = TableHandle(address_found);
                     // address is new table's handle or
                     // already stored table's handle
-                    if new_tables.contains_key(&found_handle)
-                        || table_owner_data_cache.is_registerd_table(&found_handle)?
-                    {
-                        // this is addr's table
+
+                    if new_tables.contains_key(&found_handle) {
+                        table_owner_data_cache.set_owner(&found_handle, *addr);
+                    }
+                    else if let Some(old_owner) = table_owner_data_cache.get_root_owner(&found_handle)? {  // also means this is table address
+                        if let Some(size) = table_owner_data_cache.get_size(&found_handle)? {
+                            // todo: make size change set handle moving between account
+                            accounts_delta.insert(old_owner, SizeDelta::new(size, 0));
+                            accounts_delta.insert(*addr, SizeDelta::new(0, size));
+                        }
                         table_owner_data_cache.set_owner(&found_handle, *addr);
                     }
                 }
@@ -543,27 +543,48 @@ impl NovaVM {
 
                 for address_found in res.iter() {
                     let found_handle = TableHandle(*address_found);
-                    if new_tables.contains_key(&handle)
-                        || table_owner_data_cache.is_registerd_table(&found_handle)?
-                    {
-                        // will figure out who owns this table below
-                        // table_in_table_ownership.insert(found_handle, handle.clone());
+                    if new_tables.contains_key(&found_handle) {
                         table_owner_data_cache.set_owner(&found_handle, handle.0);
+                    }
+                    else if let Some(old_owner) = table_owner_data_cache.get_root_owner(&found_handle)? {
+                        table_owner_data_cache.set_owner(&found_handle, handle.0);
+                        if let Some(size) = table_owner_data_cache.get_size(&found_handle)? {
+                            let new_owner = table_owner_data_cache.get_root_owner(&found_handle)?.unwrap();
+                            accounts_delta.insert(old_owner, SizeDelta::new(size, 0));
+                            accounts_delta.insert(new_owner, SizeDelta::new(0, size));
+                        }
+
                     }
                 }
             }
         }
 
-        for (handle, change) in table_change_set.changes.iter() {
-            for (_key, op) in &change.entries {
+        println!("table size owning???? {:?}", accounts_delta);
 
+        for (handle, size_delta) in &size_change_set.tables {
+            // todo: should check deleted table??
+            let owner = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+            
+            // todo: make size change set do merge value on exist
+            accounts_delta.entry(owner)
+                .and_modify(|e| {
+                    e.merge(size_delta.clone());
+                })
+                .or_insert(size_delta.clone());
+
+            let current_size = table_owner_data_cache.get_size(&handle)?.unwrap_or(0);
+
+            let mut delta = SizeDelta::new(0, current_size);
+            delta.merge(size_delta.clone());
+            if delta.is_decrease {
+                panic!("dsdads");
             }
+            let new_size = delta.amount;
+        
+            table_owner_data_cache.set_size(&handle, new_size);
         }
 
-        // for (inner, outter) in table_in_table_ownership.iter() {
-        //     let real_owner = table_owner_data_cache.get_root_owner(outter)?.unwrap();
-        //     table_owner_data_cache.set_owner(inner, &real_owner);
-        // }
+        println!("{:?}", accounts_delta);
 
         let change_set = table_owner_data_cache
             .into_change_set()
