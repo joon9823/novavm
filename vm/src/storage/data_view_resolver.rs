@@ -3,6 +3,7 @@
 use std::{borrow::Borrow, cell::RefCell, collections::BTreeMap};
 
 use crate::access_path::AccessPath;
+use crate::table_owner::TableMetaType;
 
 use super::state_view::StateView;
 use crate::natives::table::{TableHandle, TableResolver};
@@ -19,8 +20,12 @@ pub trait StoredSizeResolver {
     fn get_size(&self, access_path: &AccessPath) -> Option<usize>;
 }
 
-pub trait TableOwnerResolver {
-    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>>;
+pub trait TableMetaResolver {
+    fn get_table_meta(
+        &self,
+        handle: &TableHandle,
+        meta: TableMetaType,
+    ) -> VMResult<Option<Vec<u8>>>;
 }
 
 pub struct DataViewResolver<'a, S> {
@@ -101,11 +106,16 @@ impl<'block, S: StateView> TableResolver for DataViewResolver<'block, S> {
     }
 }
 
-impl<'block, S: StateView> TableOwnerResolver for DataViewResolver<'block, S> {
+impl<'block, S: StateView> TableMetaResolver for DataViewResolver<'block, S> {
     // type Error = VMError;
     //
-    fn get_owner(&self, handle: &TableHandle) -> VMResult<Option<Vec<u8>>> {
-        let ap = AccessPath::table_owner_access_path(handle.0);
+
+    fn get_table_meta(
+        &self,
+        handle: &TableHandle,
+        meta: TableMetaType,
+    ) -> VMResult<Option<Vec<u8>>> {
+        let ap = AccessPath::table_meta_access_path(handle.0, meta);
         self.get(&ap)
             .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
     }

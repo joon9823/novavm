@@ -22,7 +22,11 @@ use move_deps::{
     },
     move_vm_types::gas::UnmeteredGasMeter,
 };
-use crate::natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver};
+use crate::{
+    natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver}, 
+    args_validator::check_args_address, 
+    size_change_set::SizeDelta
+};
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet},
@@ -44,8 +48,8 @@ use crate::{
     },
     session::{SessionExt, SessionOutput},
     size_change_set::SizeChangeSet,
-    storage::data_view_resolver::{StoredSizeResolver, TableOwnerResolver},
-    table_owner::{find_all_address_occur, TableOwnerChangeSet, TableOwnerDataCache},
+    storage::data_view_resolver::{StoredSizeResolver, TableMetaResolver},
+    table_owner::{find_all_address_occur, TableMetaChangeSet, TableOwnerDataCache},
     NovaVMError,
 };
 
@@ -256,6 +260,9 @@ impl NovaVM {
                     let loaded_func =
                         session.load_script(script.code(), script.ty_args().to_vec())?;
                     let args = validate_combine_signer_and_txn_args(&session, senders, script.args().to_vec(), &loaded_func)?;
+                    
+                    check_args_address(remote_cache, &loaded_func.parameters, &args).map_err(|e| e.finish(Location::Undefined))?;
+
 
                     session.execute_script(
                         script.code().to_vec(),
@@ -271,6 +278,8 @@ impl NovaVM {
                         entry_fn.ty_args(),
                     )?;
                     let args = validate_combine_signer_and_txn_args(&session,senders, entry_fn.args().to_vec(), &function)?;
+                    check_args_address(remote_cache, &function.parameters, &args).map_err(|e| e.finish(Location::Undefined))?;
+
                     
                     session.execute_entry_function(
                         entry_fn.module(),
@@ -299,7 +308,25 @@ impl NovaVM {
         let session_output = session.finish()?;
 
         let temporary_session = self.create_session(remote_cache, session_id);
-        let data_cache = TableOwnerDataCache::new(remote_cache);
+        let mut data_cache = TableOwnerDataCache::new(remote_cache);
+
+        for (handle, size_delta) in &session_output.3.tables {
+            let s = remote_cache.get_table_meta(&handle, crate::table_owner::TableMetaType::Size)?;
+            let current_size: usize = match s {
+                Some(v) => bcs::from_bytes(&v).map_err(|e| VMStatus::Error(StatusCode::ABORTED))?,
+                None => 0,
+            };
+
+            let mut delta = SizeDelta::new(0, current_size);
+            delta.merge(size_delta.clone());
+            if delta.is_decrease {
+                panic!("dsdads");
+            }
+            let new_size = delta.amount;
+        
+            data_cache.set_size(&handle, new_size);
+        }
+
         let owner_change_set = self.get_table_ownership(
                 temporary_session, 
                 &session_output.0,
@@ -322,7 +349,7 @@ impl NovaVM {
     fn success_message_cleanup(
         &self,
         session_output: SessionOutput, // session: Session<R>,
-        table_owner_change_set: Option<TableOwnerChangeSet>,
+        table_owner_change_set: Option<TableMetaChangeSet>,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let gas_limit = gas_meter.gas_limit();
@@ -470,14 +497,14 @@ impl NovaVM {
     }
 
     fn get_table_ownership<
-        S: TableOwnerResolver + MoveResolver + TableResolver + StoredSizeResolver,
+        S: TableMetaResolver + MoveResolver + TableResolver + StoredSizeResolver,
     >(
         &self,
         session: SessionExt<'_, '_, S>,
         change_set: &ChangeSet,
         table_change_set: &TableChangeSet,
         mut table_owner_data_cache: TableOwnerDataCache<'_, S>,
-    ) -> VMResult<TableOwnerChangeSet> {
+    ) -> VMResult<TableMetaChangeSet> {
         // store new tables' value type
         let new_tables = &table_change_set.borrow().new_tables;
 
@@ -503,13 +530,13 @@ impl NovaVM {
                         || table_owner_data_cache.is_registerd_table(&found_handle)?
                     {
                         // this is addr's table
-                        table_owner_data_cache.set_owner(&found_handle, addr);
+                        table_owner_data_cache.set_owner(&found_handle, *addr);
                     }
                 }
             }
         }
 
-        let mut table_in_table_ownership: BTreeMap<TableHandle, TableHandle> = BTreeMap::default();
+        // let mut table_in_table_ownership: BTreeMap<TableHandle, TableHandle> = BTreeMap::default();
         for (handle, change) in table_change_set.changes.iter() {
             for (_key, op) in &change.entries {
                 let res = find_all_address_occur(op,  &change.value_layout)?;
@@ -520,16 +547,23 @@ impl NovaVM {
                         || table_owner_data_cache.is_registerd_table(&found_handle)?
                     {
                         // will figure out who owns this table below
-                        table_in_table_ownership.insert(found_handle, handle.clone());
+                        // table_in_table_ownership.insert(found_handle, handle.clone());
+                        table_owner_data_cache.set_owner(&found_handle, handle.0);
                     }
                 }
             }
         }
 
-        for (inner, outter) in table_in_table_ownership.iter() {
-            let real_owner = table_owner_data_cache.get_owner(outter)?.unwrap();
-            table_owner_data_cache.set_owner(inner, &real_owner);
+        for (handle, change) in table_change_set.changes.iter() {
+            for (_key, op) in &change.entries {
+
+            }
         }
+
+        // for (inner, outter) in table_in_table_ownership.iter() {
+        //     let real_owner = table_owner_data_cache.get_root_owner(outter)?.unwrap();
+        //     table_owner_data_cache.set_owner(inner, &real_owner);
+        // }
 
         let change_set = table_owner_data_cache
             .into_change_set()
@@ -547,7 +581,7 @@ pub(crate) fn discard_error_output(err: StatusCode, gas_used: Gas) -> MessageOut
         vec![],
         TableChangeSet::default(),
         SizeChangeSet::default(),
-        TableOwnerChangeSet::default(),
+        TableMetaChangeSet::default(),
         gas_used.into(),
         MessageStatus::Discard(err),
     )
@@ -568,7 +602,7 @@ pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used: Gas) -> (VMStatus
 
 pub(crate) fn get_message_output(
     session_output: SessionOutput,
-    table_owner_change_set: Option<TableOwnerChangeSet>,
+    table_owner_change_set: Option<TableMetaChangeSet>,
     gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {

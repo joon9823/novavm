@@ -9,7 +9,7 @@ use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::natives::table::TableChangeSet;
 use novavm::storage::data_view_resolver::DataViewResolver;
-use novavm::table_owner::TableOwnerChangeSet;
+use novavm::table_owner::TableMetaChangeSet;
 use novavm::BackendResult;
 use novavm::Message;
 use novavm::Module;
@@ -182,7 +182,7 @@ pub fn push_write_set(
     go_storage: &mut GoStorage,
     changeset: &ChangeSet,
     table_change_set: &TableChangeSet,
-    table_owner_change_set: &TableOwnerChangeSet,
+    table_owner_change_set: &TableMetaChangeSet,
 ) -> BackendResult<()> {
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
@@ -204,7 +204,7 @@ pub fn push_write_set(
     }
 
     for (handle, op) in &table_owner_change_set.owner {
-        let ap = AccessPath::table_owner_access_path(handle.0);
+        let ap = AccessPath::table_meta_access_path(handle.0);
         write_op(go_storage, &ap, &op)?;
     }
 

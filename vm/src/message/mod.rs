@@ -15,13 +15,12 @@ use move_deps::move_core_types::{account_address::AccountAddress, effects::Chang
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-
 pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
-use crate::table_owner::TableOwnerChangeSet;
-use crate::natives::table::TableChangeSet;
 use self::size_change_set::SizeChangeSet;
+use crate::natives::table::TableChangeSet;
+use crate::table_owner::TableMetaChangeSet;
 
 mod module;
 mod script;
@@ -233,7 +232,7 @@ pub struct MessageOutput {
     events: Vec<Event>,
     table_change_set: TableChangeSet,
     size_change_set: SizeChangeSet,
-    table_owner_change_set: TableOwnerChangeSet,
+    table_owner_change_set: TableMetaChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -248,7 +247,7 @@ impl MessageOutput {
         events: Vec<Event>,
         table_change_set: TableChangeSet,
         size_change_set: SizeChangeSet,
-        table_owner_change_set: TableOwnerChangeSet,
+        table_owner_change_set: TableMetaChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
@@ -275,7 +274,7 @@ impl MessageOutput {
         &self.size_change_set
     }
 
-    pub fn table_owner_change_set(&self) -> &TableOwnerChangeSet {
+    pub fn table_owner_change_set(&self) -> &TableMetaChangeSet {
         &self.table_owner_change_set
     }
 
@@ -296,7 +295,7 @@ impl MessageOutput {
     ) -> (
         ChangeSet,
         TableChangeSet,
-        TableOwnerChangeSet,
+        TableMetaChangeSet,
         SizeChangeSet,
         Vec<Event>,
         u64,

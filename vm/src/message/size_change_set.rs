@@ -1,5 +1,5 @@
-use move_deps::move_core_types::account_address::AccountAddress;
 use crate::natives::table::TableHandle;
+use move_deps::move_core_types::account_address::AccountAddress;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -19,10 +19,10 @@ impl SizeChangeSet {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SizeDelta {
-    amount: usize,
-    is_decrease: bool,
+    pub amount: usize,
+    pub is_decrease: bool,
 }
 
 impl SizeDelta {

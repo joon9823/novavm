@@ -1,4 +1,5 @@
-use crate::table_owner::TableOwnerChangeSet;
+use crate::table_owner::TableMetaChangeSet;
+use crate::table_owner::TableMetaType;
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
@@ -60,7 +61,7 @@ impl MockState {
         &mut self,
         changeset: ChangeSet,
         table_change_set: TableChangeSet,
-        table_owner_change_set: TableOwnerChangeSet,
+        table_owner_change_set: TableMetaChangeSet,
     ) {
         for (addr, account_changeset) in changeset.into_inner() {
             let (modules, resources) = account_changeset.into_inner();
@@ -82,10 +83,15 @@ impl MockState {
             }
         }
 
-        let TableOwnerChangeSet { owner } = table_owner_change_set;
+        let TableMetaChangeSet { owner, size } = table_owner_change_set;
         println!("table owner changes {:?}", owner);
         for (handle, op) in owner {
-            let ap = AccessPath::table_owner_access_path(handle.0);
+            let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
+            self.write_op(ap, op);
+        }
+        println!("table size changes {:?}", size);
+        for (handle, op) in size {
+            let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
             self.write_op(ap, op);
         }
     }
