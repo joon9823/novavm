@@ -96,8 +96,8 @@ fn run_compiler(
         Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::MoveyLogin(c) => c.execute(),
         Command::MoveyUpload(c) => c.execute(move_args.package_path),
-        /* TODO: unsupported yet
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
+        /* 
         Command::Sandbox { storage_dir, cmd } => cmd.handle_command(
             natives,
             cost_table,
@@ -105,8 +105,8 @@ fn run_compiler(
             &move_args,
             &storage_dir,
         ),
-        Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
         */
+        Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
         // custom actions
 		Command::Clean(c) => c.execute(move_args.package_path),
 		c => Err(anyhow!("unimplemented function: {}", c)),
@@ -135,4 +135,3 @@ pub fn compile(
         Err(e ) => bail!(e.to_string())
     }
 }
-

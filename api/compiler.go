@@ -5,283 +5,305 @@ package api
 import "C"
 
 import (
-	"fmt"
-	"runtime"
-	"syscall"
+    "fmt"
+    "runtime"
+    "syscall"
 
-	"github.com/Kernel-Labs/novavm/types"
+    "github.com/Kernel-Labs/novavm/types"
 )
 
-func BuildContract(buildConfig types.BuildConfig) ([]byte, error) {
-	var err error
+func BuildContract(arg types.NovaCompilerArgument) ([]byte, error) {
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
+    buildConfig := arg.BuildConfig
 
-	pathBytesView := makeView([]byte(buildConfig.PackagePath))
-	defer runtime.KeepAlive(pathBytesView)
-	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
-	defer runtime.KeepAlive(installDirBytesView)
+    pathBytesView := makeView([]byte(arg.PackagePath))
+    defer runtime.KeepAlive(pathBytesView)
+    installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+    defer runtime.KeepAlive(installDirBytesView)
 
-	res, err := C.build_move_package(&errmsg,
-		pathBytesView,
-		cbool(buildConfig.Verbose),
-		cbool(buildConfig.DevMode),
-		cbool(buildConfig.TestMode),
-		cbool(buildConfig.GenerateDocs),
-		cbool(buildConfig.GenerateABIs),
-		installDirBytesView,
-		cbool(buildConfig.ForceRecompilation),
-		cbool(buildConfig.FetchDepsOnly),
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    compArg := C.NovaCompilerArgument{
+        package_path: pathBytesView,
+        verbose: cbool(arg.Verbose),
+        build_config: C.NovaCompilerBuildConfig{
+            dev_mode: cbool(buildConfig.DevMode),
+            test_mode: cbool(buildConfig.TestMode),
+            generate_docs: cbool(buildConfig.GenerateDocs),
+            generate_abis: cbool(buildConfig.GenerateABIs),
+            install_dir: installDirBytesView,
+            force_recompilation: cbool(buildConfig.ForceRecompilation),
+            fetch_deps_only: cbool(buildConfig.FetchDepsOnly),
+        },
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    res, err := C.build_move_package(&errmsg, compArg)
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
+
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
-func TestContract(buildConfig types.BuildConfig, testConfig types.TestConfig) ([]byte, error) {
-	var err error
+func TestContract(packagePath string, verbose bool, buildConfig types.BuildConfig, testConfig types.TestConfig) ([]byte, error) {
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(buildConfig.PackagePath))
-	defer runtime.KeepAlive(pathBytesView)
-	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
-	defer runtime.KeepAlive(installDirBytesView)
-	filterBytesView := makeView([]byte(testConfig.Filter))
-	defer runtime.KeepAlive(filterBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
+    installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+    defer runtime.KeepAlive(installDirBytesView)
+    filterBytesView := makeView([]byte(testConfig.Filter))
+    defer runtime.KeepAlive(filterBytesView)
 
-	res, err := C.test_move_package(&errmsg,
-		pathBytesView,
-		cbool(buildConfig.Verbose),
-		cbool(buildConfig.DevMode),
-		cbool(buildConfig.TestMode),
-		cbool(buildConfig.GenerateDocs),
-		cbool(buildConfig.GenerateABIs),
-		installDirBytesView,
-		cbool(buildConfig.ForceRecompilation),
-		cbool(buildConfig.FetchDepsOnly),
-		cu64(testConfig.InstructionExecutionBound),
-		filterBytesView,
-		cbool(testConfig.List),
-		cusize(testConfig.NumThreads),
-		cbool(testConfig.ReportStatistics),
-		cbool(testConfig.ReportStorageOnError),
-		cbool(testConfig.IgnoreCompileWarnings),
-		cbool(testConfig.CheckStacklessVM),
-		cbool(testConfig.VerboseMode),
-		cbool(testConfig.ComputeCoverage),
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    compArg := C.NovaCompilerArgument{
+        package_path: pathBytesView,
+        verbose: cbool(verbose),
+        build_config: C.NovaCompilerBuildConfig{
+            dev_mode: cbool(buildConfig.DevMode),
+            test_mode: cbool(buildConfig.TestMode),
+            generate_docs: cbool(buildConfig.GenerateDocs),
+            generate_abis: cbool(buildConfig.GenerateABIs),
+            install_dir: installDirBytesView,
+            force_recompilation: cbool(buildConfig.ForceRecompilation),
+            fetch_deps_only: cbool(buildConfig.FetchDepsOnly),
+        },
+    }
+    testOpt := C.NovaCompilerTestOption{
+        instruction_execution_bound: cu64(testConfig.InstructionExecutionBound),
+        filter: filterBytesView,
+        list: cbool(testConfig.List),
+        num_threads: cusize(testConfig.NumThreads),
+        report_statistics: cbool(testConfig.ReportStatistics),
+        report_storage_on_error: cbool(testConfig.ReportStorageOnError),
+        ignore_compile_warnings: cbool(testConfig.IgnoreCompileWarnings),
+        check_stackless_vm: cbool(testConfig.CheckStacklessVM),
+        verbose_mode: cbool(testConfig.VerboseMode),
+        compute_coverage: cbool(testConfig.ComputeCoverage),
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    res, err := C.test_move_package(&errmsg,
+        compArg,
+        testOpt,
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
+
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func GetContractInfo(packagePath string) ([]byte, error) {
-	var err error
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
 
-	res, err := C.get_move_package_info(&errmsg,
-		pathBytesView,
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.get_move_package_info(&errmsg,
+        pathBytesView,
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func CreateContractPackage(packagePath string) ([]byte, error) {
-	var err error
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
 
-	res, err := C.create_new_move_package(&errmsg,
-		pathBytesView,
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.create_new_move_package(&errmsg,
+        pathBytesView,
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func CheckCoverageContractPackage(packagePath string, summaryOpt interface{}) ([]byte, error) {
-	var err error
+    var err error
 
-	var optType C.CoverageOption
-	var moduleName string
-	summaryFunction := false
-	summaryOutputCSV := false
+    var optType C.CoverageOption
+    var moduleName string
+    summaryFunction := false
+    summaryOutputCSV := false
 
-	switch typ := summaryOpt.(type) {
-	case types.CoverageSummary:
-		optType = C.CoverageOption_Summary
-		goOpt := summaryOpt.(types.CoverageSummary)
-		summaryFunction = goOpt.Function
-		summaryOutputCSV = goOpt.OutputCSV
-	case types.CoverageSource:
-		optType = C.CoverageOption_Source
-		moduleName = string(summaryOpt.(types.CoverageSource))
-	case types.CoverageBytecode:
-		optType = C.CoverageOption_Bytecode
-		moduleName = string(summaryOpt.(types.CoverageBytecode))
-	default:
-		return nil, fmt.Errorf("%+v is not accceptable", typ)
-	}
+    switch typ := summaryOpt.(type) {
+    case types.CoverageSummary:
+        optType = C.CoverageOption_Summary
+        goOpt := summaryOpt.(types.CoverageSummary)
+        summaryFunction = goOpt.Function
+        summaryOutputCSV = goOpt.OutputCSV
+    case types.CoverageSource:
+        optType = C.CoverageOption_Source
+        moduleName = string(summaryOpt.(types.CoverageSource))
+    case types.CoverageBytecode:
+        optType = C.CoverageOption_Bytecode
+        moduleName = string(summaryOpt.(types.CoverageBytecode))
+    default:
+        return nil, fmt.Errorf("%+v is not accceptable", typ)
+    }
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
 
-	moduleNameBytesView := makeView([]byte(moduleName))
-	defer runtime.KeepAlive(moduleNameBytesView)
+    moduleNameBytesView := makeView([]byte(moduleName))
+    defer runtime.KeepAlive(moduleNameBytesView)
 
-	res, err := C.check_coverage_move_package(&errmsg,
-		pathBytesView,
-		cu8(optType),
-		cbool(summaryFunction),
-		cbool(summaryOutputCSV),
-		moduleNameBytesView,
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.check_coverage_move_package(&errmsg,
+        pathBytesView,
+        cu8(optType),
+        cbool(summaryFunction),
+        cbool(summaryOutputCSV),
+        moduleNameBytesView,
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func ProveContractPackage(packagePath, filter, options string, forTest bool) ([]byte, error) {
-	var err error
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
-	filterBytesView := makeView([]byte(filter))
-	defer runtime.KeepAlive(filterBytesView)
-	optionsBytesView := makeView([]byte(options))
-	defer runtime.KeepAlive(optionsBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
+    filterBytesView := makeView([]byte(filter))
+    defer runtime.KeepAlive(filterBytesView)
+    optionsBytesView := makeView([]byte(options))
+    defer runtime.KeepAlive(optionsBytesView)
 
-	res, err := C.prove_move_package(&errmsg,
-		pathBytesView,
-		filterBytesView,
-		optionsBytesView,
-		cbool(forTest),
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.prove_move_package(&errmsg,
+        pathBytesView,
+        filterBytesView,
+        optionsBytesView,
+        cbool(forTest),
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
-func DisassembleContractPackage(packagePath, packageName, moduleOrScriptName string, interactive bool) ([]byte, error) {
-	var err error
+func DisassembleContractPackage(packagePath string, dc types.DisassembleOption) ([]byte, error) {
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
-	packageNameView := makeView([]byte(packageName))
-	defer runtime.KeepAlive(packageNameView)
-	MoSNameView := makeView([]byte(moduleOrScriptName))
-	defer runtime.KeepAlive(MoSNameView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
+    packageNameView := makeView([]byte(dc.PackageName))
+    defer runtime.KeepAlive(packageNameView)
+    MoSNameView := makeView([]byte(dc.ModuleOrScriptName))
+    defer runtime.KeepAlive(MoSNameView)
 
-	res, err := C.disassemble_move_package(&errmsg,
-		pathBytesView,
-		packageNameView,
-		MoSNameView,
-		cbool(interactive),
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.disassemble_move_package(&errmsg,
+        pathBytesView,
+        C.NovaCompilerDisassembleOption{
+            interactive: cbool(dc.Interactive),
+            package_name: packageNameView,
+            module_or_script_name: MoSNameView,
+        },
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func MoveyLogin() ([]byte, error) {
-	var err error
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	res, err := C.movey_login(&errmsg)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.movey_login(&errmsg)
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
 func MoveyUpload(packagePath string) ([]byte, error) {
-	var err error
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(packagePath))
-	defer runtime.KeepAlive(pathBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
 
-	res, err := C.movey_upload(&errmsg, pathBytesView)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    res, err := C.movey_upload(&errmsg, pathBytesView)
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    return copyAndDestroyUnmanagedVector(res), err
 }
 
-func GenerateErrorMap(buildConfig types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
-	var err error
+func GenerateErrorMap(packagePath []byte, verbose bool, buildConfig types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
+    var err error
 
-	errmsg := newUnmanagedVector(nil)
+    errmsg := newUnmanagedVector(nil)
 
-	pathBytesView := makeView([]byte(buildConfig.PackagePath))
-	defer runtime.KeepAlive(pathBytesView)
-	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
-	defer runtime.KeepAlive(installDirBytesView)
+    pathBytesView := makeView([]byte(packagePath))
+    defer runtime.KeepAlive(pathBytesView)
+    installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+    defer runtime.KeepAlive(installDirBytesView)
 
-	errorPrefixView := makeView([]byte(errorPrefix))
-	defer runtime.KeepAlive(errorPrefixView)
-	outputFileView := makeView([]byte(outputFile))
-	defer runtime.KeepAlive(outputFileView)
+    errorPrefixView := makeView([]byte(errorPrefix))
+    defer runtime.KeepAlive(errorPrefixView)
+    outputFileView := makeView([]byte(outputFile))
+    defer runtime.KeepAlive(outputFileView)
 
-	res, err := C.generate_error_map(&errmsg,
-		pathBytesView,
-		cbool(buildConfig.Verbose),
-		cbool(buildConfig.DevMode),
-		cbool(buildConfig.TestMode),
-		cbool(buildConfig.GenerateDocs),
-		cbool(buildConfig.GenerateABIs),
-		installDirBytesView,
-		cbool(buildConfig.ForceRecompilation),
-		cbool(buildConfig.FetchDepsOnly),
-		errorPrefixView,
-		outputFileView,
-	)
-	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
-		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
-	}
+    compArg := C.NovaCompilerArgument{
+        package_path: pathBytesView,
+        verbose: cbool(verbose),
+        build_config: C.NovaCompilerBuildConfig{
+            dev_mode: cbool(buildConfig.DevMode),
+            test_mode: cbool(buildConfig.TestMode),
+            generate_docs: cbool(buildConfig.GenerateDocs),
+            generate_abis: cbool(buildConfig.GenerateABIs),
+            install_dir: installDirBytesView,
+            force_recompilation: cbool(buildConfig.ForceRecompilation),
+            fetch_deps_only: cbool(buildConfig.FetchDepsOnly),
+        },
+    }
 
-	return copyAndDestroyUnmanagedVector(res), err
+    res, err := C.generate_error_map(&errmsg,
+        compArg,
+        errorPrefixView,
+        outputFileView,
+    )
+    if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+        // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+        return nil, errorWithMessage(err, errmsg)
+    }
+
+    return copyAndDestroyUnmanagedVector(res), err
 }
