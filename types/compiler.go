@@ -183,6 +183,12 @@ type DisassembleOption struct {
 	ModuleOrScriptName string
 }
 
+type ProveOption struct {
+	TargetFilter string
+	ForTest bool
+	Options string
+}
+
 type NovaCompilerArgument struct {
 	PackagePath string
 	Verbose bool

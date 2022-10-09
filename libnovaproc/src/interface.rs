@@ -2,7 +2,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
-use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption};
+use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
@@ -14,7 +14,6 @@ use move_deps::move_cli::base::errmap::Errmap;
 use move_deps::move_cli::base::info::Info;
 use move_deps::move_cli::base::movey_login::MoveyLogin;
 use move_deps::move_cli::base::movey_upload::MoveyUpload;
-use move_deps::move_cli::base::prove::{Prove, ProverOptions};
 use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_cli::base::{
     build::Build,
@@ -272,8 +271,6 @@ pub extern "C" fn test_move_package(
     UnmanagedVector::new(Some(ret))
 }
 
-
-
 #[no_mangle]
 pub extern "C" fn get_move_package_info(
     errmsg: Option<&mut UnmanagedVector>,
@@ -340,31 +337,16 @@ pub extern "C" fn check_coverage_move_package(
     UnmanagedVector::new(Some(ret))
 }
 
-
 #[no_mangle]
 pub extern "C" fn prove_move_package(
     errmsg: Option<&mut UnmanagedVector>,
     /* for build config */
     package_path: ByteSliceView,
     /* for prove config */
-    filter: ByteSliceView,
-    prove_options: ByteSliceView,
-    for_test: bool,
+    prove_opt: NovaCompilerProveOption,
 ) -> UnmanagedVector {
-    let target_filter= match filter.read() {
-        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-        None => None,
-    };
-    
-    let options= match prove_options.read() {
-        Some(s) => Some(ProverOptions::Options(String::from_utf8(s.to_vec()).unwrap().split(' ').map(|o| o.to_string()).collect::<Vec<String>>())),
-        None => None,
-    };
-
     let move_args = generate_default_move_cli(Some(package_path), false);
-
-    let prove_option = Prove{target_filter, for_test, options};
-    let cmd = Command::Prove(prove_option);
+    let cmd = Command::Prove(prove_opt.into());
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

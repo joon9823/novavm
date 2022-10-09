@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, path::Path};
 
-use move_deps::{move_cli::{Move, base::{test::Test, disassemble::Disassemble}}, move_package::{BuildConfig, Architecture}};
+use move_deps::{move_cli::{Move, base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}}}, move_package::{BuildConfig, Architecture}};
 use nova_compiler::compile as nova_compile;
 use crate::{error::Error, ByteSliceView};
 
@@ -178,5 +178,34 @@ impl From<NovaCompilerDisassembleOption> for Disassemble {
         };
         let module_or_script_name = String::from_utf8(val.module_or_script_name.read().unwrap().to_vec()).unwrap();
         Self { interactive: val.interactive, package_name, module_or_script_name }
+    }
+}
+
+#[repr(C)]
+pub struct NovaCompilerProveOption{
+    /// The target filter used to prune the modules to verify. Modules with a name that contains
+    /// this string will be part of verification.
+    pub target_filter: ByteSliceView,
+    /// Internal field indicating that this prover run is for a test.
+    pub for_test: bool,
+    /// Any options passed to the prover.
+    pub options: ByteSliceView,
+}
+
+impl From<NovaCompilerProveOption> for Prove {
+    fn from(val: NovaCompilerProveOption) -> Self {
+        let target_filter= match val.target_filter.read() {
+            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+            None => None,
+        };
+        let options= match val.options.read() {
+            Some(s) => Some(ProverOptions::Options(String::from_utf8(s.to_vec()).unwrap().split(' ').map(|o| o.to_string()).collect::<Vec<String>>())),
+            None => None,
+        };
+        Self{
+            target_filter,
+            for_test: val.for_test,
+            options,
+        }
     }
 }

@@ -59,14 +59,14 @@ func Test_CreateNewContract(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
-/* FIXME: same as compiler_test.rs, temporaraily blocked this test: revive this after adding dotnet action into workflows
+//* FIXME: same as compiler_test.rs, temporaraily blocked this test: revive this after adding dotnet action into workflows
 func Test_ProveContract(t *testing.T) {
-	tmpPath := "compiler/testdata/prove"
-	res, err := ProveContractPackage(tmpPath, "", "", true)
+	tmpPath := path.Join(workingDir, "../compiler/testdata/prove")
+	res, err := ProveContractPackage(tmpPath, types.ProveOption{"", false, ""})
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
-*/
+//*/
 
 func Test_DisassembleContract(t *testing.T) {
 	//tmpPath := "compiler/testdata/general"

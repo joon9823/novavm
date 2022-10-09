@@ -181,23 +181,25 @@ func CheckCoverageContractPackage(packagePath string, summaryOpt interface{}) ([
     return copyAndDestroyUnmanagedVector(res), err
 }
 
-func ProveContractPackage(packagePath, filter, options string, forTest bool) ([]byte, error) {
+func ProveContractPackage(packagePath string, proveOpt types.ProveOption) ([]byte, error) {
     var err error
 
     errmsg := newUnmanagedVector(nil)
 
     pathBytesView := makeView([]byte(packagePath))
     defer runtime.KeepAlive(pathBytesView)
-    filterBytesView := makeView([]byte(filter))
+    filterBytesView := makeView([]byte(proveOpt.TargetFilter))
     defer runtime.KeepAlive(filterBytesView)
-    optionsBytesView := makeView([]byte(options))
+    optionsBytesView := makeView([]byte(proveOpt.Options))
     defer runtime.KeepAlive(optionsBytesView)
 
     res, err := C.prove_move_package(&errmsg,
         pathBytesView,
-        filterBytesView,
-        optionsBytesView,
-        cbool(forTest),
+        C.NovaCompilerProveOption{
+            target_filter: filterBytesView,
+            for_test: cbool(proveOpt.ForTest),
+            options: optionsBytesView,
+        },
     )
     if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
         // Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,

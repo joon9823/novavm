@@ -333,6 +333,22 @@ typedef struct {
 
 typedef struct {
   /**
+   * The target filter used to prune the modules to verify. Modules with a name that contains
+   * this string will be part of verification.
+   */
+  ByteSliceView target_filter;
+  /**
+   * Internal field indicating that this prover run is for a test.
+   */
+  bool for_test;
+  /**
+   * Any options passed to the prover.
+   */
+  ByteSliceView options;
+} NovaCompilerProveOption;
+
+typedef struct {
+  /**
    * Bound the number of instructions that can be executed by any one test.
    * set 0 to no-boundary
    */
@@ -448,9 +464,7 @@ UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length
 
 UnmanagedVector prove_move_package(UnmanagedVector *errmsg,
                                    ByteSliceView package_path,
-                                   ByteSliceView filter,
-                                   ByteSliceView prove_options,
-                                   bool for_test);
+                                   NovaCompilerProveOption prove_opt);
 
 /**
  * exported function to publish module bundle
