@@ -59,14 +59,14 @@ func Test_CreateNewContract(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
-//* FIXME: same as compiler_test.rs, temporaraily blocked this test: revive this after adding dotnet action into workflows
+/* FIXME: same as compiler_test.rs, temporaraily blocked this test: revive this after adding dotnet action into workflows
 func Test_ProveContract(t *testing.T) {
 	tmpPath := path.Join(workingDir, "../compiler/testdata/prove")
 	res, err := ProveContractPackage(tmpPath, types.ProveOption{"", false, ""})
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
-//*/
+*/
 
 func Test_DisassembleContract(t *testing.T) {
 	//tmpPath := "compiler/testdata/general"
@@ -96,21 +96,20 @@ func Test_MoveyUpload(t *testing.T) {
 }
 */
 
-/*
 func Test_CheckContractCoverage(t *testing.T) {
-	covPackagePath := path.Join(workingDir, "compiler/testdata/coverage")
-	res, err := CheckContractPackageCoverage(covPackagePath, types.CoverageSummary{Function: true, OutputCSV: true})
+	covPackagePath := path.Join(workingDir, "../compiler/testdata/coverage")
+	res, err := CheckCoverageContractPackage(covPackagePath, types.CoverageSummary{Function: true, OutputCSV: true})
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
-*/
 
-/*
-func Test_GenerateErrorMap(T *testing.T) {
-	covPackagePath := path.Join(workingDir, "compiler/testdata/general")
-	res, err := GenerateErrorMap("", "error_map")
+func Test_GenerateErrorMap(t *testing.T) {
+    nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
+		types.WithInstallDir(packagePath),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+	res, err := GenerateErrorMap(nova_arg, "", "error_map")
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
-
 }
-*/

@@ -268,13 +268,15 @@ func MoveyUpload(packagePath string) ([]byte, error) {
     return copyAndDestroyUnmanagedVector(res), err
 }
 
-func GenerateErrorMap(packagePath []byte, verbose bool, buildConfig types.BuildConfig, errorPrefix, outputFile string) ([]byte, error) {
+func GenerateErrorMap(arg types.NovaCompilerArgument, errorPrefix, outputFile string) ([]byte, error) {
     var err error
 
     errmsg := newUnmanagedVector(nil)
 
-    pathBytesView := makeView([]byte(packagePath))
+    pathBytesView := makeView([]byte(arg.PackagePath))
     defer runtime.KeepAlive(pathBytesView)
+
+    buildConfig := arg.BuildConfig
     installDirBytesView := makeView([]byte(buildConfig.InstallDir))
     defer runtime.KeepAlive(installDirBytesView)
 
@@ -285,7 +287,7 @@ func GenerateErrorMap(packagePath []byte, verbose bool, buildConfig types.BuildC
 
     compArg := C.NovaCompilerArgument{
         package_path: pathBytesView,
-        verbose: cbool(verbose),
+        verbose: cbool(arg.Verbose),
         build_config: C.NovaCompilerBuildConfig{
             dev_mode: cbool(buildConfig.DevMode),
             test_mode: cbool(buildConfig.TestMode),
