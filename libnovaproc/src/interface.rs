@@ -2,7 +2,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
-use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption};
+use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
@@ -423,6 +423,23 @@ pub extern "C" fn generate_error_map(
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
 }
+
+#[no_mangle]
+pub extern "C" fn generate_docs(
+    errmsg: Option<&mut UnmanagedVector>,
+    nova_args: NovaCompilerArgument,
+    docgen_opt: NovaCompilerDocgenOption,
+) -> UnmanagedVector {
+
+    let cmd = Command::Docgen(docgen_opt.into());
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
 
 //
 // internal functions

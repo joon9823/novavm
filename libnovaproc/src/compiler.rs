@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, path::Path};
 
-use move_deps::{move_cli::{Move, base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}}}, move_package::{BuildConfig, Architecture}};
+use move_deps::{move_cli::{Move, base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}, docgen::Docgen}}, move_package::{BuildConfig, Architecture}};
 use nova_compiler::compile as nova_compile;
 use crate::{error::Error, ByteSliceView};
 
@@ -206,6 +206,73 @@ impl From<NovaCompilerProveOption> for Prove {
             target_filter,
             for_test: val.for_test,
             options,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct NovaCompilerDocgenOption {
+    /// The level where we start sectioning. Often markdown sections are rendered with
+    /// unnecessary large section fonts, setting this value high reduces the size
+    /// set 0 for default 
+    pub section_level_start: usize, /*Option<usize>*/
+    /// Whether to exclude private functions in the generated docs
+    pub exclude_private_fun: bool,
+    /// Whether to exclude specifications in the generated docs
+    pub exclude_specs: bool,
+    /// Whether to put specifications in the same section as a declaration or put them all
+    /// into an independent section
+    pub independent_specs: bool,
+    /// Whether to exclude Move implementations
+    pub exclude_impl: bool,
+    /// Max depth to which sections are displayed in table-of-contents
+    /// /set 0 for default
+    pub toc_depth: usize, /*Option<usize>*/
+    /// Do not use collapsed sections (<details>) for impl and specs
+    pub no_collapsed_sections: bool,
+    /// In which directory to store output
+    pub output_directory: ByteSliceView, /*Option<String>*/
+    /// A template for documentation generation. Can be multiple
+    /// delimiter: , (comma)
+    pub template: ByteSliceView, /*Vec<String>*/
+    /// An optional file containing reference definitions. The content of this file will
+    /// be added to each generated markdown doc
+    pub references_file: ByteSliceView, /*Option<String>*/
+    /// Whether to include dependency diagrams in the generated docs
+    pub include_dep_diagrams: bool,
+    /// Whether to include call diagrams in the generated docs
+    pub include_call_diagrams: bool,
+    /// If this is being compiled relative to a different place where it will be stored (output directory)
+    pub compile_relative_to_output_dir: bool,
+}
+
+impl From<NovaCompilerDocgenOption> for Docgen {
+    fn from(val: NovaCompilerDocgenOption) -> Self {
+        let output_directory = match val.output_directory.read() {
+            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+            None => None,
+        };
+        let template: Vec<String> = match val.template.read() {
+            Some(s) => Vec::from_iter(String::from_utf8(s.to_vec()).unwrap().split(',').map(String::from)),
+            None => vec![],
+        };
+        let references_file = match val.references_file.read() {
+            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+            None => None,
+        };
+        Self{ section_level_start: match val.section_level_start {0 => None, _ => Some(val.section_level_start)},
+            exclude_private_fun: val.exclude_private_fun,
+            exclude_specs: val.exclude_specs,
+            independent_specs: val.independent_specs,
+            exclude_impl: val.exclude_impl,
+            toc_depth: match val.toc_depth {0 => None, _ => Some(val.toc_depth)},
+            no_collapsed_sections: val.no_collapsed_sections,
+            output_directory,
+            template,
+            references_file,
+            include_dep_diagrams: val.include_dep_diagrams,
+            include_call_diagrams: val.include_call_diagrams,
+            compile_relative_to_output_dir: val.compile_relative_to_output_dir,
         }
     }
 }

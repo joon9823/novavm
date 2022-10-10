@@ -14,7 +14,7 @@ type BuildConfig struct {
 // DefaultBuildConfig returns with all-false set (except PackagePath which is set to current(.)) BuildConfig
 func DefaultBuildConfig() BuildConfig {
 	return BuildConfig{
-		InstallDir:  []byte(""),
+		InstallDir: []byte(""),
 		// else all set to false
 	}
 }
@@ -27,7 +27,6 @@ func NewBuildConfig(options ...func(*BuildConfig)) BuildConfig {
 	}
 	return bc
 }
-
 
 func WithInstallDir(dir string) func(*BuildConfig) {
 	return func(bc *BuildConfig) {
@@ -178,27 +177,42 @@ type CoverageSource string
 type CoverageBytecode string
 
 type DisassembleOption struct {
-	Interactive bool
-	PackageName string
+	Interactive        bool
+	PackageName        string
 	ModuleOrScriptName string
 }
 
 type ProveOption struct {
 	TargetFilter string
-	ForTest bool
-	Options string
+	ForTest      bool
+	Options      string
 }
 
+type DocgenOption struct {
+	SectionLevelStart          uint
+	ExcludePrivateFun          bool
+	ExcludeSpecs               bool
+	IndependentSpecs           bool
+	ExcludeImpl                bool
+	TocDeps                    uint
+	NoCollapsedSections        bool
+	OutputDirectory            string
+	Template                   []string
+	ReferencesFile             string
+	IncludeDepDiagrams         bool
+	IncludeCallDiagrams        bool
+	CompileRelativeToOutputDir bool
+}
 type NovaCompilerArgument struct {
 	PackagePath string
-	Verbose bool
-	BuildConfig BuildConfig	
+	Verbose     bool
+	BuildConfig BuildConfig
 }
 
 func NewNovaCompilerArgument(packagePath string, verbose bool, buildConfig BuildConfig) NovaCompilerArgument {
 	return NovaCompilerArgument{packagePath, verbose, buildConfig}
 }
 
-func NewNovaCompilerArgumentWithBuildOption(packagePath string, verbose bool, options ...func(*BuildConfig)) NovaCompilerArgument{
+func NewNovaCompilerArgumentWithBuildOption(packagePath string, verbose bool, options ...func(*BuildConfig)) NovaCompilerArgument {
 	return NovaCompilerArgument{packagePath, verbose, NewBuildConfig(options...)}
 }

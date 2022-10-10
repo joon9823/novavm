@@ -71,8 +71,8 @@ func Test_ProveContract(t *testing.T) {
 func Test_DisassembleContract(t *testing.T) {
 	//tmpPath := "compiler/testdata/general"
 	dc := types.DisassembleOption{
-		Interactive: false,
-		PackageName: "",
+		Interactive:        false,
+		PackageName:        "",
 		ModuleOrScriptName: "BasicCoin",
 	}
 	res, err := DisassembleContractPackage(packagePath, dc)
@@ -104,12 +104,24 @@ func Test_CheckContractCoverage(t *testing.T) {
 }
 
 func Test_GenerateErrorMap(t *testing.T) {
-    nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
+	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
 		types.WithInstallDir(packagePath),
 		types.WithDevMode(),
 		types.WithTestMode(),
 	)
 	res, err := GenerateErrorMap(nova_arg, "", "error_map")
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+
+func Test_GenerateDocs(t *testing.T) {
+	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
+		types.WithInstallDir(packagePath),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+	docgenOpt := types.DocgenOption{}
+	res, err := GenerateDocs(nova_arg, docgenOpt)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }

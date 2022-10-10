@@ -320,6 +320,67 @@ typedef struct {
 
 typedef struct {
   /**
+   * The level where we start sectioning. Often markdown sections are rendered with
+   * unnecessary large section fonts, setting this value high reduces the size
+   * set 0 for default
+   */
+  size_t section_level_start;
+  /**
+   * Whether to exclude private functions in the generated docs
+   */
+  bool exclude_private_fun;
+  /**
+   * Whether to exclude specifications in the generated docs
+   */
+  bool exclude_specs;
+  /**
+   * Whether to put specifications in the same section as a declaration or put them all
+   * into an independent section
+   */
+  bool independent_specs;
+  /**
+   * Whether to exclude Move implementations
+   */
+  bool exclude_impl;
+  /**
+   * Max depth to which sections are displayed in table-of-contents
+   * /set 0 for default
+   */
+  size_t toc_depth;
+  /**
+   * Do not use collapsed sections (<details>) for impl and specs
+   */
+  bool no_collapsed_sections;
+  /**
+   * In which directory to store output
+   */
+  ByteSliceView output_directory;
+  /**
+   * A template for documentation generation. Can be multiple
+   * delimiter: , (comma)
+   */
+  ByteSliceView template_;
+  /**
+   * An optional file containing reference definitions. The content of this file will
+   * be added to each generated markdown doc
+   */
+  ByteSliceView references_file;
+  /**
+   * Whether to include dependency diagrams in the generated docs
+   */
+  bool include_dep_diagrams;
+  /**
+   * Whether to include call diagrams in the generated docs
+   */
+  bool include_call_diagrams;
+  /**
+   * If this is being compiled relative to a different place where it will be stored (output directory)
+   */
+  bool compile_relative_to_output_dir;
+} NovaCompilerDocgenOption;
+
+typedef struct {
+  /**
    * The target filter used to prune the modules to verify. Modules with a name that contains
    * this string will be part of verification.
    */
@@ -427,6 +488,10 @@ UnmanagedVector execute_script(vm_t *vm_ptr,
                                ByteSliceView session_id,
                                ByteSliceView sender,
                                ByteSliceView message);
+
+UnmanagedVector generate_docs(UnmanagedVector *errmsg,
+                              NovaCompilerArgument nova_args,
+                              NovaCompilerDocgenOption docgen_opt);
 
 UnmanagedVector generate_error_map(UnmanagedVector *errmsg,
                                    NovaCompilerArgument nova_args,
