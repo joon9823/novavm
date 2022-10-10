@@ -1,0 +1,31 @@
+name: Deploy to Git
+on:
+  push:
+    branches:
+      - main
+      - "release/*"
+    
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
+    name: Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build shared library for Linux
+        run: make release-build-linux
+      - name: Build shared library for macOS
+        run: make release-build-macos
+      - name: Upload shared libraries
+        uses: test-room-7/action-update-file@v1
+        with:
+          file-path: |
+            api/libnovaproc.dylib
+            api/libnovaproc.aarch64.so
+            api/libnovaproc.x86_64.so
+          commit-msg: "[skip-ci] update shared libraries"
+          github-token: ${{ secrets.PUSH_TO_PROTECTED_BRANCH }}

@@ -92,7 +92,6 @@ func ExecuteContract(
 	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
 	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
@@ -104,7 +103,6 @@ func ExecuteContract(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	sid := makeView(sessionID)
 	defer runtime.KeepAlive(sid)
@@ -115,7 +113,7 @@ func ExecuteContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_contract(vm.ptr, db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_contract(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -129,7 +127,6 @@ func ExecuteScript(
 	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
 	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
@@ -141,7 +138,6 @@ func ExecuteScript(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	sid := makeView(sessionID)
 	defer runtime.KeepAlive(sid)
@@ -152,7 +148,7 @@ func ExecuteScript(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_script(vm.ptr, db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_script(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -166,7 +162,6 @@ func QueryContract(
 	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
 	verbose bool,
 	gasLimit uint64,
 	message []byte,
@@ -176,14 +171,13 @@ func QueryContract(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	msg := makeView(message)
 	defer runtime.KeepAlive(msg)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.query_contract(vm.ptr, db, _api, _querier, cbool(verbose), cu64(gasLimit), &errmsg, msg)
+	res, err := C.query_contract(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)

@@ -1,3 +1,4 @@
+use crate::api::GoApi;
 use crate::error::Error;
 use crate::result::generate_result;
 use crate::result::to_vec;
@@ -11,7 +12,7 @@ use novavm::gas::Gas;
 use novavm::storage::data_view_resolver::DataViewResolver;
 use novavm::BackendResult;
 use novavm::Message;
-use novavm::{ModuleBundle};
+use novavm::ModuleBundle;
 use novavm::NovaVM;
 use novavm::{EntryFunction, Script};
 
@@ -60,7 +61,7 @@ pub(crate) fn publish_module_bundle(
     let data_view = DataViewResolver::new(&storage);
 
     let (status, output, retval) = vm
-        .execute_message(message, &data_view, gas_limit)
+        .execute_message::<GoStorage, GoApi>(message, &data_view, None, gas_limit)
         .map_err(|e| Error::from(e))?;
 
     match status {
@@ -74,16 +75,25 @@ pub(crate) fn publish_module_bundle(
     }
 }
 
-
 pub(crate) fn execute_script(
     vm: &mut NovaVM,
     session_id: Vec<u8>, // seed for global unique session id
     sender: AccountAddress,
     payload: Vec<u8>,
     db_handle: Db,
+    api: GoApi,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_script_internal(vm, session_id, Some(sender), payload, db_handle, gas, false)
+    execute_script_internal(
+        vm,
+        session_id,
+        Some(sender),
+        payload,
+        db_handle,
+        api,
+        gas,
+        false,
+    )
 }
 
 pub(crate) fn execute_contract(
@@ -92,9 +102,19 @@ pub(crate) fn execute_contract(
     sender: AccountAddress,
     payload: Vec<u8>,
     db_handle: Db,
+    api: GoApi,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry_function_internal(vm, session_id, Some(sender), payload, db_handle, gas, false)
+    execute_entry_function_internal(
+        vm,
+        session_id,
+        Some(sender),
+        payload,
+        db_handle,
+        api,
+        gas,
+        false,
+    )
 }
 
 // works as smart query
@@ -102,9 +122,10 @@ pub(crate) fn query_contract(
     vm: &mut NovaVM,
     payload: Vec<u8>,
     db_handle: Db,
+    api: GoApi,
     gas: u64,
 ) -> Result<Vec<u8>, Error> {
-    execute_entry_function_internal(vm, vec![0; 32], None, payload, db_handle, gas, true)
+    execute_entry_function_internal(vm, vec![0; 32], None, payload, db_handle, api, gas, true)
 }
 
 /////////////////////////////////////////
@@ -117,6 +138,7 @@ fn execute_entry_function_internal(
     sender: Option<AccountAddress>,
     payload: Vec<u8>,
     db_handle: Db,
+    api: GoApi,
     gas: u64,
     is_query: bool,
 ) -> Result<Vec<u8>, Error> {
@@ -134,7 +156,7 @@ fn execute_entry_function_internal(
     let data_view = DataViewResolver::new(&storage);
 
     let (status, output, retval) = vm
-        .execute_message(message, &data_view, gas_limit)
+        .execute_message(message, &data_view, Some(&api), gas_limit)
         .map_err(|e| Error::from(e))?;
 
     match status {
@@ -202,6 +224,7 @@ fn execute_script_internal(
     sender: Option<AccountAddress>,
     payload: Vec<u8>,
     db_handle: Db,
+    api: GoApi,
     gas: u64,
     is_query: bool,
 ) -> Result<Vec<u8>, Error> {
@@ -219,7 +242,7 @@ fn execute_script_internal(
     let data_view = DataViewResolver::new(&storage);
 
     let (status, output, retval) = vm
-        .execute_message(message, &data_view, gas_limit)
+        .execute_message(message, &data_view, Some(&api), gas_limit)
         .map_err(|e| Error::from(e))?;
 
     match status {

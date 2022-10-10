@@ -5,10 +5,16 @@ on:
     branches:
       - main
       - "release/*"
+
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Rust project
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     steps:
       - uses: actions/checkout@v2
       - name: Install latest
@@ -26,19 +32,17 @@ jobs:
         if: steps.cache-mv-cli.outputs.cache-hit != 'true'
         run: |
           cargo install mv-cli@0.3.2 --features address20
-      - name: Build test contracts
-        run: |
-          (cd vm/move-test && move build)
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            vm/target/
-            libnovaproc/target/
+            ~/.cargo/registry
+            libnovaproc/target
+            vm/target
+            vm/move-test/build
           key: ${{ runner.os }}-cargo
+      - name: Build test contracts
+        run: |
+          (cd vm/move-test && move build)
       - name: Build rust
         run: |
           make build-rust

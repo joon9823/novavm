@@ -82,7 +82,6 @@ func (vm *VM) PublishModuleBundle(
 func (vm *VM) QueryEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	payload types.ExecuteEntryFunctionPayload,
 ) ([]byte, error) {
@@ -95,7 +94,6 @@ func (vm *VM) QueryEntryFunction(
 		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		bz,
@@ -116,7 +114,6 @@ func (vm *VM) QueryEntryFunction(
 func (vm *VM) ExecuteEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
@@ -131,7 +128,6 @@ func (vm *VM) ExecuteEntryFunction(
 		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		txHash,
@@ -153,7 +149,6 @@ func (vm *VM) ExecuteEntryFunction(
 func (vm *VM) ExecuteScript(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
@@ -168,7 +163,6 @@ func (vm *VM) ExecuteScript(
 		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		txHash,

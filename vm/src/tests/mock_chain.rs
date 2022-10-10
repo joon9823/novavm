@@ -1,10 +1,13 @@
-use crate::{access_path::AccessPath, storage::state_view::StateView};
+use crate::{access_path::AccessPath, api::ChainApi, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
-use move_deps::{move_core_types::{
-    effects::{ChangeSet, Op},
-    language_storage::ModuleId,
-}, move_table_extension::TableChangeSet};
+use move_deps::{
+    move_core_types::{
+        effects::{ChangeSet, Op},
+        language_storage::ModuleId,
+    },
+    move_table_extension::TableChangeSet,
+};
 
 pub struct MockChain {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
@@ -21,6 +24,10 @@ impl MockChain {
         MockState {
             map: self.map.clone(),
         }
+    }
+
+    pub fn create_api(&self, height: u64, timestamp: u64) -> MockApi {
+        MockApi { height, timestamp }
     }
 
     pub fn commit(&mut self, state: MockState) {
@@ -74,5 +81,16 @@ impl StateView for MockState {
             Some(opt_data) => Ok(opt_data.clone()),
             None => Ok(None),
         }
+    }
+}
+
+pub struct MockApi {
+    pub height: u64,
+    pub timestamp: u64,
+}
+
+impl ChainApi for MockApi {
+    fn get_block_info(&self) -> anyhow::Result<(u64 /* height */, u64 /* timestamp */)> {
+        Ok((self.height, self.timestamp))
     }
 }

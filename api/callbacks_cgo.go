@@ -9,9 +9,7 @@ GoError cSet(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOu
 GoError cGet(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 GoError cDelete(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
 // imports (api)
-GoError cBankTransfer(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut);
-// imports (querier)
-GoError cQueryExternal(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
+GoError cGetBlockInfo(api_t *ptr, uint64_t *height, uint64_t *timestamp, UnmanagedVector *errOut);
 
 // Gateway functions (db)
 GoError cGet_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut) {
@@ -25,13 +23,8 @@ GoError cDelete_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *errOut) {
 }
 
 // Gateway functions (api)
-GoError cBankTransfer_cgo(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut) {
-    return cBankTransfer(ptr, recipient, denom, amount, errOut);
-}
-
-// Gateway functions (querier)
-GoError cQueryExternal_cgo(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut) {
-    return cQueryExternal(ptr, request, result, errOut);
+GoError cGetBlockInfo_cgo(api_t *ptr, uint64_t *height, uint64_t *timestamp, UnmanagedVector *errOut) {
+    return cGetBlockInfo(ptr, height, timestamp, errOut);
 }
 */
 import "C"

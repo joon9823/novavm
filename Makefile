@@ -1,9 +1,9 @@
 .PHONY: all build build-rust build-go test
 
 # Builds the Rust library libwasmvm
-BUILDERS_PREFIX := nova/go-ext-builder:0012
+BUILDERS_PREFIX := novavm/go-ext-builder:0001
 # Contains a full Go dev environment in order to run Go tests on the built library
-ALPINE_TESTER := nova/go-ext-builder:0012-alpine
+ALPINE_TESTER := novavm/go-ext-builder:0001-alpine
 
 USER_ID := $(shell id -u)
 USER_GROUP = $(shell id -g)

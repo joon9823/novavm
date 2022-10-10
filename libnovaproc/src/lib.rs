@@ -9,7 +9,6 @@ mod event;
 mod interface;
 mod memory;
 mod move_api;
-mod querier;
 mod result;
 mod storage;
 mod version;
