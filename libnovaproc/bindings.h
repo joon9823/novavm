@@ -82,26 +82,26 @@ enum NovaConcretizeMode {
   /**
    * Show the full concretized access paths read or written (e.g. 0xA/0x1::M::S/f/g)
    */
-  Paths = 1,
+  NovaConcretizeMode_Paths = 1,
   /**
    * Show only the concrete resource keys that are read (e.g. 0xA/0x1::M::S)
    */
-  Reads = 2,
+  NovaConcretizeMode_Reads = 2,
   /**
    * Show only the concrete resource keys that are written (e.g. 0xA/0x1::M::S)
    */
-  Writes = 3,
+  NovaConcretizeMode_Writes = 3,
   /**
    * Do not concretize; show the results from the static analysis
    */
-  Dont = 4,
+  NovaConcretizeMode_Dont = 4,
 };
-typedef int32_t NovaConcretizeMode;
+typedef uint8_t NovaConcretizeMode;
 
 enum NovaExperimentalSubcommandType {
-  SubcmdReadWriteSet = 1,
+  NovaExperimentalSubcommandType_ReadWriteSet = 1,
 };
-typedef int32_t NovaExperimentalSubcommandType;
+typedef uint8_t NovaExperimentalSubcommandType;
 
 typedef struct {
 

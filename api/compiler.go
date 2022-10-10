@@ -413,14 +413,14 @@ func DoExperimental(arg types.NovaCompilerArgument, storageDir string, expOpt in
 		defer runtime.KeepAlive(typeArgsView)
 
 		expArg.storage_dir = storageDirView
-		expArg.cmd_type = C.SubcmdReadWriteSet
+		expArg.cmd_type = C.NovaExperimentalSubcommandType_ReadWriteSet
 		expArg.rws = C.ReadWriteSet{
 			module_file: moduleFileView,
 			fun_name:    funNameView,
 			signers:     signersView,
 			args:        argsView,
 			type_args:   typeArgsView,
-			concretize:  ci32(opt.Concretize),
+			concretize:  cu8(opt.Concretize),
 		}
 	default:
 		return nil, fmt.Errorf("invalid type of experimental subcommand")

@@ -210,7 +210,7 @@ type ExperimentalCommand_ReadWriteSet struct {
 	Signers    string
 	Args       string
 	TypeArgs   string
-	Concretize uint
+	Concretize uint8
 }
 
 type ExperimentalOption struct {

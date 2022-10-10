@@ -282,10 +282,12 @@ impl From<NovaCompilerDocgenOption> for Docgen {
     }
 }
 
-#[repr(i32)]
+/// cbindgen:prefix-with-name
+#[repr(u8)]
+#[allow(dead_code)]
 #[derive(PartialEq)]
 pub enum NovaExperimentalSubcommandType {
-    SubcmdReadWriteSet = 1,
+    ReadWriteSet = 1,
 }
 
 #[repr(C)]
@@ -304,7 +306,7 @@ impl From<NovaCompilerExperimentalOption> for nova_compiler::Command{
             None => Path::new(DEFAULT_STORAGE_DIR).to_path_buf(),
         };
         return match val.cmd_type {
-            NovaExperimentalSubcommandType::SubcmdReadWriteSet => {
+            NovaExperimentalSubcommandType::ReadWriteSet => {
                 nova_compiler::Command::Experimental { 
                     storage_dir,
                     cmd: val.rws.into()
@@ -314,7 +316,9 @@ impl From<NovaCompilerExperimentalOption> for nova_compiler::Command{
     }
 }
 
-#[repr(i32)]
+/// cbindgen:prefix-with-name
+#[allow(dead_code)]
+#[repr(u8)]
 #[derive(PartialEq)]
 pub enum NovaConcretizeMode {
     /// Show the full concretized access paths read or written (e.g. 0xA/0x1::M::S/f/g)
