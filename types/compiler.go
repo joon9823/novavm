@@ -203,6 +203,21 @@ type DocgenOption struct {
 	IncludeCallDiagrams        bool
 	CompileRelativeToOutputDir bool
 }
+
+type ExperimentalCommand_ReadWriteSet struct {
+	ModuleFile string
+	FunName    string
+	Signers    string
+	Args       string
+	TypeArgs   string
+	Concretize uint
+}
+
+type ExperimentalOption struct {
+	StorageDir string
+	Cmd        interface{}
+}
+
 type NovaCompilerArgument struct {
 	PackagePath string
 	Verbose     bool

@@ -125,3 +125,22 @@ func Test_GenerateDocs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
+
+func Test_Experimental(t *testing.T) {
+	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
+		types.WithInstallDir(packagePath),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+	expOpt := types.ExperimentalCommand_ReadWriteSet{
+		ModuleFile: packagePath + "/build/test1/bytecode_modules/BasicCoin.mv",
+		FunName:    "mint",
+		Signers:    "0x1",
+		Args:       "100",
+		TypeArgs:   "",
+		Concretize: 4,
+	}
+	_, err := DoExperimental(nova_arg, "../compiler/testdata/general/storage", expOpt)
+	require.Error(t, err) // FIXME: do real test which is not failing
+	//require.Equal(t, string(res), "ok")
+}

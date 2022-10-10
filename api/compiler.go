@@ -323,12 +323,12 @@ func GenerateDocs(arg types.NovaCompilerArgument, docgenOpt types.DocgenOption) 
 	defer runtime.KeepAlive(pathBytesView)
 	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
 	defer runtime.KeepAlive(installDirBytesView)
-	outputDirectory := makeView([]byte(docgenOpt.OutputDirectory))
-	defer runtime.KeepAlive(outputDirectory)
-	referencesFile := makeView([]byte(docgenOpt.ReferencesFile))
-	defer runtime.KeepAlive(referencesFile)
-	template := makeView([]byte(strings.Join(docgenOpt.Template, ",")))
-	defer runtime.KeepAlive(template)
+	outputDirectoryView := makeView([]byte(docgenOpt.OutputDirectory))
+	defer runtime.KeepAlive(outputDirectoryView)
+	referencesFileView := makeView([]byte(docgenOpt.ReferencesFile))
+	defer runtime.KeepAlive(referencesFileView)
+	templateView := makeView([]byte(strings.Join(docgenOpt.Template, ",")))
+	defer runtime.KeepAlive(templateView)
 
 	compArg := C.NovaCompilerArgument{
 		package_path: pathBytesView,
@@ -354,9 +354,9 @@ func GenerateDocs(arg types.NovaCompilerArgument, docgenOpt types.DocgenOption) 
 			exclude_impl:                   cbool(docgenOpt.ExcludeImpl),
 			toc_depth:                      cusize(docgenOpt.TocDeps),
 			no_collapsed_sections:          cbool(docgenOpt.NoCollapsedSections),
-			output_directory:               outputDirectory,
-			template_:                      template,
-			references_file:                referencesFile,
+			output_directory:               outputDirectoryView,
+			template_:                      templateView,
+			references_file:                referencesFileView,
 			include_dep_diagrams:           cbool(docgenOpt.IncludeDepDiagrams),
 			include_call_diagrams:          cbool(docgenOpt.IncludeCallDiagrams),
 			compile_relative_to_output_dir: cbool(docgenOpt.CompileRelativeToOutputDir),
@@ -367,5 +367,69 @@ func GenerateDocs(arg types.NovaCompilerArgument, docgenOpt types.DocgenOption) 
 		return nil, errorWithMessage(err, errmsg)
 	}
 
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
+func DoExperimental(arg types.NovaCompilerArgument, storageDir string, expOpt interface{}) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+	buildConfig := arg.BuildConfig
+	pathBytesView := makeView([]byte(arg.PackagePath))
+	defer runtime.KeepAlive(pathBytesView)
+	installDirBytesView := makeView([]byte(buildConfig.InstallDir))
+	defer runtime.KeepAlive(installDirBytesView)
+
+	compArg := C.NovaCompilerArgument{
+		package_path: pathBytesView,
+		verbose:      cbool(arg.Verbose),
+		build_config: C.NovaCompilerBuildConfig{
+			dev_mode:            cbool(buildConfig.DevMode),
+			test_mode:           cbool(buildConfig.TestMode),
+			generate_docs:       cbool(buildConfig.GenerateDocs),
+			generate_abis:       cbool(buildConfig.GenerateABIs),
+			install_dir:         installDirBytesView,
+			force_recompilation: cbool(buildConfig.ForceRecompilation),
+			fetch_deps_only:     cbool(buildConfig.FetchDepsOnly),
+		},
+	}
+
+	expArg := C.NovaCompilerExperimentalOption{}
+	switch expOpt.(type) {
+	case types.ExperimentalCommand_ReadWriteSet:
+		opt := expOpt.(types.ExperimentalCommand_ReadWriteSet)
+
+		storageDirView := makeView([]byte(storageDir))
+		defer runtime.KeepAlive(storageDirView)
+		moduleFileView := makeView([]byte(opt.ModuleFile))
+		defer runtime.KeepAlive(storageDirView)
+		funNameView := makeView([]byte(opt.FunName))
+		defer runtime.KeepAlive(funNameView)
+		signersView := makeView([]byte(opt.Signers))
+		defer runtime.KeepAlive(signersView)
+		argsView := makeView([]byte(opt.Args))
+		defer runtime.KeepAlive(argsView)
+		typeArgsView := makeView([]byte(opt.TypeArgs))
+		defer runtime.KeepAlive(typeArgsView)
+
+		expArg.storage_dir = storageDirView
+		expArg.cmd_type = C.SubcmdReadWriteSet
+		expArg.rws = C.ReadWriteSet{
+			module_file: moduleFileView,
+			fun_name:    funNameView,
+			signers:     signersView,
+			args:        argsView,
+			type_args:   typeArgsView,
+			concretize:  ci32(opt.Concretize),
+		}
+	default:
+		return nil, fmt.Errorf("invalid type of experimental subcommand")
+	}
+
+	res, err := C.do_experimental(&errmsg, compArg, expArg)
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
 	return copyAndDestroyUnmanagedVector(res), err
 }

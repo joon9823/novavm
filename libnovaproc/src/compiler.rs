@@ -1,7 +1,12 @@
 use std::{collections::BTreeMap, path::Path};
 
-use move_deps::{move_cli::{Move, base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}, docgen::Docgen}}, move_package::{BuildConfig, Architecture}};
-use nova_compiler::compile as nova_compile;
+use move_deps::{move_cli::{Move,
+    base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}, docgen::Docgen},
+    experimental::cli::{ExperimentalCommand, ConcretizeMode}},
+    move_package::{BuildConfig, Architecture},
+    move_core_types::parser::{parse_transaction_arguments, parse_type_tags}
+};
+use nova_compiler::{compile as nova_compile, compiler::DEFAULT_STORAGE_DIR};
 use crate::{error::Error, ByteSliceView};
 
 pub use nova_compiler::Command;
@@ -274,5 +279,97 @@ impl From<NovaCompilerDocgenOption> for Docgen {
             include_call_diagrams: val.include_call_diagrams,
             compile_relative_to_output_dir: val.compile_relative_to_output_dir,
         }
+    }
+}
+
+#[repr(i32)]
+#[derive(PartialEq)]
+pub enum NovaExperimentalSubcommandType {
+    SubcmdReadWriteSet = 1,
+}
+
+#[repr(C)]
+pub struct NovaCompilerExperimentalOption {
+        /// Directory storing Move resources, events, and module bytecodes produced by module publishing
+        /// and script execution. (default: `storage`)
+        storage_dir: ByteSliceView,
+        cmd_type: NovaExperimentalSubcommandType,
+        rws: ReadWriteSet,
+}
+
+impl From<NovaCompilerExperimentalOption> for nova_compiler::Command{
+    fn from(val: NovaCompilerExperimentalOption) -> Self {
+        let storage_dir = match val.storage_dir.read() {
+            Some(s) => Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf(),
+            None => Path::new(DEFAULT_STORAGE_DIR).to_path_buf(),
+        };
+        return match val.cmd_type {
+            NovaExperimentalSubcommandType::SubcmdReadWriteSet => {
+                nova_compiler::Command::Experimental { 
+                    storage_dir,
+                    cmd: val.rws.into()
+                }
+            }
+        }
+    }
+}
+
+#[repr(i32)]
+#[derive(PartialEq)]
+pub enum NovaConcretizeMode {
+    /// Show the full concretized access paths read or written (e.g. 0xA/0x1::M::S/f/g)
+    Paths = 1,
+    /// Show only the concrete resource keys that are read (e.g. 0xA/0x1::M::S)
+    Reads = 2,
+    /// Show only the concrete resource keys that are written (e.g. 0xA/0x1::M::S)
+    Writes = 3,
+    /// Do not concretize; show the results from the static analysis
+    Dont = 4,
+}
+
+#[repr(C)]
+/// Perform a read/write set analysis and print the results for
+/// `module_file`::`script_name`.
+pub struct ReadWriteSet {
+    /// Path to .mv file containing module bytecode.
+    module_file: ByteSliceView,
+    /// A function inside `module_file`.
+    fun_name: ByteSliceView,
+    /// delimiter: , (comma)
+    signers: ByteSliceView,
+    /// delimiter: , (comma)
+    args: ByteSliceView,
+    /// delimiter: , (comma)
+    type_args: ByteSliceView,
+    concretize: NovaConcretizeMode,
+}
+
+impl From<ReadWriteSet> for ExperimentalCommand {
+    fn from(val: ReadWriteSet) -> Self {
+        let module_file = Path::new(&String::from_utf8(val.module_file.read().unwrap().to_vec()).unwrap()).to_path_buf();
+        let fun_name = String::from_utf8(val.fun_name.read().unwrap().to_vec()).unwrap();
+
+        let signers: Vec<String> = match val.signers.read() {
+            Some(s) => Vec::from_iter(String::from_utf8(s.to_vec()).unwrap().split(',').map(String::from)),
+            None => vec![],
+        };
+
+        let args = match val.args.read() {
+            Some(s) => parse_transaction_arguments(&std::str::from_utf8(s).unwrap()).unwrap(),
+            None => vec![],
+        };
+        let type_args = match val.type_args.read() {
+            Some(s) => parse_type_tags(&std::str::from_utf8(s).unwrap()).unwrap(),
+            None => vec![],
+        };
+
+        let concretize = match val.concretize {
+            NovaConcretizeMode::Paths => ConcretizeMode::Paths,
+            NovaConcretizeMode::Reads => ConcretizeMode::Reads,
+            NovaConcretizeMode::Writes => ConcretizeMode::Writes,
+            NovaConcretizeMode::Dont => ConcretizeMode::Dont,
+        };
+
+        ExperimentalCommand::ReadWriteSet{module_file, fun_name, signers, args, type_args, concretize}
     }
 }

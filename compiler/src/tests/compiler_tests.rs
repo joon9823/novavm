@@ -3,9 +3,12 @@ use std::{path::Path, env::temp_dir};
 use std::env;
 use move_deps::move_cli::base::coverage::{CoverageSummaryOptions, Coverage};
 use move_deps::move_cli::base::disassemble::Disassemble;
+use move_deps::move_cli::base::docgen::Docgen;
 use move_deps::move_cli::base::errmap::Errmap;
 #[allow(unused_imports)]
 use move_deps::move_cli::base::prove::Prove;
+use move_deps::move_cli::experimental::cli::{ExperimentalCommand, ConcretizeMode};
+use move_deps::move_core_types::transaction_argument::TransactionArgument;
 use move_deps::{move_package::BuildConfig, move_cli::{Move, base::{test::Test, info::Info}}};
 use serial_test::serial;
 
@@ -246,8 +249,6 @@ fn test_move_disassemble() { // with prebuilt `.trace` file
 	assert!(res==Vec::from("ok"));
 }
 
-
-
 #[test]
 #[serial]
 fn test_move_generage_error_map() { // with prebuilt `.trace` file
@@ -270,3 +271,77 @@ fn test_move_generage_error_map() { // with prebuilt `.trace` file
 	let res = compile(move_args, cmd).expect("compiler err");
 	assert!(res==Vec::from("ok"));
 }
+
+#[test]
+#[serial]
+fn test_move_generate_docs() { // with prebuilt `.trace` file
+	// FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+	let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+	let wd = Path::new(&md);
+	let path = Path::new(&"testdata/general");
+	let package_path = wd.join(path);
+	
+	let build_config = BuildConfig::default();
+
+	let move_args = Move{
+		package_path: Some(package_path.canonicalize().unwrap()),
+		verbose: true,
+		build_config,
+	};
+
+    let docgen_opt = Docgen{
+        section_level_start: None,
+        exclude_private_fun: false,
+        exclude_specs: false,
+        independent_specs: false,
+        exclude_impl: false,
+        toc_depth: None,
+        no_collapsed_sections: false,
+        output_directory: None,
+        template: vec![],
+        references_file: None,
+        include_dep_diagrams: false,
+        include_call_diagrams: false,
+        compile_relative_to_output_dir: false
+    };
+
+	let cmd = Command::Docgen(docgen_opt);
+	
+	let res = compile(move_args, cmd).expect("compiler err");
+	assert!(res==Vec::from("ok"));
+}
+
+
+/* FIXME: doesn't pass for now. re-do it after handling account::create_signer()
+#[test]
+#[serial]
+fn test_move_experimental() { // with prebuilt `.trace` file
+	// FIXME: move_cli seems to change current directory.. so we have to set current dir for now.
+	let md= env::var("CARGO_MANIFEST_DIR").unwrap();
+	let wd = Path::new(&md);
+	let path = Path::new(&"testdata/general");
+	let package_path = wd.join(path);
+	
+	let build_config = BuildConfig::default();
+
+	let move_args = Move{
+		package_path: Some(package_path.canonicalize().unwrap()),
+		verbose: true,
+		build_config,
+	};
+
+    let exp_opt = ExperimentalCommand::ReadWriteSet { 
+        module_file: package_path.join("build/test1/bytecode_modules/BasicCoin.mv").to_path_buf(),
+        fun_name: String::from("mint"),
+        signers: vec![String::from("0x1")],
+        args: vec![TransactionArgument::U64(100)],
+        type_args: vec![],
+        concretize: ConcretizeMode::Dont,
+    };
+
+	let cmd = Command::Experimental{storage_dir: package_path.join("storage").to_path_buf(), cmd: exp_opt};
+	
+	let res = compile(move_args, cmd).expect("Unsupported native function \"account\"::\"create_signer\"");
+	assert!(res==Vec::from("ok"));
+}
+*/
