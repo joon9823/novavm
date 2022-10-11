@@ -8,7 +8,7 @@ pub struct Clean {
 }
 
 impl Clean {
-    pub fn execute(self, path: Option<PathBuf>) -> anyhow::Result<()> { 
+    pub fn execute(self, path: Option<PathBuf>) -> anyhow::Result<()> {
         let path = match path{
             Some(p) => p,
             None => Path::new(".").to_path_buf(),
@@ -16,7 +16,6 @@ impl Clean {
 
         let res = std::fs::remove_dir_all(path);
         match res {
-            Err(e) => bail!("failed to clean the package: {}", e),
             Ok(_) => {
                 let move_home = &*MOVE_HOME;
                 if self.clean_cache {
@@ -32,6 +31,10 @@ impl Clean {
                 } else {
                     Ok(())
                 }
+            },
+            Err(e) => match e.kind() {
+                ErrorKind::NotFound => Ok(()),
+                _ => bail!("failed to clean the package: {}", e),
             }
         }
     }
