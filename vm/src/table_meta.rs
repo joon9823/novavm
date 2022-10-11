@@ -1,10 +1,16 @@
+use std::borrow::Borrow;
 use std::fmt::Formatter;
 use std::str::FromStr;
 use std::{collections::BTreeMap, fmt, fmt::Display};
 
-use crate::natives::table::TableHandle;
+use crate::natives::table::{TableChangeSet, TableHandle};
+use crate::session::SessionExt;
+use crate::size_change_set::{AccountSizeChangeSet, SizeChangeSet, SizeDelta};
 use crate::storage::data_view_resolver::TableMetaResolver;
 use anyhow::bail;
+use move_deps::move_core_types::effects::ChangeSet;
+use move_deps::move_core_types::language_storage::TypeTag;
+use move_deps::move_core_types::resolver::MoveResolver;
 use move_deps::move_core_types::value::MoveTypeLayout;
 use move_deps::{
     move_binary_format::errors::{Location, PartialVMError, PartialVMResult, VMResult},
@@ -50,7 +56,7 @@ pub enum TableMetaValue {
     Size(usize),
 }
 
-pub fn find_all_address_occur(
+fn find_all_address_occur(
     op: &Op<Vec<u8>>,
     ty_layout: &MoveTypeLayout,
 ) -> VMResult<Vec<AccountAddress>> {
@@ -70,6 +76,120 @@ pub fn find_all_address_occur(
     };
 
     Ok(v)
+}
+
+pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
+    session: SessionExt<'_, '_, S>,
+    change_set: &ChangeSet,
+    table_change_set: &TableChangeSet,
+    table_owner_data_cache: &mut TableOwnerDataCache<'_, S>,
+) -> VMResult<()> {
+    let new_tables = &table_change_set.borrow().new_tables;
+
+    println!("new table {:?}", table_change_set.new_tables);
+    println!("remove table {:?}", table_change_set.removed_tables);
+
+    for i in table_change_set.removed_tables.iter() {
+        table_owner_data_cache.del_owner(i);
+        table_owner_data_cache.del_size(i);
+    }
+
+    for (addr, account_change_set) in change_set.borrow().accounts().iter() {
+        println!("checking changeset for {}", addr);
+        for (i, op) in account_change_set.resources().iter() {
+            let ty_tag = TypeTag::Struct(i.clone());
+            let ty_layout = session.get_type_layout(&ty_tag)?;
+            let res = find_all_address_occur(op, &ty_layout)?;
+
+            for address_found in res.into_iter() {
+                let found_handle = TableHandle(address_found);
+                // address is new table's handle or
+                // already stored table's handle
+
+                if new_tables.contains_key(&found_handle)
+                    || table_owner_data_cache.is_registerd_table(&found_handle)?
+                {
+                    table_owner_data_cache.set_owner(&found_handle, *addr);
+                }
+            }
+        }
+    }
+
+    for (outer_handle, change) in table_change_set.changes.iter() {
+        for (_key, op) in &change.entries {
+            let res = find_all_address_occur(op, &change.value_layout)?;
+
+            for address_found in res.iter() {
+                let found_handle = TableHandle(*address_found);
+                if new_tables.contains_key(&found_handle)
+                    || table_owner_data_cache.is_registerd_table(&found_handle)?
+                {
+                    table_owner_data_cache.set_owner(&found_handle, outer_handle.0);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
+    table_change_set: &TableChangeSet,
+    table_size_change: &SizeChangeSet<TableHandle>,
+    table_owner_data_cache: &mut TableOwnerDataCache<'_, S>,
+) -> VMResult<AccountSizeChangeSet> {
+    let mut accounts_delta: AccountSizeChangeSet = AccountSizeChangeSet::default();
+
+    println!("new table {:?}", table_change_set.new_tables);
+    println!("remove table {:?}", table_change_set.removed_tables);
+
+    // handle previous size
+    for (handle, owner) in table_owner_data_cache.get_owner_changes().into_iter() {
+        let size = match table_owner_data_cache.get_size(handle)? {
+            Some(s) => s,
+            None => {
+                continue;
+            } // skip new table
+        };
+
+        match owner {
+            Some(new_owner) => {
+                let old_owner = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+                accounts_delta.move_size(old_owner, new_owner.clone(), size);
+            }
+            None => {
+                let acc = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+                let delta = SizeDelta::decreasing(size);
+                accounts_delta.insert_size(acc, delta);
+            }
+        }
+    }
+    println!("table size owning???? {:?}", accounts_delta);
+
+    // handle size changes
+    for (handle, size_delta) in table_size_change.changes() {
+        // todo: should check deleted table?? yes
+        if table_change_set.removed_tables.contains(handle) {
+            continue;
+        }
+        let owner = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+
+        accounts_delta.insert_size(owner, size_delta.clone());
+
+        let current_size = table_owner_data_cache.get_size(&handle)?.unwrap_or(0);
+
+        let mut delta = SizeDelta::increasing(current_size);
+        delta.merge(size_delta.clone());
+        if delta.is_decrease {
+            panic!("dsdads");
+        }
+        let new_size = delta.amount;
+
+        table_owner_data_cache.set_size(&handle, new_size);
+    }
+
+    println!("{:?}", accounts_delta);
+
+    Ok(accounts_delta)
 }
 
 struct FindingAddressVisitor {
