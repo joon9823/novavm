@@ -29,7 +29,7 @@ func Test_BuildContract(t *testing.T) {
 }
 
 func Test_TestContract(t *testing.T) {
-	buildConfig := types.NewBuildConfig(
+	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
 		types.WithInstallDir(packagePath),
 		types.WithDevMode(),
 		types.WithTestMode(),
@@ -40,20 +40,22 @@ func Test_TestContract(t *testing.T) {
 		types.WithReportStorageOnError(),
 	)
 
-	res, err := TestContract(packagePath, false, buildConfig, testConfig)
+	res, err := TestContract(nova_arg, testConfig)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 
 func Test_GetContractInfo(t *testing.T) {
-	res, err := GetContractInfo(packagePath)
+	nova_arg := types.NewNovaCompilerArgument(packagePath, false, types.DefaultBuildConfig())
+	res, err := GetContractInfo(nova_arg)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 
 func Test_CreateNewContract(t *testing.T) {
 	tmpPath := packagePath + "-tmp"
-	res, err := CreateContractPackage(tmpPath)
+	nova_arg := types.NewNovaCompilerArgument(tmpPath, false, types.DefaultBuildConfig())
+	res, err := CreateContractPackage(nova_arg, "novum_initium")
 	defer os.RemoveAll(tmpPath)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
@@ -69,13 +71,13 @@ func Test_ProveContract(t *testing.T) {
 */
 
 func Test_DisassembleContract(t *testing.T) {
-	//tmpPath := "compiler/testdata/general"
+	nova_arg := types.NewNovaCompilerArgument(packagePath, false, types.DefaultBuildConfig())
 	dc := types.DisassembleOption{
 		Interactive:        false,
 		PackageName:        "",
 		ModuleOrScriptName: "BasicCoin",
 	}
-	res, err := DisassembleContractPackage(packagePath, dc)
+	res, err := DisassembleContractPackage(nova_arg, dc)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
@@ -98,7 +100,8 @@ func Test_MoveyUpload(t *testing.T) {
 
 func Test_CheckContractCoverage(t *testing.T) {
 	covPackagePath := path.Join(workingDir, "../compiler/testdata/coverage")
-	res, err := CheckCoverageContractPackage(covPackagePath, types.CoverageSummary{Function: true, OutputCSV: true})
+	nova_arg := types.NewNovaCompilerArgument(covPackagePath, false, types.DefaultBuildConfig())
+	res, err := CheckCoverageContractPackage(nova_arg, types.CoverageSummary{Functions: true, OutputCSV: true})
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
@@ -109,7 +112,11 @@ func Test_GenerateErrorMap(t *testing.T) {
 		types.WithDevMode(),
 		types.WithTestMode(),
 	)
-	res, err := GenerateErrorMap(nova_arg, "", "error_map")
+	errmapOpt := types.ErrmapOption{
+		ErrorPrefix: "",
+		OutputFile:  "",
+	}
+	res, err := GenerateErrorMap(nova_arg, errmapOpt)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }

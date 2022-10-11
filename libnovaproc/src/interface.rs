@@ -2,15 +2,14 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
-use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption};
+use crate::compiler::{NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption, NovaCompilerErrmapOption, NovaCompilerCheckCoverageOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
-use move_deps::move_cli::base::coverage::{Coverage, CoverageSummaryOptions};
-use move_deps::move_cli::base::errmap::Errmap;
+use move_deps::move_cli::base::coverage::Coverage;
 use move_deps::move_cli::base::info::Info;
 use move_deps::move_cli::base::movey_login::MoveyLogin;
 use move_deps::move_cli::base::movey_upload::MoveyUpload;
@@ -23,7 +22,7 @@ use move_deps::move_cli::base::{
 };
 use move_deps::move_package::BuildConfig;
 use nova_compiler::New;
-use crate::compiler::{compile, Command, self};
+use crate::compiler::{compile, Command};
 use novavm::NovaVM;
 
 
@@ -270,12 +269,11 @@ pub extern "C" fn test_move_package(
 #[no_mangle]
 pub extern "C" fn get_move_package_info(
     errmsg: Option<&mut UnmanagedVector>,
-    package_path: ByteSliceView,
+    nova_args: NovaCompilerArgument,
 ) -> UnmanagedVector {
-    let move_args = generate_default_move_cli(Some(package_path), false);
     let cmd = Command::Info(Info);
 
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -285,16 +283,19 @@ pub extern "C" fn get_move_package_info(
 #[no_mangle]
 pub extern "C" fn create_new_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
+    nova_args: NovaCompilerArgument,
+    name_view: ByteSliceView,
 ) -> UnmanagedVector {
-    let move_args = generate_default_move_cli(Some(package_path), false);
+
+    let name: Option<String> = name_view.into();
 
     let cmd = Command::New(
-        New{name: move_args.package_path.as_ref().expect("package path unset").to_str().expect("package path invalid").to_string()}
+        New{
+            name: name.unwrap_or(String::new())
+        }
     );
 
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -304,29 +305,12 @@ pub extern "C" fn create_new_move_package(
 #[no_mangle]
 pub extern "C" fn check_coverage_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    package_path: ByteSliceView,
-    summary_mode: compiler::CoverageOption,
-    functions: bool, // Whether function coverage summaries should be displayed
-    output_csv: bool, // Output CSV data of coverage
-    module_name_view : ByteSliceView, // Display coverage information about the module against source code or dissambled bytecode
-    /* for test coverage options */
+    nova_args: NovaCompilerArgument,
+    chkcov_opt: NovaCompilerCheckCoverageOption,
 ) -> UnmanagedVector {
-    let module_name = match module_name_view.read() {
-        Some(s) => String::from_utf8(s.to_vec()).unwrap(),
-        None => String::new(),
-    };
+    let cmd = Command::Coverage(Coverage{options: chkcov_opt.into()});
 
-    let move_args = generate_default_move_cli(Some(package_path), false);
-
-    let options = match summary_mode {
-        CoverageOption::Summary => CoverageSummaryOptions::Summary { functions, output_csv },
-        CoverageOption::Source => CoverageSummaryOptions::Source { module_name },
-        CoverageOption::Bytecode => CoverageSummaryOptions::Bytecode { module_name },
-    };
-
-    let cmd = Command::Coverage(Coverage{ options });
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -336,15 +320,12 @@ pub extern "C" fn check_coverage_move_package(
 #[no_mangle]
 pub extern "C" fn prove_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
-    /* for prove config */
+    nova_args: NovaCompilerArgument,
     prove_opt: NovaCompilerProveOption,
 ) -> UnmanagedVector {
-    let move_args = generate_default_move_cli(Some(package_path), false);
     let cmd = Command::Prove(prove_opt.into());
 
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -354,15 +335,12 @@ pub extern "C" fn prove_move_package(
 #[no_mangle]
 pub extern "C" fn disassemble_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
+    nova_args: NovaCompilerArgument,
     disassemble_opt: NovaCompilerDisassembleOption,
 ) -> UnmanagedVector {
     let cmd = Command::Disassemble(disassemble_opt.into());
 
-    let move_args = generate_default_move_cli(Some(package_path), false);
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -372,6 +350,7 @@ pub extern "C" fn disassemble_move_package(
 #[no_mangle]
 pub extern "C" fn movey_login(
     errmsg: Option<&mut UnmanagedVector>,
+    // no compiler argument here
 ) -> UnmanagedVector {
 
     let move_args = generate_default_move_cli(None, false);
@@ -387,12 +366,11 @@ pub extern "C" fn movey_login(
 #[no_mangle]
 pub extern "C" fn movey_upload(
     errmsg: Option<&mut UnmanagedVector>,
-    package_path: ByteSliceView,
+    nova_args: NovaCompilerArgument,
 ) -> UnmanagedVector {
-    let move_args = generate_default_move_cli(Some(package_path), false);
     let cmd = Command::MoveyUpload(MoveyUpload);
 
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -403,19 +381,10 @@ pub extern "C" fn movey_upload(
 pub extern "C" fn generate_error_map(
     errmsg: Option<&mut UnmanagedVector>,
     nova_args: NovaCompilerArgument,
-    /* for generate errmap config */
-    error_prefix_slice: ByteSliceView,
-    output_file_slice: ByteSliceView
+    errmap_opt: NovaCompilerErrmapOption,
 ) -> UnmanagedVector {
 
-    let error_prefix= match error_prefix_slice.read() {
-        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-        None => None,
-    };
-
-    let output_file = Path::new(&String::from_utf8(output_file_slice.read().unwrap().to_vec()).unwrap()).to_path_buf();
-
-    let cmd = Command::Errmap(Errmap{ error_prefix, output_file });
+    let cmd = Command::Errmap(errmap_opt.into());
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

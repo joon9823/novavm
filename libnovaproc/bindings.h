@@ -262,6 +262,13 @@ typedef struct {
 } NovaCompilerArgument;
 
 typedef struct {
+  CoverageOption summary_mode;
+  bool functions;
+  bool output_csv;
+  ByteSliceView module_name;
+} NovaCompilerCheckCoverageOption;
+
+typedef struct {
   uint8_t _private[0];
 } db_t;
 
@@ -381,6 +388,18 @@ typedef struct {
 
 typedef struct {
   /**
+   * The prefix that all error reasons within modules will be prefixed with, e.g., "E" if
+   * all error reasons are "E_CANNOT_PERFORM_OPERATION", "E_CANNOT_ACCESS", etc.
+   */
+  ByteSliceView error_prefix;
+  /**
+   * The file to serialize the generated error map to.
+   */
+  ByteSliceView output_file;
+} NovaCompilerErrmapOption;
+
+typedef struct {
+  /**
    * The target filter used to prune the modules to verify. Modules with a name that contains
    * this string will be part of verification.
    */
@@ -446,13 +465,12 @@ vm_t *allocate_vm(void);
 UnmanagedVector build_move_package(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
 
 UnmanagedVector check_coverage_move_package(UnmanagedVector *errmsg,
-                                            ByteSliceView package_path,
-                                            CoverageOption summary_mode,
-                                            bool functions,
-                                            bool output_csv,
-                                            ByteSliceView module_name_view);
+                                            NovaCompilerArgument nova_args,
+                                            NovaCompilerCheckCoverageOption chkcov_opt);
 
-UnmanagedVector create_new_move_package(UnmanagedVector *errmsg, ByteSliceView package_path);
+UnmanagedVector create_new_move_package(UnmanagedVector *errmsg,
+                                        NovaCompilerArgument nova_args,
+                                        ByteSliceView name_view);
 
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
@@ -466,7 +484,7 @@ UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView scrip
 void destroy_unmanaged_vector(UnmanagedVector v);
 
 UnmanagedVector disassemble_move_package(UnmanagedVector *errmsg,
-                                         ByteSliceView package_path,
+                                         NovaCompilerArgument nova_args,
                                          NovaCompilerDisassembleOption disassemble_opt);
 
 UnmanagedVector execute_contract(vm_t *vm_ptr,
@@ -495,10 +513,9 @@ UnmanagedVector generate_docs(UnmanagedVector *errmsg,
 
 UnmanagedVector generate_error_map(UnmanagedVector *errmsg,
                                    NovaCompilerArgument nova_args,
-                                   ByteSliceView error_prefix_slice,
-                                   ByteSliceView output_file_slice);
+                                   NovaCompilerErrmapOption errmap_opt);
 
-UnmanagedVector get_move_package_info(UnmanagedVector *errmsg, ByteSliceView package_path);
+UnmanagedVector get_move_package_info(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
 
 void initialize(vm_t *vm_ptr,
                 Db db,
@@ -508,12 +525,12 @@ void initialize(vm_t *vm_ptr,
 
 UnmanagedVector movey_login(UnmanagedVector *errmsg);
 
-UnmanagedVector movey_upload(UnmanagedVector *errmsg, ByteSliceView package_path);
+UnmanagedVector movey_upload(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
 
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
 
 UnmanagedVector prove_move_package(UnmanagedVector *errmsg,
-                                   ByteSliceView package_path,
+                                   NovaCompilerArgument nova_args,
                                    NovaCompilerProveOption prove_opt);
 
 /**

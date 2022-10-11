@@ -168,7 +168,7 @@ func WithComputeCoverage() func(*TestConfig) {
 }
 
 type CoverageSummary struct {
-	Function  bool
+	Functions bool
 	OutputCSV bool
 }
 
@@ -186,6 +186,11 @@ type ProveOption struct {
 	TargetFilter string
 	ForTest      bool
 	Options      string
+}
+
+type ErrmapOption struct {
+	ErrorPrefix string
+	OutputFile  string
 }
 
 type DocgenOption struct {

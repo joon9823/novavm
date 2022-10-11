@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::{Path, PathBuf}};
 
 use crate::{error::Error, ByteSliceView/*, move_api::move_types::MoveType*/};
 use move_deps::{
@@ -6,17 +6,17 @@ use move_deps::{
         base::{
             disassemble::Disassemble,
             docgen::Docgen,
+            errmap::Errmap,
             prove::{Prove, ProverOptions},
-            test::Test,
+            test::Test, coverage::CoverageSummaryOptions,
         }, Move,
         //experimental::cli::{ConcretizeMode, ExperimentalCommand},
         //Move, sandbox::cli::{SandboxCommand, StructLayoutOptions},
     },
     //move_core_types::{parser::{parse_transaction_arguments, parse_type_tags}, transaction_argument::TransactionArgument, language_storage::TypeTag},
-    move_package::{Architecture, BuildConfig},
+    move_package::{Architecture, BuildConfig}
 };
 use nova_compiler::compile as nova_compile;
-//use nova_compiler::compiler::DEFAULT_STORAGE_DIR;
 
 pub use nova_compiler::Command;
 
@@ -106,16 +106,12 @@ pub struct NovaCompilerBuildConfig {
 
 impl From<NovaCompilerBuildConfig> for BuildConfig {
     fn from(val: NovaCompilerBuildConfig) -> Self {
-        let install_dir = match val.install_dir.read() {
-            Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
-            None => None,
-        };
         Self {
             dev_mode: val.dev_mode,
             test_mode: val.test_mode,
             generate_docs: val.generate_docs,
             generate_abis: val.generate_abis,
-            install_dir,
+            install_dir: val.install_dir.into(),
             force_recompilation: val.force_recompilation,
             additional_named_addresses: BTreeMap::new(),
             architecture: Some(Architecture::Move),
@@ -155,16 +151,12 @@ pub struct NovaCompilerTestOption {
 
 impl From<NovaCompilerTestOption> for Test {
     fn from(val: NovaCompilerTestOption) -> Self {
-        let filter = match val.filter.read() {
-            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-            None => None,
-        };
         Self {
             instruction_execution_bound: match val.instruction_execution_bound {
                 0 => None,
                 _ => Some(val.instruction_execution_bound),
             },
-            filter,
+            filter: val.filter.into(),
             list: val.list,
             num_threads: val.num_threads,
             report_statistics: val.report_statistics,
@@ -189,16 +181,10 @@ pub struct NovaCompilerDisassembleOption {
 
 impl From<NovaCompilerDisassembleOption> for Disassemble {
     fn from(val: NovaCompilerDisassembleOption) -> Self {
-        let package_name = match val.package_name.read() {
-            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-            None => None,
-        };
-        let module_or_script_name =
-            String::from_utf8(val.module_or_script_name.read().unwrap().to_vec()).unwrap();
         Self {
             interactive: val.interactive,
-            package_name,
-            module_or_script_name,
+            package_name: val.package_name.into(),
+            module_or_script_name: Into::<Option<String>>::into(val.module_or_script_name).unwrap_or(String::new()),
         }
     }
 }
@@ -216,10 +202,6 @@ pub struct NovaCompilerProveOption {
 
 impl From<NovaCompilerProveOption> for Prove {
     fn from(val: NovaCompilerProveOption) -> Self {
-        let target_filter = match val.target_filter.read() {
-            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-            None => None,
-        };
         let options = match val.options.read() {
             Some(s) => Some(ProverOptions::Options(
                 String::from_utf8(s.to_vec())
@@ -231,9 +213,48 @@ impl From<NovaCompilerProveOption> for Prove {
             None => None,
         };
         Self {
-            target_filter,
+            target_filter: val.target_filter.into(),
             for_test: val.for_test,
             options,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct NovaCompilerErrmapOption {
+    /// The prefix that all error reasons within modules will be prefixed with, e.g., "E" if
+    /// all error reasons are "E_CANNOT_PERFORM_OPERATION", "E_CANNOT_ACCESS", etc.
+    pub error_prefix: ByteSliceView,
+    /// The file to serialize the generated error map to.
+    pub output_file: ByteSliceView,
+}
+
+
+impl From<NovaCompilerErrmapOption> for Errmap {
+    fn from(val: NovaCompilerErrmapOption) -> Self {
+        let output_file: Option<PathBuf> = val.output_file.into();
+        Self {
+            error_prefix: val.error_prefix.into(),
+            output_file: output_file.unwrap_or(PathBuf::from("error_map"))
+        }
+    }
+}
+
+#[repr(C)]
+pub struct NovaCompilerCheckCoverageOption {
+    pub summary_mode: CoverageOption,
+    pub functions: bool, // Whether function coverage summaries should be displayed
+    pub output_csv: bool, // Output CSV data of coverage
+    module_name : ByteSliceView, // Display coverage information about the module against source code or dissambled bytecode
+}
+
+impl From<NovaCompilerCheckCoverageOption> for CoverageSummaryOptions {
+    fn from(val: NovaCompilerCheckCoverageOption) -> Self {
+        let module_name: Option<String> = val.module_name.into();
+        match val.summary_mode {
+            CoverageOption::Summary => CoverageSummaryOptions::Summary { functions: val.functions, output_csv: val.output_csv },
+            CoverageOption::Source => CoverageSummaryOptions::Source { module_name: module_name.unwrap() },
+            CoverageOption::Bytecode => CoverageSummaryOptions::Bytecode { module_name: module_name.unwrap() },
         }
     }
 }
@@ -276,23 +297,6 @@ pub struct NovaCompilerDocgenOption {
 
 impl From<NovaCompilerDocgenOption> for Docgen {
     fn from(val: NovaCompilerDocgenOption) -> Self {
-        let output_directory = match val.output_directory.read() {
-            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-            None => None,
-        };
-        let template: Vec<String> = match val.template.read() {
-            Some(s) => Vec::from_iter(
-                String::from_utf8(s.to_vec())
-                    .unwrap()
-                    .split(',')
-                    .map(String::from),
-            ),
-            None => vec![],
-        };
-        let references_file = match val.references_file.read() {
-            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-            None => None,
-        };
         Self {
             section_level_start: match val.section_level_start {
                 0 => None,
@@ -307,9 +311,9 @@ impl From<NovaCompilerDocgenOption> for Docgen {
                 _ => Some(val.toc_depth),
             },
             no_collapsed_sections: val.no_collapsed_sections,
-            output_directory,
-            template,
-            references_file,
+            output_directory: val.output_directory.into(),
+            template: Into::<Option<Vec<String>>>::into(val.template).unwrap_or(vec![]),
+            references_file: val.references_file.into(),
             include_dep_diagrams: val.include_dep_diagrams,
             include_call_diagrams: val.include_call_diagrams,
             compile_relative_to_output_dir: val.compile_relative_to_output_dir,
@@ -317,7 +321,7 @@ impl From<NovaCompilerDocgenOption> for Docgen {
     }
 }
 
-/* TODO: revive it when Sandbox problem(unimplementable because of private struct) is solved.
+/* TODO: revive it and implement missing its part when Sandbox problem(unimplementable because of private struct) is solved.
 /// cbindgen:prefix-with-name
 #[repr(u8)]
 #[allow(dead_code)]
@@ -338,7 +342,7 @@ pub struct NovaCompilerExperimentalOption {
 impl From<NovaCompilerExperimentalOption> for nova_compiler::Command {
     fn from(val: NovaCompilerExperimentalOption) -> Self {
         let storage_dir = match val.storage_dir.read() {
-            Some(s) => Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf(),
+            Some(s) => Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf(), // FIXME: use into()
             None => Path::new(DEFAULT_STORAGE_DIR).to_path_buf(),
         };
         return match val.cmd_type {
@@ -384,6 +388,7 @@ pub struct ReadWriteSet {
 
 impl From<ReadWriteSet> for ExperimentalCommand {
     fn from(val: ReadWriteSet) -> Self {
+        // FIXME: use into()s
         let module_file =
             Path::new(&String::from_utf8(val.module_file.read().unwrap().to_vec()).unwrap())
                 .to_path_buf();
@@ -482,6 +487,7 @@ pub struct SandboxPublish {
 
 impl From<SandboxPublish> for SandboxCommand{
     fn from(val: SandboxPublish) -> Self {
+        // FIXME: use into()
         let override_ordering: Option<Vec<String>> = match val.override_ordering.read() {
             Some(s) => Some(Vec::from_iter(
                 String::from_utf8(s.to_vec())
