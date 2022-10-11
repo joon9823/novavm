@@ -6,12 +6,11 @@ on:
       - "release/*"
     
 concurrency: 
-  group: ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     name: Rust project
     runs-on: ubuntu-latest
     steps:
@@ -27,5 +26,5 @@ jobs:
             api/libnovaproc.dylib
             api/libnovaproc.aarch64.so
             api/libnovaproc.x86_64.so
-          commit-msg: "[skip-ci] update shared libraries"
+          commit-msg: "[skip ci] update shared libraries"
           github-token: ${{ secrets.PUSH_TO_PROTECTED_BRANCH }}

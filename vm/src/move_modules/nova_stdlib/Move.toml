@@ -1,0 +1,11 @@
+[package]
+name = "NovaStdlib"
+version = "1.5.0"
+
+[dependencies]
+MoveStdlib = { local = "../move_stdlib" }
+MoveNursery = { local = "../move_nursery" }
+
+[addresses]
+std = "0x1"
+nova_std = "0x1"

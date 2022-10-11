@@ -90,7 +90,6 @@ impl NovaVM {
         modules.append(&mut compile_move_nursery_modules());
         modules.append(&mut compile_nova_stdlib_modules());
 
-        
         if let Some(module_bundle) = custom_module_bundle {
             let custom_modules = self.deserialize_module_bundle(&module_bundle).map_err(|e| e.into_vm_status())?;
             modules.extend(custom_modules.into_iter());

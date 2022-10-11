@@ -1,48 +1,55 @@
 use move_deps::move_binary_format::CompiledModule;
-use move_deps::move_command_line_common::files::{extension_equals, find_filenames};
 use move_deps::move_compiler::shared::NumericalAddress;
 use move_deps::move_compiler::{compiled_unit::AnnotatedCompiledUnit, Compiler};
-use move_deps::move_stdlib;
 
-use std::{collections::BTreeMap, env, path::PathBuf};
+use std::collections::BTreeMap;
+use tempfile::TempPath;
+
+use crate::move_modules;
 
 pub fn compile_move_stdlib_modules() -> Vec<CompiledModule> {
-    let src_files = move_stdlib::move_stdlib_files();
+    let src_files = move_modules::move_stdlib_files();
     let deps_files = vec![];
-    let name_address_map = move_stdlib::move_stdlib_named_addresses();
+    let name_address_map = named_addresses();
     compile_modules(src_files, deps_files, name_address_map)
 }
 
 pub fn compile_move_nursery_modules() -> Vec<CompiledModule> {
-    let src_files = move_stdlib::move_nursery_files();
-    let deps_files = move_stdlib::move_stdlib_files();
-    let name_address_map = move_stdlib::move_stdlib_named_addresses();
+    let src_files = move_modules::move_nursery_files();
+    let deps_files = move_modules::move_stdlib_files();
+    let name_address_map = named_addresses();
     compile_modules(src_files, deps_files, name_address_map)
 }
 
 pub fn compile_nova_stdlib_modules() -> Vec<CompiledModule> {
-    let src_files = move_nova_stdlib_files();
-    let deps_files = move_stdlib::move_stdlib_files()
+    let src_files = move_modules::nova_stdlib_files();
+    let deps_files = move_modules::move_stdlib_files()
         .into_iter()
-        .chain(move_stdlib::move_nursery_files())
+        .chain(move_modules::move_nursery_files())
         .collect();
-    let mapping = [("nova_std", "0x1"), ("std", "0x1")];
-    let name_address_map = mapping
-        .iter()
-        .map(|(name, addr)| (name.to_string(), NumericalAddress::parse_str(addr).unwrap()))
-        .collect();
+    let name_address_map = named_addresses();
 
     compile_modules(src_files, deps_files, name_address_map)
 }
 
 fn compile_modules(
-    src_files: Vec<String>,
-    deps_files: Vec<String>,
+    src_files: Vec<TempPath>,
+    deps_files: Vec<TempPath>,
     name_address_map: BTreeMap<String, NumericalAddress>,
 ) -> Vec<CompiledModule> {
-    let (_files, compiled_units) = Compiler::from_files(src_files, deps_files, name_address_map)
-        .build_and_report()
-        .expect("Error compiling...");
+    let (_files, compiled_units) = Compiler::from_files(
+        src_files
+            .iter()
+            .map(|f| f.as_os_str().to_str().unwrap())
+            .collect(),
+        deps_files
+            .iter()
+            .map(|f| f.as_os_str().to_str().unwrap())
+            .collect(),
+        name_address_map,
+    )
+    .build_and_report()
+    .expect("Error compiling...");
     compiled_units
         .into_iter()
         .map(|unit| match unit {
@@ -54,25 +61,12 @@ fn compile_modules(
         .collect()
 }
 
-const MODULES_DIR: &str = "src/nova_stdlib/sources";
-
-pub fn move_files(relative : &str) -> Vec<String> {
-    let path = path_in_crate(relative);
-    find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
-}
-
-fn move_nova_stdlib_files() -> Vec<String> {
-    let path = path_in_crate(MODULES_DIR);
-    find_filenames(&[path], |p| extension_equals(p, "move")).unwrap()
-}
-
-pub fn path_in_crate<S>(relative: S) -> PathBuf
-where
-    S: Into<String>,
-{
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push(relative.into());
-    path
+pub fn named_addresses() -> BTreeMap<String, NumericalAddress> {
+    let mapping = [("nova_std", "0x1"), ("std", "0x1")];
+    mapping
+        .iter()
+        .map(|(name, addr)| (name.to_string(), NumericalAddress::parse_str(addr).unwrap()))
+        .collect()
 }
 
 #[test]
