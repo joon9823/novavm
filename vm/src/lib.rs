@@ -21,6 +21,7 @@ pub mod table;
 mod args_validator;
 mod errors;
 mod nova_vm;
+mod move_modules;
 
 #[cfg(test)]
 mod tests;

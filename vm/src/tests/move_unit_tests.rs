@@ -73,5 +73,5 @@ where
 
 #[test]
 fn stdlib_move_unit_tests() {
-    run_tests_for_pkg("src/nova_stdlib");
+    run_tests_for_pkg("src/move_modules/nova_stdlib");
 }
