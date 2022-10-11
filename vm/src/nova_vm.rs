@@ -48,7 +48,7 @@ use crate::{
     },
     session::{SessionExt, SessionOutput},
     storage::data_view_resolver::{StoredSizeResolver, TableMetaResolver},
-    table_owner::{find_all_address_occur, TableMetaChangeSet, TableOwnerDataCache},
+    table_meta::{find_all_address_occur, TableMetaChangeSet, TableOwnerDataCache},
     NovaVMError,
 };
 

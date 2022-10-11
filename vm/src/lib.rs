@@ -17,7 +17,7 @@ pub mod message;
 pub mod natives;
 pub mod storage;
 pub mod table;
-pub mod table_owner;
+pub mod table_meta;
 
 mod args_validator;
 mod errors;

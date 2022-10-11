@@ -20,7 +20,7 @@ pub use script::{EntryFunction, Script};
 
 use self::size_change_set::AccountSizeChangeSet;
 use crate::natives::table::TableChangeSet;
-use crate::table_owner::TableMetaChangeSet;
+use crate::table_meta::TableMetaChangeSet;
 
 mod module;
 mod script;
@@ -270,7 +270,7 @@ impl MessageOutput {
         &self.table_change_set
     }
 
-    pub fn size_change_set(&self) -> &AccountSizeChangeSet{
+    pub fn size_change_set(&self) -> &AccountSizeChangeSet {
         &self.size_change_set
     }
 

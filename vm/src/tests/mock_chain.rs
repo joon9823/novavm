@@ -1,5 +1,5 @@
-use crate::table_owner::TableMetaChangeSet;
-use crate::table_owner::TableMetaType;
+use crate::table_meta::TableMetaChangeSet;
+use crate::table_meta::TableMetaType;
 use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 

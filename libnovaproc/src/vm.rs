@@ -9,13 +9,13 @@ use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
 use novavm::natives::table::TableChangeSet;
 use novavm::storage::data_view_resolver::DataViewResolver;
-use novavm::table_owner::TableMetaChangeSet;
+use novavm::table_meta::TableMetaChangeSet;
+use novavm::table_meta::TableMetaType;
 use novavm::BackendResult;
 use novavm::Message;
 use novavm::Module;
 use novavm::ModuleBundle;
 use novavm::NovaVM;
-use novavm::table_owner::TableMetaType;
 use novavm::{EntryFunction, Script};
 
 use move_deps::move_core_types::account_address::AccountAddress;
@@ -208,8 +208,8 @@ pub fn push_write_set(
         let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
         write_op(go_storage, &ap, &op)?;
     }
-    
-    for (handle, op) in &table_owner_change_set.size{
+
+    for (handle, op) in &table_owner_change_set.size {
         let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
         write_op(go_storage, &ap, &op)?;
     }

@@ -136,7 +136,7 @@ fn is_table_addr<S: StateView>(
 ) -> PartialVMResult<bool> {
     let handle = TableHandle(addr);
     let owner = remote_cache
-        .get_table_meta(&handle, crate::table_owner::TableMetaType::Owner)
+        .get_table_meta(&handle, crate::table_meta::TableMetaType::Owner)
         .map_err(|_| PartialVMError::new(StatusCode::FAILED_TO_DESERIALIZE_ARGUMENT))?;
     match owner {
         Some(_) => Ok(true),

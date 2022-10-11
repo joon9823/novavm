@@ -36,7 +36,7 @@
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
 // use crate::parser::parse_struct_tag;
-use crate::table_owner::TableMetaType;
+use crate::table_meta::TableMetaType;
 use anyhow::{bail, Result};
 use move_deps::move_core_types::{
     account_address::AccountAddress,

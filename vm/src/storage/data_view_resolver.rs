@@ -3,7 +3,7 @@
 use std::{borrow::Borrow, cell::RefCell, collections::BTreeMap};
 
 use crate::access_path::AccessPath;
-use crate::table_owner::TableMetaType;
+use crate::table_meta::TableMetaType;
 
 use super::state_view::StateView;
 use crate::natives::table::{TableHandle, TableResolver};
