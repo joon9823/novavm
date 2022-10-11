@@ -1,25 +1,34 @@
 use std::{collections::BTreeMap, path::Path};
 
-use move_deps::{move_cli::{Move,
-    base::{test::Test, disassemble::Disassemble, prove::{Prove, ProverOptions}, docgen::Docgen},
-    experimental::cli::{ExperimentalCommand, ConcretizeMode}},
-    move_package::{BuildConfig, Architecture},
-    move_core_types::parser::{parse_transaction_arguments, parse_type_tags}
+use crate::{error::Error, ByteSliceView/*, move_api::move_types::MoveType*/};
+use move_deps::{
+    move_cli::{
+        base::{
+            disassemble::Disassemble,
+            docgen::Docgen,
+            prove::{Prove, ProverOptions},
+            test::Test,
+        }, Move,
+        //experimental::cli::{ConcretizeMode, ExperimentalCommand},
+        //Move, sandbox::cli::{SandboxCommand, StructLayoutOptions},
+    },
+    //move_core_types::{parser::{parse_transaction_arguments, parse_type_tags}, transaction_argument::TransactionArgument, language_storage::TypeTag},
+    move_package::{Architecture, BuildConfig},
 };
-use nova_compiler::{compile as nova_compile, compiler::DEFAULT_STORAGE_DIR};
-use crate::{error::Error, ByteSliceView};
+use nova_compiler::compile as nova_compile;
+//use nova_compiler::compiler::DEFAULT_STORAGE_DIR;
 
 pub use nova_compiler::Command;
 
-pub fn compile(
-    move_args: Move,
-    cmd: Command,
-) -> Result<Vec<u8>, Error> {
+pub fn compile(move_args: Move, cmd: Command) -> Result<Vec<u8>, Error> {
     let action = cmd.to_string();
 
     match nova_compile(move_args, cmd) {
         Ok(_) => Ok(Vec::from("ok")),
-        Err(e) => Err(Error::backend_failure(format!("failed to {}: {}", action, e))),
+        Err(e) => Err(Error::backend_failure(format!(
+            "failed to {}: {}",
+            action, e
+        ))),
     }
 }
 
@@ -27,7 +36,7 @@ pub fn compile(
 #[allow(dead_code)]
 #[derive(PartialEq)]
 #[repr(u8)] // This makes it so the enum looks like a simple u32 to Go
-pub enum CoverageOption{
+pub enum CoverageOption {
     /// Display a coverage summary for all modules in this package
     Summary = 0, // no 0 for the purpose
     /// Display coverage information about the module against source code
@@ -48,13 +57,17 @@ pub struct NovaCompilerArgument {
     pub build_config: NovaCompilerBuildConfig,
 }
 
-impl From<NovaCompilerArgument> for Move{
+impl From<NovaCompilerArgument> for Move {
     fn from(val: NovaCompilerArgument) -> Self {
         let package_path = match val.package_path.read() {
             Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
             None => None,
         };
-        Self{ package_path, verbose: val.verbose, build_config: val.build_config.into() }
+        Self {
+            package_path,
+            verbose: val.verbose,
+            build_config: val.build_config.into(),
+        }
     }
 }
 
@@ -87,7 +100,6 @@ pub struct NovaCompilerBuildConfig {
 
     pub architecture: Option<Architecture>,
     */
-
     /// Only fetch dependency repos to MOVE_HOME
     pub fetch_deps_only: bool,
 }
@@ -98,7 +110,7 @@ impl From<NovaCompilerBuildConfig> for BuildConfig {
             Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
             None => None,
         };
-        Self{
+        Self {
             dev_mode: val.dev_mode,
             test_mode: val.test_mode,
             generate_docs: val.generate_docs,
@@ -143,14 +155,14 @@ pub struct NovaCompilerTestOption {
 
 impl From<NovaCompilerTestOption> for Test {
     fn from(val: NovaCompilerTestOption) -> Self {
-        let filter= match val.filter.read() {
+        let filter = match val.filter.read() {
             Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
             None => None,
         };
         Self {
-            instruction_execution_bound: match val.instruction_execution_bound{
+            instruction_execution_bound: match val.instruction_execution_bound {
                 0 => None,
-                _ => Some(val.instruction_execution_bound)
+                _ => Some(val.instruction_execution_bound),
             },
             filter,
             list: val.list,
@@ -160,7 +172,7 @@ impl From<NovaCompilerTestOption> for Test {
             ignore_compile_warnings: val.ignore_compile_warnings,
             check_stackless_vm: val.check_stackless_vm,
             verbose_mode: val.verbose_mode,
-            compute_coverage: val.compute_coverage
+            compute_coverage: val.compute_coverage,
         }
     }
 }
@@ -181,13 +193,18 @@ impl From<NovaCompilerDisassembleOption> for Disassemble {
             Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
             None => None,
         };
-        let module_or_script_name = String::from_utf8(val.module_or_script_name.read().unwrap().to_vec()).unwrap();
-        Self { interactive: val.interactive, package_name, module_or_script_name }
+        let module_or_script_name =
+            String::from_utf8(val.module_or_script_name.read().unwrap().to_vec()).unwrap();
+        Self {
+            interactive: val.interactive,
+            package_name,
+            module_or_script_name,
+        }
     }
 }
 
 #[repr(C)]
-pub struct NovaCompilerProveOption{
+pub struct NovaCompilerProveOption {
     /// The target filter used to prune the modules to verify. Modules with a name that contains
     /// this string will be part of verification.
     pub target_filter: ByteSliceView,
@@ -199,15 +216,21 @@ pub struct NovaCompilerProveOption{
 
 impl From<NovaCompilerProveOption> for Prove {
     fn from(val: NovaCompilerProveOption) -> Self {
-        let target_filter= match val.target_filter.read() {
+        let target_filter = match val.target_filter.read() {
             Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
             None => None,
         };
-        let options= match val.options.read() {
-            Some(s) => Some(ProverOptions::Options(String::from_utf8(s.to_vec()).unwrap().split(' ').map(|o| o.to_string()).collect::<Vec<String>>())),
+        let options = match val.options.read() {
+            Some(s) => Some(ProverOptions::Options(
+                String::from_utf8(s.to_vec())
+                    .unwrap()
+                    .split(' ')
+                    .map(|o| o.to_string())
+                    .collect::<Vec<String>>(),
+            )),
             None => None,
         };
-        Self{
+        Self {
             target_filter,
             for_test: val.for_test,
             options,
@@ -219,7 +242,7 @@ impl From<NovaCompilerProveOption> for Prove {
 pub struct NovaCompilerDocgenOption {
     /// The level where we start sectioning. Often markdown sections are rendered with
     /// unnecessary large section fonts, setting this value high reduces the size
-    /// set 0 for default 
+    /// set 0 for default
     pub section_level_start: usize, /*Option<usize>*/
     /// Whether to exclude private functions in the generated docs
     pub exclude_private_fun: bool,
@@ -258,19 +281,31 @@ impl From<NovaCompilerDocgenOption> for Docgen {
             None => None,
         };
         let template: Vec<String> = match val.template.read() {
-            Some(s) => Vec::from_iter(String::from_utf8(s.to_vec()).unwrap().split(',').map(String::from)),
+            Some(s) => Vec::from_iter(
+                String::from_utf8(s.to_vec())
+                    .unwrap()
+                    .split(',')
+                    .map(String::from),
+            ),
             None => vec![],
         };
         let references_file = match val.references_file.read() {
             Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
             None => None,
         };
-        Self{ section_level_start: match val.section_level_start {0 => None, _ => Some(val.section_level_start)},
+        Self {
+            section_level_start: match val.section_level_start {
+                0 => None,
+                _ => Some(val.section_level_start),
+            },
             exclude_private_fun: val.exclude_private_fun,
             exclude_specs: val.exclude_specs,
             independent_specs: val.independent_specs,
             exclude_impl: val.exclude_impl,
-            toc_depth: match val.toc_depth {0 => None, _ => Some(val.toc_depth)},
+            toc_depth: match val.toc_depth {
+                0 => None,
+                _ => Some(val.toc_depth),
+            },
             no_collapsed_sections: val.no_collapsed_sections,
             output_directory,
             template,
@@ -282,6 +317,7 @@ impl From<NovaCompilerDocgenOption> for Docgen {
     }
 }
 
+/* TODO: revive it when Sandbox problem(unimplementable because of private struct) is solved.
 /// cbindgen:prefix-with-name
 #[repr(u8)]
 #[allow(dead_code)]
@@ -292,27 +328,25 @@ pub enum NovaExperimentalSubcommandType {
 
 #[repr(C)]
 pub struct NovaCompilerExperimentalOption {
-        /// Directory storing Move resources, events, and module bytecodes produced by module publishing
-        /// and script execution. (default: `storage`)
-        storage_dir: ByteSliceView,
-        cmd_type: NovaExperimentalSubcommandType,
-        rws: ReadWriteSet,
+    /// Directory storing Move resources, events, and module bytecodes produced by module publishing
+    /// and script execution. (default: `storage`)
+    storage_dir: ByteSliceView,
+    cmd_type: NovaExperimentalSubcommandType,
+    rws: ReadWriteSet,
 }
 
-impl From<NovaCompilerExperimentalOption> for nova_compiler::Command{
+impl From<NovaCompilerExperimentalOption> for nova_compiler::Command {
     fn from(val: NovaCompilerExperimentalOption) -> Self {
         let storage_dir = match val.storage_dir.read() {
             Some(s) => Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf(),
             None => Path::new(DEFAULT_STORAGE_DIR).to_path_buf(),
         };
         return match val.cmd_type {
-            NovaExperimentalSubcommandType::ReadWriteSet => {
-                nova_compiler::Command::Experimental { 
-                    storage_dir,
-                    cmd: val.rws.into()
-                }
-            }
-        }
+            NovaExperimentalSubcommandType::ReadWriteSet => nova_compiler::Command::Experimental {
+                storage_dir,
+                cmd: val.rws.into(),
+            },
+        };
     }
 }
 
@@ -350,11 +384,18 @@ pub struct ReadWriteSet {
 
 impl From<ReadWriteSet> for ExperimentalCommand {
     fn from(val: ReadWriteSet) -> Self {
-        let module_file = Path::new(&String::from_utf8(val.module_file.read().unwrap().to_vec()).unwrap()).to_path_buf();
+        let module_file =
+            Path::new(&String::from_utf8(val.module_file.read().unwrap().to_vec()).unwrap())
+                .to_path_buf();
         let fun_name = String::from_utf8(val.fun_name.read().unwrap().to_vec()).unwrap();
 
         let signers: Vec<String> = match val.signers.read() {
-            Some(s) => Vec::from_iter(String::from_utf8(s.to_vec()).unwrap().split(',').map(String::from)),
+            Some(s) => Vec::from_iter(
+                String::from_utf8(s.to_vec())
+                    .unwrap()
+                    .split(',')
+                    .map(String::from),
+            ),
             None => vec![],
         };
 
@@ -374,6 +415,200 @@ impl From<ReadWriteSet> for ExperimentalCommand {
             NovaConcretizeMode::Dont => ConcretizeMode::Dont,
         };
 
-        ExperimentalCommand::ReadWriteSet{module_file, fun_name, signers, args, type_args, concretize}
+        ExperimentalCommand::ReadWriteSet {
+            module_file,
+            fun_name,
+            signers,
+            args,
+            type_args,
+            concretize,
+        }
     }
 }
+
+#[repr(C)]
+pub struct NovaCompilerSandboxOption {
+    /// Directory storing Move resources, events, and module bytecodes produced by module publishing
+    /// and script execution. (default: `storage`)
+    storage_dir: ByteSliceView,
+    cmd_type: NovaSandboxSubcommandType,
+    /* TODO: fill subcommands */
+}
+
+// TODO: impl From for Sandbox
+
+/// cbindgen:prefix-with-name
+#[repr(u8)]
+#[allow(dead_code)]
+#[derive(PartialEq)]
+pub enum NovaSandboxSubcommandType {
+    /// Compile the modules in this package and its dependencies and publish the resulting bytecodes in global storage.
+    Publish = 1,
+    /// Run a Move script that reads/writes resources stored on disk in `storage-dir`.
+    /// The script must be defined in the package.
+    Run = 2,
+    /// Run expected value tests using the given batch file.
+    Test = 3,
+    /// View Move resources, events files, and modules stored on disk.
+    View = 4,
+    /// Delete all resources, events, and modules stored on disk under `storage-dir`.
+    /// Does *not* delete anything in `src`.
+    Clean = 5,
+    /// Run well-formedness checks on the `storage-dir` and `install-dir` directories.
+    Doctor = 6,
+    /// Generate struct layout bindings for the modules stored on disk under `storage-dir`
+    // TODO: expand this to generate script bindings, etc.?.
+    Generate = 7,
+}
+
+#[repr(C)]
+pub struct SandboxPublish {
+    /// If set, fail when attempting to publish a module that already
+    /// exists in global storage.
+    no_republish: bool,
+    /// By default, code that might cause breaking changes for bytecode
+    /// linking or data layout compatibility checks will not be published.
+    /// Set this flag to ignore breaking changes checks and publish anyway.
+    ignore_breaking_changes: bool,
+    /// If set, publish not only the modules in this package but also
+    /// modules in all its dependencies.
+    with_deps: bool,
+    /// If set, all modules at once as a bundle. The default is to publish
+    /// modules sequentially.
+    bundle: bool,
+    /// Manually specify the publishing order of modules.
+    override_ordering: ByteSliceView,
+}
+
+impl From<SandboxPublish> for SandboxCommand{
+    fn from(val: SandboxPublish) -> Self {
+        let override_ordering: Option<Vec<String>> = match val.override_ordering.read() {
+            Some(s) => Some(Vec::from_iter(
+                String::from_utf8(s.to_vec())
+                    .unwrap()
+                    .split(',')
+                    .map(String::from),
+            )),
+            None => None,
+        };
+        SandboxCommand::Publish {
+            no_republish: val.no_republish,
+            ignore_breaking_changes: val.ignore_breaking_changes,
+            with_deps: val.with_deps,
+            bundle: val.bundle,
+            override_ordering: override_ordering
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SandboxRun {
+    /// Path to .mv file containing either script or module bytecodes. If the file is a module, the
+    /// `script_name` parameter must be set.
+    script_file: ByteSliceView,
+    /// Name of the script function inside `script_file` to call. Should only be set if `script_file`
+    /// points to a module.
+    script_name: ByteSliceView,
+    /// Possibly-empty list of signers for the current transaction (e.g., `account` in
+    /// `main(&account: signer)`). Must match the number of signers expected by `script_file`.
+    signers: ByteSliceView,
+    /// Possibly-empty list of arguments passed to the transaction (e.g., `i` in
+    /// `main(i: u64)`). Must match the arguments types expected by `script_file`.
+    /// Supported argument types are
+    /// bool literals (true, false),
+    /// u64 literals (e.g., 10, 58),
+    /// address literals (e.g., 0x12, 0x0000000000000000000000000000000f),
+    /// hexadecimal strings (e.g., x"0012" will parse as the vector<u8> value [00, 12]), and
+    /// ASCII strings (e.g., 'b"hi" will parse as the vector<u8> value [68, 69]).
+    args: ByteSliceView,
+    /// Possibly-empty list of type arguments passed to the transaction (e.g., `T` in
+    /// `main<T>()`). Must match the type arguments kinds expected by `script_file`.
+    type_args: ByteSliceView,
+    /// Maximum number of gas units to be consumed by execution.
+    /// When the budget is exhaused, execution will abort.
+    /// By default, no `gas-budget` is specified and gas metering is disabled.
+    gas_budget: u64,
+    /// If set, the effects of executing `script_file` (i.e., published, updated, and
+    /// deleted resources) will NOT be committed to disk.
+    dry_run: bool
+}
+
+impl From<SandboxRun> for SandboxCommand{
+    fn from(val: SandboxRun) -> Self {
+        let gas_budget = if val.gas_budget == 0 {None} else {Some(val.gas_budget)};
+        let script_file: Option<PathBuf> = val.script_file.into();
+        let script_name: Option<String> = val.script_name.into();
+        let signers: Option<Vec<String>> = val.signers.into();
+        let args: Option<Vec<TransactionArgument>> = val.args.into();
+        let type_args: Option<Vec<TypeTag>> = val.type_args.into();
+        SandboxCommand::Run{
+            script_file: script_file.unwrap(),
+            script_name,
+            signers: signers.unwrap_or(vec![]),
+            args: args.unwrap_or(vec![]),
+            type_args: type_args.unwrap_or(vec![]),
+            gas_budget, 
+            dry_run: val.dry_run,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SandboxTest {
+    /// Use an ephemeral directory to serve as the testing workspace.
+    /// By default, the directory containing the `args.txt` will be the workspace.
+    use_temp_dir: bool,
+    /// Show coverage information after tests are done.
+    /// By default, coverage will not be tracked nor shown.
+    track_cov: bool,
+}
+
+impl From<SandboxTest> for SandboxCommand{
+    fn from(val: SandboxTest) -> Self {
+        SandboxCommand::Test{
+            use_temp_dir: val.use_temp_dir,
+            track_cov: val.track_cov
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SandboxView {
+    file: ByteSliceView
+}
+
+impl From<SandboxView> for SandboxCommand {
+    fn from(val: SandboxView) -> Self {
+        SandboxCommand::View {
+            file: Option::<PathBuf>::from(val.file).unwrap()
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SandboxGenerate_StructLayoutOptions {
+    /// Generate layout bindings for this struct.
+    struct_: ByteSliceView,
+    /// Generate layout bindings for `struct` bound to these type arguments.
+    type_args: ByteSliceView,
+    /// If set, generate bindings only for the struct passed in.
+    /// When unset, generates bindings for the struct and all of its transitive dependencies.
+    shallow: bool
+}
+
+impl From<SandboxGenerate_StructLayoutOptions> for StructLayoutOptions {
+    fn from(val: SandboxGenerate_StructLayoutOptions) -> Self {
+        Self {
+            struct_: Option::<String>::from(val.struct_),
+            type_args: Option::<Vec<TypeTag>>::from(val.type_args),
+            shallow: val.shallow
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SandboxGenerate_StructLayouts {
+    module: ByteSliceView,
+    options: SandboxGenerate_StructLayoutOptions
+}
+*/

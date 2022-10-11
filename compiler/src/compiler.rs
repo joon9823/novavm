@@ -1,6 +1,6 @@
 // from move-language/move/tools/move-cli/src/lib.rs
 // SPDX-License-Identifier: Apache-2.0
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use move_deps::move_cli::{sandbox, experimental, Move};
 use move_deps::move_cli::base::{
     build::Build, coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
@@ -14,7 +14,7 @@ use move_deps::move_vm_runtime::native_functions::NativeFunction;
 use novavm::gas::NativeGasParameters;
 use novavm::natives::nova_natives;
 use std::fmt;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
 use crate::Clean;
 use crate::New;
@@ -76,8 +76,8 @@ impl fmt::Display for Command {
 
 fn run_compiler(
     natives: Vec<NativeFunctionRecord>,
-    //_cost_table: &CostTable,
-    //_error_descriptions: &ErrorMapping,
+    //cost_table: &CostTable,
+    //error_descriptions: &ErrorMapping,
     move_args: Move,
     cmd: Command,
 ) -> anyhow::Result<()> {
@@ -97,7 +97,7 @@ fn run_compiler(
         Command::MoveyLogin(c) => c.execute(),
         Command::MoveyUpload(c) => c.execute(move_args.package_path),
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
-        /* 
+        /* unimplementable for now due to private struct
         Command::Sandbox { storage_dir, cmd } => cmd.handle_command(
             natives,
             cost_table,
@@ -109,8 +109,7 @@ fn run_compiler(
         Command::Experimental { storage_dir, cmd } => cmd.handle_command(&move_args, &storage_dir),
         // custom actions
 		Command::Clean(c) => c.execute(move_args.package_path),
-		c => Err(anyhow!("unimplemented function: {}", c)),
-
+        _ => panic!("unimplemented")
     }
 }
 

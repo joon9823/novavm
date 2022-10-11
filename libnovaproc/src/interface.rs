@@ -2,7 +2,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
-use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption, NovaCompilerExperimentalOption};
+use crate::compiler::{CoverageOption, NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
@@ -440,6 +440,7 @@ pub extern "C" fn generate_docs(
     UnmanagedVector::new(Some(ret))
 }
 
+/* TODO: revive it when we decide to bring all features of nova-compiler back to novad
 #[no_mangle]
 pub extern "C" fn do_experimental(
     errmsg: Option<&mut UnmanagedVector>,
@@ -455,6 +456,7 @@ pub extern "C" fn do_experimental(
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
 }
+*/
 
 
 //

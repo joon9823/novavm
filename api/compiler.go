@@ -370,6 +370,7 @@ func GenerateDocs(arg types.NovaCompilerArgument, docgenOpt types.DocgenOption) 
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
+/* TODO: revive it when we decide to bring all features of nova-compiler back to novad
 func DoExperimental(arg types.NovaCompilerArgument, storageDir string, expOpt interface{}) ([]byte, error) {
 	var err error
 
@@ -433,3 +434,4 @@ func DoExperimental(arg types.NovaCompilerArgument, storageDir string, expOpt in
 	}
 	return copyAndDestroyUnmanagedVector(res), err
 }
+*/

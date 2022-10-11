@@ -126,6 +126,7 @@ func Test_GenerateDocs(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
+/* TODO: revive it when we decide to bring all features of nova-compiler back to novad
 func Test_Experimental(t *testing.T) {
 	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
 		types.WithInstallDir(packagePath),
@@ -144,3 +145,4 @@ func Test_Experimental(t *testing.T) {
 	require.Error(t, err) // FIXME: do real test which is not failing
 	//require.Equal(t, string(res), "ok")
 }
+*/

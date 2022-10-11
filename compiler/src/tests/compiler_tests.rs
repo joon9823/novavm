@@ -7,8 +7,6 @@ use move_deps::move_cli::base::docgen::Docgen;
 use move_deps::move_cli::base::errmap::Errmap;
 #[allow(unused_imports)]
 use move_deps::move_cli::base::prove::Prove;
-use move_deps::move_cli::experimental::cli::{ExperimentalCommand, ConcretizeMode};
-use move_deps::move_core_types::transaction_argument::TransactionArgument;
 use move_deps::{move_package::BuildConfig, move_cli::{Move, base::{test::Test, info::Info}}};
 use serial_test::serial;
 
@@ -131,42 +129,7 @@ fn test_move_new() {
         build_config,
     };
 
-    let res = compile(move_args, Command::New(New{name: String::from("testpackage")})).expect("compiler err");
-    assert!(res==Vec::from("ok"));
-
-    // test new package
-    let build_config = BuildConfig::default();
-        let move_args = Move{
-        package_path: Some(temp_package_path.clone()),
-        verbose: true,
-        build_config,
-    };
-
-    let test_arg = Test{ 
-        instruction_execution_bound: None, 
-        filter: None, 
-        list: false, 
-        num_threads: 8, // 8 is from clap trait of base/tests.rs
-        report_statistics: true, 
-        report_storage_on_error: true,
-        ignore_compile_warnings: false, 
-        check_stackless_vm: false, 
-        verbose_mode: true, 
-        compute_coverage: false,
-    };
-    let cmd = Command::Test(test_arg);
-
-    let res = compile(move_args, cmd).expect("compiler err");
-    assert!(res==Vec::from("ok"));
-
-    let build_config = BuildConfig::default();
-    let move_args = Move{
-        package_path: Some(temp_package_path.clone()),
-        verbose: true,
-        build_config,
-    };
-
-    let res = compile(move_args, Command::Build(move_deps::move_cli::base::build::Build)).expect("compiler err");
+    let res = compile(move_args, Command::New(New{name: String::from("test_move_package")})).expect("compiler err");
     assert!(res==Vec::from("ok"));
 
     // remove temporary package

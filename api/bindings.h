@@ -78,31 +78,6 @@ enum GoError {
 };
 typedef int32_t GoError;
 
-enum NovaConcretizeMode {
-  /**
-   * Show the full concretized access paths read or written (e.g. 0xA/0x1::M::S/f/g)
-   */
-  NovaConcretizeMode_Paths = 1,
-  /**
-   * Show only the concrete resource keys that are read (e.g. 0xA/0x1::M::S)
-   */
-  NovaConcretizeMode_Reads = 2,
-  /**
-   * Show only the concrete resource keys that are written (e.g. 0xA/0x1::M::S)
-   */
-  NovaConcretizeMode_Writes = 3,
-  /**
-   * Do not concretize; show the results from the static analysis
-   */
-  NovaConcretizeMode_Dont = 4,
-};
-typedef uint8_t NovaConcretizeMode;
-
-enum NovaExperimentalSubcommandType {
-  NovaExperimentalSubcommandType_ReadWriteSet = 1,
-};
-typedef uint8_t NovaExperimentalSubcommandType;
-
 typedef struct {
 
 } vm_t;
@@ -330,44 +305,6 @@ typedef struct {
   ByteSliceView module_or_script_name;
 } NovaCompilerDisassembleOption;
 
-/**
- * Perform a read/write set analysis and print the results for
- * `module_file`::`script_name`.
- */
-typedef struct {
-  /**
-   * Path to .mv file containing module bytecode.
-   */
-  ByteSliceView module_file;
-  /**
-   * A function inside `module_file`.
-   */
-  ByteSliceView fun_name;
-  /**
-   * delimiter: , (comma)
-   */
-  ByteSliceView signers;
-  /**
-   * delimiter: , (comma)
-   */
-  ByteSliceView args;
-  /**
-   * delimiter: , (comma)
-   */
-  ByteSliceView type_args;
-  NovaConcretizeMode concretize;
-} ReadWriteSet;
-
-typedef struct {
-  /**
-   * Directory storing Move resources, events, and module bytecodes produced by module publishing
-   * and script execution. (default: `storage`)
-   */
-  ByteSliceView storage_dir;
-  NovaExperimentalSubcommandType cmd_type;
-  ReadWriteSet rws;
-} NovaCompilerExperimentalOption;
-
 typedef struct {
   uint8_t _private[0];
 } api_t;
@@ -531,10 +468,6 @@ void destroy_unmanaged_vector(UnmanagedVector v);
 UnmanagedVector disassemble_move_package(UnmanagedVector *errmsg,
                                          ByteSliceView package_path,
                                          NovaCompilerDisassembleOption disassemble_opt);
-
-UnmanagedVector do_experimental(UnmanagedVector *errmsg,
-                                NovaCompilerArgument nova_args,
-                                NovaCompilerExperimentalOption exp_opt);
 
 UnmanagedVector execute_contract(vm_t *vm_ptr,
                                  Db db,
