@@ -2,9 +2,12 @@ use super::mock_chain::MockChain;
 
 use crate::{
     gas::Gas, message::Message, nova_vm::NovaVM, storage::data_view_resolver::DataViewResolver,
+    MessageOutput,
 };
 
-use move_deps::move_core_types::vm_status::VMStatus;
+use move_deps::{
+    move_core_types::vm_status::VMStatus, move_vm_runtime::session::SerializedReturnValues,
+};
 
 pub struct MockTx {
     pub msg_tests: Vec<(Message, ExpectedOutput)>,
@@ -44,11 +47,9 @@ impl MockTx {
     }
 }
 
-pub struct ExpectedOutput {
-    vm_status: VMStatus,
-    changed_accounts: usize,
-    result_bytes: Option<Vec<u8>>,
-}
+type VMOutput = (VMStatus, MessageOutput, Option<SerializedReturnValues>);
+
+pub struct ExpectedOutput(Vec<ExpectedOutputItem>);
 
 impl ExpectedOutput {
     pub fn new(
@@ -56,20 +57,50 @@ impl ExpectedOutput {
         changed_accounts: usize,
         result_bytes: Option<Vec<u8>>,
     ) -> Self {
-        ExpectedOutput {
-            vm_status,
-            changed_accounts,
-            result_bytes,
+        let mut items = vec![
+            ExpectedOutputItem::VMStatusReturn(vm_status),
+            ExpectedOutputItem::ChangedAccountCount(changed_accounts),
+        ];
+        if let Some(b) = result_bytes {
+            items.push(ExpectedOutputItem::ResultBytes(b));
+        }
+        Self(items)
+    }
+
+    pub fn check_output(&self, vm_output: &VMOutput) {
+        for exp in &self.0 {
+            exp.check_output(vm_output);
         }
     }
-    pub fn vm_status(&self) -> &VMStatus {
-        &self.vm_status
-    }
-    pub fn changed_accounts(&self) -> usize {
-        self.changed_accounts
-    }
-    pub fn result_bytes(&self) -> &Option<Vec<u8>> {
-        &self.result_bytes
+}
+
+pub enum ExpectedOutputItem {
+    VMStatusReturn(VMStatus),
+    ChangedAccountCount(usize),
+    ResultBytes(Vec<u8>),
+}
+
+impl ExpectedOutputItem {
+    pub fn check_output(&self, vm_output: &VMOutput) {
+        let (status, output, result) = vm_output;
+        match self {
+            ExpectedOutputItem::VMStatusReturn(exp_status) => {
+                println!("got:{}, exp:{}", status, exp_status);
+                assert!(status == exp_status);
+            }
+            ExpectedOutputItem::ChangedAccountCount(exp_count) => {
+                assert!(output.change_set().accounts().len() == *exp_count);
+            }
+            ExpectedOutputItem::ResultBytes(exp_bytes) => {
+                let result_bytes = result
+                    .as_ref()
+                    .map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()))
+                    .expect("expected some bytes return");
+
+                println!("result_bytes: {:?}", result_bytes);
+                assert!(result_bytes == *exp_bytes);
+            }
+        };
     }
 }
 
@@ -86,30 +117,26 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     chain.commit(state);
 
     let gas_limit = Gas::new(100_000u64);
+    let mut num = 0;
     for MockTx {
         msg_tests,
         should_commit,
     } in testcases
     {
-        println!("\n\ntx start");
+        num += 1;
+        println!("\n\ntx #{} start", num);
         let mut state = chain.create_state();
 
         for (msg, exp_output) in msg_tests {
             let resolver = DataViewResolver::new(&state);
-            let (status, output, result) = vm
+            let vm_output = vm
                 .execute_message(msg, &resolver, gas_limit)
                 .expect("nova vm failure");
 
+            exp_output.check_output(&vm_output);
+
+            let (status, output, _result) = vm_output;
             println!("gas used: {}", output.gas_used());
-            println!("got:{}, exp:{}", status, exp_output.vm_status());
-            assert!(status == *exp_output.vm_status());
-            assert!(output.change_set().accounts().len() == exp_output.changed_accounts());
-
-            let result_bytes =
-                result.map(|r| r.return_values.first().map_or(vec![], |m| m.0.clone()));
-
-            println!("result_bytes: {:?}", result_bytes);
-            assert!(result_bytes == *exp_output.result_bytes());
 
             if status != VMStatus::Executed {
                 continue;
