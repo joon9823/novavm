@@ -1,5 +1,7 @@
-use crate::message::{EntryFunction, Message, Module, ModuleBundle};
-
+use crate::{
+    message::{EntryFunction, Message, Module, ModuleBundle},
+    size_change_set::SizeDelta,
+};
 use move_deps::{
     move_binary_format::CompiledModule,
     move_core_types::{
@@ -7,9 +9,10 @@ use move_deps::{
         vm_status::VMStatus,
     },
 };
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use super::mock_tx::ExpectedOutput;
 use super::mock_tx::{run_transaction, MockTx};
+use super::mock_tx::{ExpectedOutput, ExpectedOutputItem};
 
 #[cfg(test)]
 impl Module {
@@ -143,7 +146,22 @@ fn test_tables() {
         MockTx::one(
             // get table length
             Message::new_entry_function(vec![3; 32], Some(account_two), EntryFunction::table_len()),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![3, 0, 0, 0, 0, 0, 0, 0])),
+            ExpectedOutput(vec![
+                ExpectedOutputItem::VMStatusReturn(VMStatus::Executed),
+                ExpectedOutputItem::ChangedAccountCount(1),
+                ExpectedOutputItem::ResultBytes(vec![3, 0, 0, 0, 0, 0, 0, 0]),
+                ExpectedOutputItem::AccountSizeChange(
+                    [(account_two, SizeDelta::increasing(102 + 201))].into(),
+                    // access_path "0000000000000000000000000000000000000002/1/0x2::TableTestData::S<u64, u64>" => 74
+                    // S { address, u64 } => 20 + 8
+                    // Total = 102
+                    //
+                    // Table access path "90abac00da7103273074b8d42c458cb96b309867/2/0100000000000000" => 59
+                    // Table data u64 => 8
+                    // Per Item = 59 + 8 = 67
+                    // Table len 3 => 67 * 3 = 201
+                ),
+            ]),
         ),
         MockTx::one(
             Message::new_entry_function(

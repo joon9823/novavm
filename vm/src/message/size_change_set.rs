@@ -57,7 +57,7 @@ impl<T: Clone + Ord> SizeChangeSet<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SizeDelta {
     pub amount: usize,
     pub is_decrease: bool,

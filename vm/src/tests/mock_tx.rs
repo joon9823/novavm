@@ -1,12 +1,15 @@
+use std::collections::BTreeMap;
+
 use super::mock_chain::MockChain;
 
 use crate::{
-    gas::Gas, message::Message, nova_vm::NovaVM, storage::data_view_resolver::DataViewResolver,
-    MessageOutput,
+    gas::Gas, message::Message, nova_vm::NovaVM, size_change_set::SizeDelta,
+    storage::data_view_resolver::DataViewResolver, MessageOutput,
 };
 
 use move_deps::{
-    move_core_types::vm_status::VMStatus, move_vm_runtime::session::SerializedReturnValues,
+    move_core_types::{account_address::AccountAddress, vm_status::VMStatus},
+    move_vm_runtime::session::SerializedReturnValues,
 };
 
 pub struct MockTx {
@@ -49,9 +52,10 @@ impl MockTx {
 
 type VMOutput = (VMStatus, MessageOutput, Option<SerializedReturnValues>);
 
-pub struct ExpectedOutput(Vec<ExpectedOutputItem>);
+pub struct ExpectedOutput(pub Vec<ExpectedOutputItem>);
 
 impl ExpectedOutput {
+    // for compatibility with previous tests
     pub fn new(
         vm_status: VMStatus,
         changed_accounts: usize,
@@ -78,6 +82,7 @@ pub enum ExpectedOutputItem {
     VMStatusReturn(VMStatus),
     ChangedAccountCount(usize),
     ResultBytes(Vec<u8>),
+    AccountSizeChange(BTreeMap<AccountAddress, SizeDelta>),
 }
 
 impl ExpectedOutputItem {
@@ -99,6 +104,9 @@ impl ExpectedOutputItem {
 
                 println!("result_bytes: {:?}", result_bytes);
                 assert!(result_bytes == *exp_bytes);
+            }
+            ExpectedOutputItem::AccountSizeChange(exp_map) => {
+                assert!(*output.size_change_set().changes() == *exp_map, "expected {:?} output {:?}", exp_map, output.size_change_set().changes());
             }
         };
     }
