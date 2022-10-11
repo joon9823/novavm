@@ -106,7 +106,7 @@ impl ExpectedOutputItem {
                 assert!(result_bytes == *exp_bytes);
             }
             ExpectedOutputItem::AccountSizeChange(exp_map) => {
-                assert!(*output.size_change_set().changes() == *exp_map, "expected {:?} output {:?}", exp_map, output.size_change_set().changes());
+                assert!(*output.size_change_set().changes() == *exp_map, "expected\n{:?}\n\noutput\n{:?}", exp_map, output.size_change_set().changes());
             }
         };
     }

@@ -169,7 +169,27 @@ fn test_tables() {
                 Some(account_three),
                 EntryFunction::move_table(),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 2, Some(vec![])),
+            ExpectedOutput(vec![
+                ExpectedOutputItem::VMStatusReturn(VMStatus::Executed),
+                ExpectedOutputItem::ChangedAccountCount(2),
+                ExpectedOutputItem::AccountSizeChange(
+                    [
+                        (account_two, SizeDelta::decreasing(303)),
+                        (account_three, SizeDelta::increasing(130 + 201 + 111)),
+                        // access_path "0000000000000000000000000000000000000003/1/0x2::TableTestData::S<address, 0x1::table::Table<u64, u64>>" => 102
+                        // S { address, u64 } => 28
+                        // Total = 130
+
+                        // previous Table = 201
+
+                        // new Table
+                        // access path => 83
+                        // data Table => 28
+                        // 1 row => 111
+                    ]
+                    .into(),
+                ),
+            ]),
         ),
         MockTx::one(
             // tables in table

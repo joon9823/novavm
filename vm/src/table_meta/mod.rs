@@ -144,9 +144,6 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
 ) -> VMResult<AccountSizeChangeSet> {
     let mut accounts_delta: AccountSizeChangeSet = AccountSizeChangeSet::default();
 
-    println!("new table {:?}", table_change_set.new_tables);
-    println!("remove table {:?}", table_change_set.removed_tables);
-
     // handle previous size
     for (handle, owner) in data_cache.get_owner_changes().into_iter() {
         let size = match data_cache.get_size(handle)? {
@@ -155,15 +152,25 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
                 continue;
             } // skip new table
         };
+        println!("processing table {} of size {}", handle, size);
 
         match owner {
             Some(new_owner) => {
-                let old_owner = data_cache.get_root_owner(handle)?.unwrap();
-                accounts_delta.move_size(old_owner, new_owner.clone(), size);
+                let old_owner = data_cache.get_old_root_owner(handle)?.unwrap();
+                let new_root_owner = data_cache
+                    .get_root_owner(&TableHandle(*new_owner))?
+                    .unwrap();
+                println!(
+                    "moving from {} to {} size {}",
+                    old_owner, new_root_owner, size
+                );
+
+                accounts_delta.move_size(old_owner, new_root_owner, size);
             }
             None => {
-                let acc = data_cache.get_root_owner(handle)?.unwrap();
+                let acc = data_cache.get_old_root_owner(handle)?.unwrap();
                 let delta = SizeDelta::decreasing(size);
+                println!("deleting from {} size {}", acc, size);
                 accounts_delta.insert_size(acc, delta);
             }
         }
@@ -315,6 +322,22 @@ impl<'r, S: TableMetaResolver> TableMetaDataCache<'r, S> {
 
         let child_or_me = match owner {
             Some(o) => Some(self.get_root_owner(&TableHandle(o))?.unwrap_or(o)),
+            None => None,
+        };
+
+        Ok(child_or_me)
+    }
+
+    // get previous uncached owner
+    pub fn get_old_root_owner(&self, handle: &TableHandle) -> VMResult<Option<AccountAddress>> {
+        let val = self.remote.get_table_meta(handle, TableMetaType::Owner)?;
+        let owner = match val {
+            Some(blob) => deserialize_owner(&blob),
+            None => None,
+        };
+
+        let child_or_me = match owner {
+            Some(o) => Some(self.get_old_root_owner(&TableHandle(o))?.unwrap_or(o)),
             None => None,
         };
 
