@@ -71,8 +71,8 @@ module nova_std::coin {
     struct CoinStore<phantom CoinType> has key {
         coin: Coin<CoinType>,
         frozen: bool,
-        deposit_events: EventHandle<DepositEvent<CoinType>>,
-        withdraw_events: EventHandle<WithdrawEvent<CoinType>>,
+        deposit_events: EventHandle<DepositEvent>,
+        withdraw_events: EventHandle<WithdrawEvent>,
     }
 
     /// Maximum possible coin supply.
@@ -92,12 +92,14 @@ module nova_std::coin {
     }
 
     /// Event emitted when some amount of a coin is deposited into an account.
-    struct DepositEvent<phantom CoinType> has drop, store {
+    struct DepositEvent has drop, store {
+        coin_type: string::String,
         amount: u64,
     }
 
     /// Event emitted when some amount of a coin is withdrawn from an account.
-    struct WithdrawEvent<phantom CoinType> has drop, store {
+    struct WithdrawEvent has drop, store {
+        coin_type: string::String,
         amount: u64,
     }
 
@@ -258,9 +260,12 @@ module nova_std::coin {
             error::permission_denied(EFROZEN),
         );
 
-        event::emit_event<DepositEvent<CoinType>>(
+        event::emit_event<DepositEvent>(
             &mut coin_store.deposit_events,
-            DepositEvent<CoinType> { amount: coin.value },
+            DepositEvent {
+                coin_type: type_info::type_name<CoinType>(),
+                amount: coin.value,
+            },
         );
 
         merge(&mut coin_store.coin, coin);
@@ -378,8 +383,8 @@ module nova_std::coin {
         let coin_store = CoinStore<CoinType> {
             coin: Coin { value: 0 },
             frozen: false,
-            deposit_events: event::new_event_handle<DepositEvent<CoinType>>(account),
-            withdraw_events: event::new_event_handle<WithdrawEvent<CoinType>>(account),
+            deposit_events: event::new_event_handle<DepositEvent>(account),
+            withdraw_events: event::new_event_handle<WithdrawEvent>(account),
         };
         move_to(account, coin_store);
     }
@@ -422,9 +427,12 @@ module nova_std::coin {
             error::permission_denied(EFROZEN),
         );
 
-        event::emit_event<WithdrawEvent<CoinType>>(
+        event::emit_event<WithdrawEvent>(
             &mut coin_store.withdraw_events,
-            WithdrawEvent<CoinType> { amount },
+            WithdrawEvent { 
+                coin_type: type_info::type_name<CoinType>(),
+                amount,
+            },
         );
 
         extract(&mut coin_store.coin, amount)
