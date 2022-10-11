@@ -45,7 +45,7 @@ pub(crate) fn initialize_vm(db_handle: Db, payload: &[u8]) -> Result<Vec<u8>, Er
                 &mut storage,
                 output.change_set(),
                 output.table_change_set(),
-                output.table_owner_change_set(),
+                output.table_meta_change_set(),
             )?;
         }
         _ => Err(Error::from(status))?,
@@ -80,7 +80,7 @@ pub(crate) fn publish_module(
                 &mut storage,
                 output.change_set(),
                 output.table_change_set(),
-                output.table_owner_change_set(),
+                output.table_meta_change_set(),
             )?;
 
             let res = generate_result(status, output, retval, false)?;
@@ -153,7 +153,7 @@ fn execute_entry_function_internal(
                     &mut storage,
                     output.change_set(),
                     output.table_change_set(),
-                    output.table_owner_change_set(),
+                    output.table_meta_change_set(),
                 )?;
             }
 
@@ -183,7 +183,7 @@ pub fn push_write_set(
     go_storage: &mut GoStorage,
     changeset: &ChangeSet,
     table_change_set: &TableChangeSet,
-    table_owner_change_set: &TableMetaChangeSet,
+    table_meta_change_set: &TableMetaChangeSet,
 ) -> BackendResult<()> {
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
@@ -204,12 +204,12 @@ pub fn push_write_set(
         }
     }
 
-    for (handle, op) in &table_owner_change_set.owner {
+    for (handle, op) in &table_meta_change_set.owner {
         let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
         write_op(go_storage, &ap, &op)?;
     }
 
-    for (handle, op) in &table_owner_change_set.size {
+    for (handle, op) in &table_meta_change_set.size {
         let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
         write_op(go_storage, &ap, &op)?;
     }
@@ -255,7 +255,7 @@ fn execute_script_internal(
                     &mut storage,
                     output.change_set(),
                     output.table_change_set(),
-                    output.table_owner_change_set(),
+                    output.table_meta_change_set(),
                 )?;
             }
 

@@ -232,7 +232,7 @@ pub struct MessageOutput {
     events: Vec<Event>,
     table_change_set: TableChangeSet,
     size_change_set: AccountSizeChangeSet,
-    table_owner_change_set: TableMetaChangeSet,
+    table_meta_change_set: TableMetaChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -247,7 +247,7 @@ impl MessageOutput {
         events: Vec<Event>,
         table_change_set: TableChangeSet,
         size_change_set: AccountSizeChangeSet,
-        table_owner_change_set: TableMetaChangeSet,
+        table_meta_change_set: TableMetaChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
@@ -255,7 +255,7 @@ impl MessageOutput {
             change_set,
             table_change_set,
             size_change_set,
-            table_owner_change_set,
+            table_meta_change_set,
             events,
             gas_used,
             status,
@@ -274,8 +274,8 @@ impl MessageOutput {
         &self.size_change_set
     }
 
-    pub fn table_owner_change_set(&self) -> &TableMetaChangeSet {
-        &self.table_owner_change_set
+    pub fn table_meta_change_set(&self) -> &TableMetaChangeSet {
+        &self.table_meta_change_set
     }
 
     pub fn events(&self) -> &[Event] {
@@ -304,7 +304,7 @@ impl MessageOutput {
         (
             self.change_set,
             self.table_change_set,
-            self.table_owner_change_set,
+            self.table_meta_change_set,
             self.size_change_set,
             self.events,
             self.gas_used,

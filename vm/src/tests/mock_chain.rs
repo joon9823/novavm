@@ -61,7 +61,7 @@ impl MockState {
         &mut self,
         changeset: ChangeSet,
         table_change_set: TableChangeSet,
-        table_owner_change_set: TableMetaChangeSet,
+        table_meta_change_set: TableMetaChangeSet,
     ) {
         for (addr, account_changeset) in changeset.into_inner() {
             let (modules, resources) = account_changeset.into_inner();
@@ -83,7 +83,7 @@ impl MockState {
             }
         }
 
-        let TableMetaChangeSet { owner, size } = table_owner_change_set;
+        let TableMetaChangeSet { owner, size } = table_meta_change_set;
         println!("table owner changes {:?}", owner);
         for (handle, op) in owner {
             let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);

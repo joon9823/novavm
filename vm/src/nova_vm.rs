@@ -47,7 +47,7 @@ use crate::{
     },
     session::{SessionExt, SessionOutput},
     storage::data_view_resolver::{StoredSizeResolver},
-    table_meta::{resolve_table_ownership, resolve_table_size_change_by_account , TableMetaChangeSet, TableOwnerDataCache},
+    table_meta::{resolve_table_ownership, resolve_table_size_change_by_account , TableMetaChangeSet, TableMetaDataCache},
     NovaVMError,
 };
 
@@ -306,7 +306,7 @@ impl NovaVM {
         let mut session_output = session.finish()?;
 
         let temporary_session = self.create_session(remote_cache, session_id);
-        let mut data_cache = TableOwnerDataCache::new(remote_cache);
+        let mut data_cache = TableMetaDataCache::new(remote_cache);
 
         resolve_table_ownership(
                 temporary_session,
@@ -349,7 +349,7 @@ impl NovaVM {
     fn success_message_cleanup(
         &self,
         session_output: SessionOutput, // session: Session<R>,
-        table_owner_change_set: Option<TableMetaChangeSet>,
+        table_meta_change_set: Option<TableMetaChangeSet>,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let gas_limit = gas_meter.gas_limit();
@@ -358,7 +358,7 @@ impl NovaVM {
             VMStatus::Executed,
             get_message_output(
                 session_output,
-                table_owner_change_set,
+                table_meta_change_set,
                 gas_used,
                 KeptVMStatus::Executed,
             )?,
@@ -526,7 +526,7 @@ pub(crate) fn discard_error_vm_status(err: VMStatus, gas_used: Gas) -> (VMStatus
 
 pub(crate) fn get_message_output(
     session_output: SessionOutput,
-    table_owner_change_set: Option<TableMetaChangeSet>,
+    table_meta_change_set: Option<TableMetaChangeSet>,
     gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {
@@ -537,7 +537,7 @@ pub(crate) fn get_message_output(
         events,
         table_change_set,
         account_size_changes,
-        table_owner_change_set.unwrap_or_default(),
+        table_meta_change_set.unwrap_or_default(),
         gas_used.into(),
         MessageStatus::Keep(status),
     ))
