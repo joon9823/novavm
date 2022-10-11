@@ -22,13 +22,19 @@ impl<T: Clone + Ord> SizeChangeSet<T> {
         Self(map)
     }
 
-    pub fn changes(&self)  -> &BTreeMap<T, SizeDelta> {
+    pub fn changes(&self) -> &BTreeMap<T, SizeDelta> {
         &self.0
     }
     pub fn into_inner(self) -> BTreeMap<T, SizeDelta> {
         self.0
     }
-    
+
+    pub fn merge(&mut self, another: SizeChangeSet<T>) {
+        for (key, size) in another.into_inner() {
+            self.insert_size(key, size);
+        }
+    }
+
     pub fn insert_size(&mut self, key: T, value: SizeDelta) {
         match self.0.entry(key) {
             Entry::Vacant(e) => {

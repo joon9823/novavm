@@ -304,28 +304,45 @@ impl NovaVM {
         // Handler for NativeCodeContext - to allow a module publish other module
         self.resolve_pending_code_publish(&mut session, gas_meter)?;
 
-        let session_output = session.finish()?;
+        let mut session_output = session.finish()?;
 
         let temporary_session = self.create_session(remote_cache, session_id);
-        let data_cache = TableOwnerDataCache::new(remote_cache);
+        let mut data_cache = TableOwnerDataCache::new(remote_cache);
 
-        // TODO: return account size changes
-        let owner_change_set = self.get_table_ownership(
+        self.resolve_table_ownership(
                 temporary_session,
                 &session_output.0,
                 &session_output.2, 
-                &session_output.4,
-                data_cache
+                &mut data_cache
             )
             .map_err(|e| {
-                println!("[VM] get_table_ownership error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+                println!("[VM] resolve_table_ownership error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                 e.into_vm_status()
             })?;
 
+        let accounts_table_size_changes = self.resolve_table_size_change_by_account(
+            &session_output.2, 
+            &session_output.4,
+            &mut data_cache   
+        )
+                .map_err(|e| {
+            println!("[VM] resolve_table_size_change_by_account error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+            e.into_vm_status()
+        })?;
+        session_output.3.merge(accounts_table_size_changes);
+
+        let meta_change_set = data_cache.into_change_set()            
+        .map_err(|e| {
+            let e = e.finish(Location::Undefined);
+            println!("[VM] table meta change set making error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+            e.into_vm_status()
+        })?;
+
+        
         // Charge for change set
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
         let (status, output) =
-            self.success_message_cleanup(session_output, Some(owner_change_set), gas_meter)?;
+            self.success_message_cleanup(session_output, Some(meta_change_set), gas_meter)?;
 
         Ok((status, output, res.into()))
     }
@@ -480,31 +497,22 @@ impl NovaVM {
             .finish(Location::Undefined)
     }
 
-    fn get_table_ownership<
+    fn resolve_table_ownership<
         S: TableMetaResolver + MoveResolver + TableResolver + StoredSizeResolver,
     >(
         &self,
         session: SessionExt<'_, '_, S>,
         change_set: &ChangeSet,
         table_change_set: &TableChangeSet,
-        table_size_change: &SizeChangeSet<TableHandle>,
-        mut table_owner_data_cache: TableOwnerDataCache<'_, S>,
-    ) -> VMResult<TableMetaChangeSet> {
-        let mut accounts_delta: SizeChangeSet<AccountAddress> = SizeChangeSet::default();
+        table_owner_data_cache: &mut TableOwnerDataCache<'_, S>,
+    ) -> VMResult<()> {
 
-        // store new tables' value type
         let new_tables = &table_change_set.borrow().new_tables;
 
         println!("new table {:?}", table_change_set.new_tables);
         println!("remove table {:?}", table_change_set.removed_tables);
 
         for i in table_change_set.removed_tables.iter() {
-            if let Some(removing_size) = table_owner_data_cache.get_size(i)? {
-                let acc = table_owner_data_cache.get_root_owner(i)?.unwrap();
-                let delta = SizeDelta::new(removing_size, 0);
-                accounts_delta.insert_size(acc, delta);
-            };
-
             table_owner_data_cache.del_owner(i);
             table_owner_data_cache.del_size(i);
         }
@@ -521,52 +529,78 @@ impl NovaVM {
                     // address is new table's handle or
                     // already stored table's handle
 
-                    if new_tables.contains_key(&found_handle) {
-                        table_owner_data_cache.set_owner(&found_handle, *addr);
-                    }
-                    else if let Some(old_owner) = table_owner_data_cache.get_root_owner(&found_handle)? {  // also means this is table address
-                        if let Some(size) = table_owner_data_cache.get_size(&found_handle)? {
-                            accounts_delta.move_size(old_owner, *addr, size);
-                        }
+                    if new_tables.contains_key(&found_handle) || table_owner_data_cache.is_registerd_table(&found_handle)? {
                         table_owner_data_cache.set_owner(&found_handle, *addr);
                     }
                 }
             }
         }
 
-        // let mut table_in_table_ownership: BTreeMap<TableHandle, TableHandle> = BTreeMap::default();
-        for (handle, change) in table_change_set.changes.iter() {
+        for (outer_handle, change) in table_change_set.changes.iter() {
             for (_key, op) in &change.entries {
                 let res = find_all_address_occur(op,  &change.value_layout)?;
 
                 for address_found in res.iter() {
                     let found_handle = TableHandle(*address_found);
-                    if new_tables.contains_key(&found_handle) {
-                        table_owner_data_cache.set_owner(&found_handle, handle.0);
-                    }
-                    else if let Some(old_owner) = table_owner_data_cache.get_root_owner(&found_handle)? {
-                        table_owner_data_cache.set_owner(&found_handle, handle.0);
-                        if let Some(size) = table_owner_data_cache.get_size(&found_handle)? {
-                            let new_owner = table_owner_data_cache.get_root_owner(&found_handle)?.unwrap();
-                            accounts_delta.move_size(old_owner, new_owner, size);
-                        }
-
+                    if new_tables.contains_key(&found_handle) || table_owner_data_cache.is_registerd_table(&found_handle)? {
+                        table_owner_data_cache.set_owner(&found_handle, outer_handle.0);
                     }
                 }
             }
         }
+        Ok(())
+    }
 
+    fn resolve_table_size_change_by_account<
+        S: TableMetaResolver + MoveResolver + TableResolver + StoredSizeResolver,
+    >(
+        &self,
+        table_change_set: &TableChangeSet,
+        table_size_change: &SizeChangeSet<TableHandle>,
+        // table_meta_change_set: &TableMetaChangeSet,
+        table_owner_data_cache: &mut TableOwnerDataCache<'_, S>,
+    ) -> VMResult<AccountSizeChangeSet> {
+        let mut accounts_delta: AccountSizeChangeSet = AccountSizeChangeSet::default();
+
+
+        println!("new table {:?}", table_change_set.new_tables);
+        println!("remove table {:?}", table_change_set.removed_tables);
+
+        // handle previous size
+        for (handle, owner) in table_owner_data_cache.get_owner_changes().into_iter() {
+            let size = match table_owner_data_cache.get_size(handle)? {
+                Some(s) => s,
+                None => {continue;},    // skip new table
+            };
+            
+            match owner {
+                Some(new_owner) => {
+                        let old_owner = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+                        accounts_delta.move_size(old_owner, new_owner.clone(), size);
+                    },
+                None => {
+                    let acc = table_owner_data_cache.get_root_owner(handle)?.unwrap();
+                    let delta = SizeDelta::decreasing(size);
+                    accounts_delta.insert_size(acc, delta);
+                },
+            }
+        }
         println!("table size owning???? {:?}", accounts_delta);
 
+        
+        // handle size changes
         for (handle, size_delta) in table_size_change.changes() {
-            // todo: should check deleted table??
+            // todo: should check deleted table?? yes
+            if table_change_set.removed_tables.contains(handle) {
+                continue;
+            }
             let owner = table_owner_data_cache.get_root_owner(handle)?.unwrap();
             
             accounts_delta.insert_size(owner, size_delta.clone());
 
             let current_size = table_owner_data_cache.get_size(&handle)?.unwrap_or(0);
 
-            let mut delta = SizeDelta::new(0, current_size);
+            let mut delta = SizeDelta::increasing( current_size);
             delta.merge(size_delta.clone());
             if delta.is_decrease {
                 panic!("dsdads");
@@ -578,11 +612,7 @@ impl NovaVM {
 
         println!("{:?}", accounts_delta);
 
-        let change_set = table_owner_data_cache
-            .into_change_set()
-            .map_err(|e| e.finish(Location::Undefined))?;
-
-        Ok(change_set)
+        Ok(accounts_delta)
     }
 }
 

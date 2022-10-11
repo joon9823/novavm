@@ -160,6 +160,13 @@ impl<'r, S: TableMetaResolver> TableOwnerDataCache<'r, S> {
         }
     }
 
+    pub fn get_owner_changes(&self) -> BTreeMap<&TableHandle, Option<&AccountAddress>> {
+        self.table_owner
+            .iter()
+            .map(|(handle, cache)| (handle, cache.get_owner()))
+            .collect()
+    }
+
     pub fn into_change_set(self) -> PartialVMResult<TableMetaChangeSet> {
         let mut owner = BTreeMap::new();
         for (handle, val) in self.table_owner {
