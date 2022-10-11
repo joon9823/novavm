@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
-use self::size_change_set::SizeChangeSet;
+use self::size_change_set::AccountSizeChangeSet;
 use crate::natives::table::TableChangeSet;
 use crate::table_owner::TableMetaChangeSet;
 
@@ -231,7 +231,7 @@ pub struct MessageOutput {
     change_set: ChangeSet,
     events: Vec<Event>,
     table_change_set: TableChangeSet,
-    size_change_set: SizeChangeSet,
+    size_change_set: AccountSizeChangeSet,
     table_owner_change_set: TableMetaChangeSet,
 
     /// The amount of gas used during execution.
@@ -246,7 +246,7 @@ impl MessageOutput {
         change_set: ChangeSet,
         events: Vec<Event>,
         table_change_set: TableChangeSet,
-        size_change_set: SizeChangeSet,
+        size_change_set: AccountSizeChangeSet,
         table_owner_change_set: TableMetaChangeSet,
         gas_used: u64,
         status: MessageStatus,
@@ -270,7 +270,7 @@ impl MessageOutput {
         &self.table_change_set
     }
 
-    pub fn size_change_set(&self) -> &SizeChangeSet {
+    pub fn size_change_set(&self) -> &AccountSizeChangeSet{
         &self.size_change_set
     }
 
@@ -296,7 +296,7 @@ impl MessageOutput {
         ChangeSet,
         TableChangeSet,
         TableMetaChangeSet,
-        SizeChangeSet,
+        AccountSizeChangeSet,
         Vec<Event>,
         u64,
         MessageStatus,

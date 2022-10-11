@@ -119,8 +119,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
             let inner_output = output.into_inner();
             state.push_write_set(inner_output.0, inner_output.1, inner_output.2);
 
-            println!("size change of accounts {:?}", &inner_output.3.accounts);
-            println!("size change of tables {:?}", &inner_output.3.tables);
+            println!("size change of accounts {:?}", &inner_output.3);
         }
 
         if should_commit {

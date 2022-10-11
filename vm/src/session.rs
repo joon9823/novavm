@@ -4,6 +4,12 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use crate::size_change_set::SizeDelta;
+use crate::{access_path::AccessPath, storage::data_view_resolver::StoredSizeResolver};
+use crate::{
+    natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver},
+    size_change_set::SizeChangeSet,
+};
 use move_deps::{
     move_binary_format::errors::Location,
     move_core_types::{
@@ -15,14 +21,14 @@ use move_deps::{
     },
     move_vm_runtime::session::Session,
 };
-use crate::natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver};
-use crate::{
-    access_path::AccessPath,
-    size_change_set::{SizeChangeSet, SizeDelta},
-    storage::data_view_resolver::StoredSizeResolver,
-};
 
-pub type SessionOutput = (ChangeSet, Vec<Event>, TableChangeSet, SizeChangeSet);
+pub type SessionOutput = (
+    ChangeSet,
+    Vec<Event>,
+    TableChangeSet,
+    SizeChangeSet<AccountAddress>,
+    SizeChangeSet<TableHandle>,
+);
 
 pub struct SessionExt<'r, 'l, S> {
     remote: &'r S,
@@ -47,55 +53,62 @@ where
             .into_change_set()
             .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;
 
-        let mut account_size_change: BTreeMap<AccountAddress, SizeDelta> = BTreeMap::default();
-        let mut table_size_change: BTreeMap<TableHandle, SizeDelta> = BTreeMap::default();
+        let account_size_change: BTreeMap<AccountAddress, SizeDelta> = change_set
+            .borrow()
+            .accounts()
+            .iter()
+            .map(|f| {
+                let mut account_delta = SizeDelta::zero();
+                let addr = f.0;
+                let account_change_set = f.1;
+                for (i, op) in account_change_set.modules().iter() {
+                    let ap = AccessPath::from(&ModuleId::new(addr.clone(), i.clone()));
+                    let prev = self.remote.get_size(&ap).expect("hey").clone();
+                    let new = get_kv_stored_size(&ap, op);
+                    let delta = SizeDelta::new(prev, new);
+                    println!("module size {} : {} => {} : {}", ap, prev, new, delta);
+                    account_delta.merge(delta);
+                }
 
-        change_set.borrow().accounts().iter().for_each(|f| {
-            let mut account_delta = SizeDelta::zero();
-            let addr = f.0;
-            let account_change_set = f.1;
-            for (i, op) in account_change_set.modules().iter() {
-                let ap = AccessPath::from(&ModuleId::new(addr.clone(), i.clone()));
-                let prev = self.remote.get_size(&ap).expect("hey").clone();
-                let new = get_kv_stored_size(&ap, op);
-                let delta = SizeDelta::new(prev, new);
-                println!("module size {} : {} => {} : {}", ap, prev, new, delta);
-                account_delta.merge(delta);
-            }
+                for (i, op) in account_change_set.resources().iter() {
+                    let ap = AccessPath::resource_access_path(addr.clone(), i.clone());
+                    let prev = self.remote.get_size(&ap).expect("hey").clone();
+                    let new = get_kv_stored_size(&ap, op);
 
-            for (i, op) in account_change_set.resources().iter() {
-                let ap = AccessPath::resource_access_path(addr.clone(), i.clone());
-                let prev = self.remote.get_size(&ap).expect("hey").clone();
-                let new = get_kv_stored_size(&ap, op);
+                    let delta = SizeDelta::new(prev, new);
+                    println!("resource size {} : {} => {} : {}", ap, prev, new, delta);
+                    account_delta.merge(delta);
+                }
 
-                let delta = SizeDelta::new(prev, new);
-                println!("resource size {} : {} => {} : {}", ap, prev, new, delta);
-                account_delta.merge(delta);
-            }
+                println!("account delta : {}", account_delta);
+                return (addr.clone(), account_delta);
+            })
+            .collect();
 
-            println!("account delta : {}", account_delta);
-            account_size_change.insert(addr.clone(), account_delta);
-        });
+        let table_size_change: BTreeMap<TableHandle, SizeDelta> = table_change_set
+            .changes
+            .iter()
+            .map(|(handle, change)| {
+                let mut table_delta = SizeDelta::zero();
+                for (key, op) in &change.entries {
+                    let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+                    let prev = self.remote.get_size(&ap).expect("hey").clone();
+                    let new = get_kv_stored_size(&ap, op);
+                    let delta = SizeDelta::new(prev, new);
 
-        for (handle, change) in table_change_set.changes.iter() {
-            let mut table_delta = SizeDelta::zero();
-            for (key, op) in &change.entries {
-                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-                let prev = self.remote.get_size(&ap).expect("hey").clone();
-                let new = get_kv_stored_size(&ap, op);
-                let delta = SizeDelta::new(prev, new);
-
-                println!("table size {} : {} => {} : {}", ap, prev, new, delta);
-                table_delta.merge(delta);
-            }
-            table_size_change.insert(handle.clone(), table_delta);
-        }
+                    println!("table size {} : {} => {} : {}", ap, prev, new, delta);
+                    table_delta.merge(delta);
+                }
+                return (handle.clone(), table_delta);
+            })
+            .collect();
 
         Ok((
             change_set,
             events,
             table_change_set,
-            SizeChangeSet::new(account_size_change, table_size_change),
+            SizeChangeSet::new(account_size_change),
+            SizeChangeSet::new(table_size_change),
         ))
     }
 }

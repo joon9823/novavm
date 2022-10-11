@@ -1,21 +1,53 @@
 use crate::natives::table::TableHandle;
 use move_deps::move_core_types::account_address::AccountAddress;
 
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::fmt;
 
-#[derive(Default)]
-pub struct SizeChangeSet {
-    pub accounts: BTreeMap<AccountAddress, SizeDelta>,
-    pub tables: BTreeMap<TableHandle, SizeDelta>,
+pub type AccountSizeChangeSet = SizeChangeSet<AccountAddress>;
+pub type TablsSizeChangeSet = SizeChangeSet<TableHandle>;
+
+#[derive(Debug)]
+pub struct SizeChangeSet<T>(BTreeMap<T, SizeDelta>);
+
+impl<T: Clone + Ord> Default for SizeChangeSet<T> {
+    fn default() -> Self {
+        Self(BTreeMap::default())
+    }
 }
 
-impl SizeChangeSet {
-    pub fn new(
-        accounts: BTreeMap<AccountAddress, SizeDelta>,
-        tables: BTreeMap<TableHandle, SizeDelta>,
-    ) -> Self {
-        Self { accounts, tables }
+impl<T: Clone + Ord> SizeChangeSet<T> {
+    pub fn new(map: BTreeMap<T, SizeDelta>) -> SizeChangeSet<T> {
+        Self(map)
+    }
+
+    pub fn changes(&self)  -> &BTreeMap<T, SizeDelta> {
+        &self.0
+    }
+    pub fn into_inner(self) -> BTreeMap<T, SizeDelta> {
+        self.0
+    }
+    
+    pub fn insert_size(&mut self, key: T, value: SizeDelta) {
+        match self.0.entry(key) {
+            Entry::Vacant(e) => {
+                if value.amount != 0 {
+                    e.insert(value);
+                }
+            }
+            Entry::Occupied(mut e) => {
+                e.get_mut().merge(value);
+                if e.get().amount == 0 {
+                    e.remove_entry();
+                }
+            }
+        };
+    }
+
+    pub fn move_size(&mut self, from: T, to: T, size: usize) {
+        self.0.insert(from, SizeDelta::decreasing(size));
+        self.0.insert(to, SizeDelta::increasing(size));
     }
 }
 
@@ -37,6 +69,20 @@ impl SizeDelta {
         Self {
             amount: new.abs_diff(old),
             is_decrease: new < old,
+        }
+    }
+
+    pub fn increasing(amount: usize) -> Self {
+        Self {
+            amount,
+            is_decrease: false,
+        }
+    }
+
+    pub fn decreasing(amount: usize) -> Self {
+        Self {
+            amount,
+            is_decrease: true,
         }
     }
 

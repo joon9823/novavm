@@ -15,6 +15,7 @@ use novavm::Message;
 use novavm::Module;
 use novavm::ModuleBundle;
 use novavm::NovaVM;
+use novavm::table_owner::TableMetaType;
 use novavm::{EntryFunction, Script};
 
 use move_deps::move_core_types::account_address::AccountAddress;
@@ -204,7 +205,12 @@ pub fn push_write_set(
     }
 
     for (handle, op) in &table_owner_change_set.owner {
-        let ap = AccessPath::table_meta_access_path(handle.0);
+        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
+        write_op(go_storage, &ap, &op)?;
+    }
+    
+    for (handle, op) in &table_owner_change_set.size{
+        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
         write_op(go_storage, &ap, &op)?;
     }
 
