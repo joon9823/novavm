@@ -18,7 +18,7 @@ RUN yum -y update \
   && yum install -y glibc-aarch64-linux-gnu-2.24-2.sdl7.2.noarch.rpm \
   && yum install -y glibc-aarch64-linux-gnu-devel-2.24-2.sdl7.2.noarch.rpm \
   && rm glibc-aarch64-*.rpm \
-  && yum install -y openssl-devel pkg-config perl
+  && yum install -y pkg-config perl
 
 # GET FROM https://github.com/rust-lang/docker-rust-nightly
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -58,16 +58,33 @@ RUN wget http://mirror.centos.org/altarch/7/os/aarch64/Packages/libgcc-4.8.5-44.
   && cp /code/lib64/libgcc_s-4.8.5-20150702.so.1 /usr/lib/gcc/aarch64-linux-gnu/4.8.5/libgcc_s.so \
   && rm libgcc-*.el7.aarch64.rpm
 
-# Install openssl for cross-compilation. This is required by Move
-RUN wget "https://www.openssl.org/source/openssl-1.1.1k.tar.gz" \
-  && tar -zxvf ./openssl-1.1.1k.tar.gz \
+#############
+## OPENSSL ##
+#############
+
+RUN wget "https://www.openssl.org/source/openssl-1.1.1k.tar.gz"
+
+# Install openssl for x86_64. This is required by Move
+RUN tar -zxvf ./openssl-1.1.1k.tar.gz \
   && cd openssl-1.1.1k \
-  && INSTALL_DIR="/opt/aarch64-openssl" \
-  && ./Configure linux-aarch64 --cross-compile-prefix=aarch64-linux-gnu- --prefix="$INSTALL_DIR" threads shared \
+  && INSTALL_DIR="/opt/x86_64-openssl" \
+  && ./Configure linux-x86_64 --prefix="$INSTALL_DIR" threads no-shared \
   && make -j$(nproc) \
   && make install_sw \
   && cd .. \
   && rm -rf ./openssl-1.1.1k
+
+# Install openssl for cross-compilation. This is required by Move
+RUN tar -zxvf ./openssl-1.1.1k.tar.gz \
+  && cd openssl-1.1.1k \
+  && INSTALL_DIR="/opt/aarch64-openssl" \
+  && ./Configure linux-aarch64 --cross-compile-prefix=aarch64-linux-gnu- --prefix="$INSTALL_DIR" threads no-shared \
+  && make -j$(nproc) \
+  && make install_sw \
+  && cd .. \
+  && rm -rf ./openssl-1.1.1k
+
+RUN rm ./openssl-1.1.1k.tar.gz
 
 WORKDIR /code/libnovaproc
 

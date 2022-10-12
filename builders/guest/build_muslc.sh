@@ -8,6 +8,7 @@ mkdir -p artifacts
 export PKG_CONFIG_ALLOW_CROSS=1
 
 echo "Starting x86_64-unknown-linux-musl build"
+export OPENSSL_DIR=/opt/x86_64-openssl
 cargo build --release --target x86_64-unknown-linux-musl --example muslc
 cp target/x86_64-unknown-linux-musl/release/examples/libmuslc.a artifacts/libnovaproc_muslc.a
 

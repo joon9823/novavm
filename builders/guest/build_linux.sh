@@ -13,6 +13,8 @@ export PKG_CONFIG_ALLOW_CROSS=1
 echo "Starting x86_64-unknown-linux-gnu build"
 export CC=clang
 export CXX=clang++
+export OPENSSL_STATIC=1
+export OPENSSL_DIR=/opt/x86_64-openssl
 cargo build --release --target x86_64-unknown-linux-gnu
 cp target/x86_64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.x86_64.so
 
@@ -23,6 +25,7 @@ export AR_aarch64_unknown_linux_gnu=llvm-ar
 export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=/usr/aarch64-linux-gnu"
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
+export OPENSSL_STATIC=1
 export OPENSSL_DIR=/opt/aarch64-openssl
 
 # build libnovaproc for aarch64
