@@ -46,8 +46,8 @@ use crate::{
         nova_natives,
     },
     session::{SessionExt, SessionOutput},
-    storage::data_view_resolver::{StoredSizeResolver},
-    table_meta::{resolve_table_ownership, resolve_table_size_change_by_account , TableMetaChangeSet, TableMetaDataCache},
+    storage::data_view_resolver::StoredSizeResolver,
+    table_meta::{TableMetaChangeSet,resolve_table_size_change},
     NovaVMError,
 };
 
@@ -304,43 +304,26 @@ impl NovaVM {
 
         let temporary_session = self.create_session(remote_cache, session_id);
         
-        // TODO: getting table size changes seems to be done in one function
-        let mut data_cache = TableMetaDataCache::new(remote_cache);
-
-        resolve_table_ownership(
-                temporary_session,
-                &session_output.0,
-                &session_output.2, 
-                &mut data_cache
-            )
+        let (accounts_table_size_changes, table_meta_change_set) = resolve_table_size_change(
+            temporary_session,
+            &session_output.0,
+            &session_output.2, 
+            &session_output.4,
+            &remote_cache,
+        )
             .map_err(|e| {
-                println!("[VM] resolve_table_ownership error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
+                println!("[VM] resolve_table_size_change error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
                 e.into_vm_status()
             })?;
 
-        let accounts_table_size_changes = resolve_table_size_change_by_account(
-            &session_output.2, 
-            &session_output.4,
-            &mut data_cache   
-        )
-                .map_err(|e| {
-            println!("[VM] resolve_table_size_change_by_account error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
-            e.into_vm_status()
-        })?;
+        // merge table size changes from above
+        // into account size changes
         session_output.3.merge(accounts_table_size_changes);
-
-        let meta_change_set = data_cache.into_change_set()            
-        .map_err(|e| {
-            let e = e.finish(Location::Undefined);
-            println!("[VM] table meta change set making error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
-            e.into_vm_status()
-        })?;
-
         
         // Charge for change set
         gas_meter.charge_change_set_gas(session_output.0.accounts())?;
         let (status, output) =
-            self.success_message_cleanup(session_output, Some(meta_change_set), gas_meter)?;
+            self.success_message_cleanup(session_output, Some(table_meta_change_set), gas_meter)?;
 
         Ok((status, output, res.into()))
     }

@@ -24,7 +24,9 @@ mod data_cache;
 mod effects;
 mod find_address_visitor;
 
-pub use data_cache::{TableMetaChangeSet, TableMetaDataCache};
+pub use data_cache::TableMetaChangeSet;
+use data_cache::TableMetaDataCache;
+
 use find_address_visitor::FindingAddressVisitor;
 
 #[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Debug, Serialize, Deserialize)]
@@ -101,7 +103,7 @@ fn filter_table_handle<S: TableMetaResolver>(
     Ok(res)
 }
 
-pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
+fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
     session: SessionExt<'_, '_, S>,
     change_set: &ChangeSet,
     table_change_set: &TableChangeSet,
@@ -139,7 +141,7 @@ pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
     Ok(())
 }
 
-pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
+fn resolve_table_size_change_by_account<S: TableMetaResolver>(
     table_change_set: &TableChangeSet,
     table_size_change: &SizeChangeSet<TableHandle>,
     data_cache: &mut TableMetaDataCache<'_, S>,
@@ -198,4 +200,25 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
     }
 
     Ok(accounts_delta)
+}
+
+pub fn resolve_table_size_change<S: TableMetaResolver + MoveResolver>(
+    session: SessionExt<'_, '_, S>,
+    change_set: &ChangeSet,
+    table_change_set: &TableChangeSet,
+    table_size_change: &SizeChangeSet<TableHandle>,
+    remote: &S,
+) -> VMResult<(AccountSizeChangeSet, TableMetaChangeSet)> {
+    let mut data_cache = TableMetaDataCache::new(remote);
+
+    resolve_table_ownership(session, change_set, table_change_set, &mut data_cache)?;
+
+    let accounts_table_size_changes =
+        resolve_table_size_change_by_account(table_change_set, table_size_change, &mut data_cache)?;
+
+    let meta_change_set = data_cache
+        .into_change_set()
+        .map_err(|e| e.finish(Location::Undefined))?;
+
+    return Ok((accounts_table_size_changes, meta_change_set));
 }
