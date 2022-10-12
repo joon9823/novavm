@@ -12,9 +12,16 @@ impl Clean {
         let path = match path{
             Some(p) => p,
             None => Path::new(".").to_path_buf(),
-        }.join("build");
+        };
 
-        let res = std::fs::remove_dir_all(path);
+        let toml_path = path.join("Move.toml");
+        if !(toml_path.join("Move.toml").exists()) {
+            bail!("move package not fount in {}", toml_path.to_string_lossy())
+        }
+        
+        let package_path= path.join("build");
+
+        let res = std::fs::remove_dir_all(package_path);
         match res {
             Ok(_) => {
                 let move_home = &*MOVE_HOME;
