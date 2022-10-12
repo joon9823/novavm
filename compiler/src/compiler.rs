@@ -15,9 +15,6 @@ use std::fmt;
 use crate::Clean;
 use crate::New;
 
-/// Default directory where saved Move resources live
-pub const DEFAULT_STORAGE_DIR: &str = "storage";
-
 type NativeFunctionRecord = (AccountAddress, Identifier, Identifier, NativeFunction);
 
 pub enum Command {
