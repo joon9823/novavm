@@ -15,8 +15,8 @@ impl Clean {
         };
 
         let toml_path = path.join("Move.toml");
-        if !(toml_path.join("Move.toml").exists()) {
-            bail!("move package not fount in {}", toml_path.to_string_lossy())
+        if !(toml_path.is_file()) {
+            bail!("move package not found in {}", toml_path.to_string_lossy())
         }
         
         let package_path= path.join("build");
