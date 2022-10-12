@@ -169,6 +169,40 @@ func CreateContractPackage(arg types.NovaCompilerArgument, name string) ([]byte,
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
+func CleanContractPackage(arg types.NovaCompilerArgument, cleanCache bool) ([]byte, error) {
+	var err error
+
+	errmsg := newUnmanagedVector(nil)
+	buildConfig := arg.BuildConfig
+
+	pathBytesView := makeView([]byte(arg.PackagePath))
+	defer runtime.KeepAlive(pathBytesView)
+	installDirBytesView := makeView([]byte(arg.BuildConfig.InstallDir))
+	defer runtime.KeepAlive(installDirBytesView)
+
+	compArg := C.NovaCompilerArgument{
+		package_path: pathBytesView,
+		verbose:      cbool(arg.Verbose),
+		build_config: C.NovaCompilerBuildConfig{
+			dev_mode:            cbool(buildConfig.DevMode),
+			test_mode:           cbool(buildConfig.TestMode),
+			generate_docs:       cbool(buildConfig.GenerateDocs),
+			generate_abis:       cbool(buildConfig.GenerateABIs),
+			install_dir:         installDirBytesView,
+			force_recompilation: cbool(buildConfig.ForceRecompilation),
+			fetch_deps_only:     cbool(buildConfig.FetchDepsOnly),
+		},
+	}
+
+	res, err := C.clean_move_package(&errmsg, compArg, cbool(cleanCache))
+	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
+		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
+		return nil, errorWithMessage(err, errmsg)
+	}
+
+	return copyAndDestroyUnmanagedVector(res), err
+}
+
 func CheckCoverageContractPackage(arg types.NovaCompilerArgument, summaryOpt interface{}) ([]byte, error) {
 	var err error
 

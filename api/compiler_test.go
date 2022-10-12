@@ -61,6 +61,13 @@ func Test_CreateNewContract(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
+func Test_CleanContract(t *testing.T) {
+	nova_arg := types.NewNovaCompilerArgument(packagePath, false, types.DefaultBuildConfig())
+	res, err := CleanContractPackage(nova_arg, true)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+
 /* FIXME: same as compiler_test.rs, temporaraily blocked this test: revive this after adding dotnet action into workflows
 func Test_ProveContract(t *testing.T) {
 	tmpPath := path.Join(workingDir, "../compiler/testdata/prove")

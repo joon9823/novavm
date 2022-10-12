@@ -303,6 +303,21 @@ pub extern "C" fn create_new_move_package(
 }
 
 #[no_mangle]
+pub extern "C" fn clean_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    nova_args: NovaCompilerArgument,
+    clean_cache: bool,
+) -> UnmanagedVector {
+    let cmd = Command::Clean(nova_compiler::Clean { clean_cache });
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
 pub extern "C" fn check_coverage_move_package(
     errmsg: Option<&mut UnmanagedVector>,
     nova_args: NovaCompilerArgument,

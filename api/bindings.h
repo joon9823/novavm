@@ -468,6 +468,10 @@ UnmanagedVector check_coverage_move_package(UnmanagedVector *errmsg,
                                             NovaCompilerArgument nova_args,
                                             NovaCompilerCheckCoverageOption chkcov_opt);
 
+UnmanagedVector clean_move_package(UnmanagedVector *errmsg,
+                                   NovaCompilerArgument nova_args,
+                                   bool clean_cache);
+
 UnmanagedVector create_new_move_package(UnmanagedVector *errmsg,
                                         NovaCompilerArgument nova_args,
                                         ByteSliceView name_view);
