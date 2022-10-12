@@ -262,13 +262,6 @@ typedef struct {
 } NovaCompilerArgument;
 
 typedef struct {
-  CoverageOption summary_mode;
-  bool functions;
-  bool output_csv;
-  ByteSliceView module_name;
-} NovaCompilerCheckCoverageOption;
-
-typedef struct {
   uint8_t _private[0];
 } db_t;
 
@@ -298,21 +291,6 @@ typedef struct {
 } Db;
 
 typedef struct {
-  /**
-   * Start a disassembled bytecode-to-source explorer
-   */
-  bool interactive;
-  /**
-   * The package name. If not provided defaults to current package modules only
-   */
-  ByteSliceView package_name;
-  /**
-   * The name of the module or script in the package to disassemble
-   */
-  ByteSliceView module_or_script_name;
-} NovaCompilerDisassembleOption;
-
-typedef struct {
   uint8_t _private[0];
 } api_t;
 
@@ -324,95 +302,6 @@ typedef struct {
   const api_t *state;
   GoApi_vtable vtable;
 } GoApi;
-
-typedef struct {
-  /**
-   * The level where we start sectioning. Often markdown sections are rendered with
-   * unnecessary large section fonts, setting this value high reduces the size
-   * set 0 for default
-   */
-  size_t section_level_start;
-  /**
-   * Whether to exclude private functions in the generated docs
-   */
-  bool exclude_private_fun;
-  /**
-   * Whether to exclude specifications in the generated docs
-   */
-  bool exclude_specs;
-  /**
-   * Whether to put specifications in the same section as a declaration or put them all
-   * into an independent section
-   */
-  bool independent_specs;
-  /**
-   * Whether to exclude Move implementations
-   */
-  bool exclude_impl;
-  /**
-   * Max depth to which sections are displayed in table-of-contents
-   * /set 0 for default
-   */
-  size_t toc_depth;
-  /**
-   * Do not use collapsed sections (<details>) for impl and specs
-   */
-  bool no_collapsed_sections;
-  /**
-   * In which directory to store output
-   */
-  ByteSliceView output_directory;
-  /**
-   * A template for documentation generation. Can be multiple
-   * delimiter: , (comma)
-   */
-  ByteSliceView template_;
-  /**
-   * An optional file containing reference definitions. The content of this file will
-   * be added to each generated markdown doc
-   */
-  ByteSliceView references_file;
-  /**
-   * Whether to include dependency diagrams in the generated docs
-   */
-  bool include_dep_diagrams;
-  /**
-   * Whether to include call diagrams in the generated docs
-   */
-  bool include_call_diagrams;
-  /**
-   * If this is being compiled relative to a different place where it will be stored (output directory)
-   */
-  bool compile_relative_to_output_dir;
-} NovaCompilerDocgenOption;
-
-typedef struct {
-  /**
-   * The prefix that all error reasons within modules will be prefixed with, e.g., "E" if
-   * all error reasons are "E_CANNOT_PERFORM_OPERATION", "E_CANNOT_ACCESS", etc.
-   */
-  ByteSliceView error_prefix;
-  /**
-   * The file to serialize the generated error map to.
-   */
-  ByteSliceView output_file;
-} NovaCompilerErrmapOption;
-
-typedef struct {
-  /**
-   * The target filter used to prune the modules to verify. Modules with a name that contains
-   * this string will be part of verification.
-   */
-  ByteSliceView target_filter;
-  /**
-   * Internal field indicating that this prover run is for a test.
-   */
-  bool for_test;
-  /**
-   * Any options passed to the prover.
-   */
-  ByteSliceView options;
-} NovaCompilerProveOption;
 
 typedef struct {
   /**
@@ -464,10 +353,6 @@ vm_t *allocate_vm(void);
 
 UnmanagedVector build_move_package(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
 
-UnmanagedVector check_coverage_move_package(UnmanagedVector *errmsg,
-                                            NovaCompilerArgument nova_args,
-                                            NovaCompilerCheckCoverageOption chkcov_opt);
-
 UnmanagedVector clean_move_package(UnmanagedVector *errmsg,
                                    NovaCompilerArgument nova_args,
                                    bool clean_cache);
@@ -486,10 +371,6 @@ UnmanagedVector decode_move_resource(Db db,
 UnmanagedVector decode_script_bytes(UnmanagedVector *errmsg, ByteSliceView script_bytes);
 
 void destroy_unmanaged_vector(UnmanagedVector v);
-
-UnmanagedVector disassemble_move_package(UnmanagedVector *errmsg,
-                                         NovaCompilerArgument nova_args,
-                                         NovaCompilerDisassembleOption disassemble_opt);
 
 UnmanagedVector execute_contract(vm_t *vm_ptr,
                                  Db db,
@@ -511,31 +392,13 @@ UnmanagedVector execute_script(vm_t *vm_ptr,
                                ByteSliceView sender,
                                ByteSliceView message);
 
-UnmanagedVector generate_docs(UnmanagedVector *errmsg,
-                              NovaCompilerArgument nova_args,
-                              NovaCompilerDocgenOption docgen_opt);
-
-UnmanagedVector generate_error_map(UnmanagedVector *errmsg,
-                                   NovaCompilerArgument nova_args,
-                                   NovaCompilerErrmapOption errmap_opt);
-
-UnmanagedVector get_move_package_info(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
-
 void initialize(vm_t *vm_ptr,
                 Db db,
                 bool _verbose,
                 UnmanagedVector *errmsg,
                 ByteSliceView module_bundle);
 
-UnmanagedVector movey_login(UnmanagedVector *errmsg);
-
-UnmanagedVector movey_upload(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
-
 UnmanagedVector new_unmanaged_vector(bool nil, const uint8_t *ptr, size_t length);
-
-UnmanagedVector prove_move_package(UnmanagedVector *errmsg,
-                                   NovaCompilerArgument nova_args,
-                                   NovaCompilerProveOption prove_opt);
 
 /**
  * exported function to publish module bundle

@@ -2,29 +2,19 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
-use crate::compiler::{NovaCompilerArgument, NovaCompilerTestOption, NovaCompilerDisassembleOption, NovaCompilerProveOption, NovaCompilerDocgenOption, NovaCompilerErrmapOption, NovaCompilerCheckCoverageOption};
+use crate::compiler::{NovaCompilerArgument, NovaCompilerTestOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
-use move_deps::move_cli::base::coverage::Coverage;
-use move_deps::move_cli::base::info::Info;
-use move_deps::move_cli::base::movey_login::MoveyLogin;
-use move_deps::move_cli::base::movey_upload::MoveyUpload;
 use move_deps::move_core_types::account_address::AccountAddress;
-use move_deps::move_cli::base::{
-    build::Build,
-    // TODO: implement them
-    // coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
-    // info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
-};
+use move_deps::move_cli::base::build::Build;
 use move_deps::move_package::BuildConfig;
 use nova_compiler::New;
 use crate::compiler::{compile, Command};
 use novavm::NovaVM;
-
 
 #[allow(non_camel_case_types)]
 #[repr(C)]
@@ -267,20 +257,6 @@ pub extern "C" fn test_move_package(
 }
 
 #[no_mangle]
-pub extern "C" fn get_move_package_info(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-) -> UnmanagedVector {
-    let cmd = Command::Info(Info);
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
 pub extern "C" fn create_new_move_package(
     errmsg: Option<&mut UnmanagedVector>,
     nova_args: NovaCompilerArgument,
@@ -317,136 +293,11 @@ pub extern "C" fn clean_move_package(
     UnmanagedVector::new(Some(ret))
 }
 
-#[no_mangle]
-pub extern "C" fn check_coverage_move_package(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    chkcov_opt: NovaCompilerCheckCoverageOption,
-) -> UnmanagedVector {
-    let cmd = Command::Coverage(Coverage{options: chkcov_opt.into()});
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn prove_move_package(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    prove_opt: NovaCompilerProveOption,
-) -> UnmanagedVector {
-    let cmd = Command::Prove(prove_opt.into());
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn disassemble_move_package(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    disassemble_opt: NovaCompilerDisassembleOption,
-) -> UnmanagedVector {
-    let cmd = Command::Disassemble(disassemble_opt.into());
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn movey_login(
-    errmsg: Option<&mut UnmanagedVector>,
-    // no compiler argument here
-) -> UnmanagedVector {
-
-    let move_args = generate_default_move_cli(None, false);
-    let cmd = Command::MoveyLogin(MoveyLogin);
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(move_args, cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn movey_upload(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-) -> UnmanagedVector {
-    let cmd = Command::MoveyUpload(MoveyUpload);
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn generate_error_map(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    errmap_opt: NovaCompilerErrmapOption,
-) -> UnmanagedVector {
-
-    let cmd = Command::Errmap(errmap_opt.into());
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-#[no_mangle]
-pub extern "C" fn generate_docs(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    docgen_opt: NovaCompilerDocgenOption,
-) -> UnmanagedVector {
-
-    let cmd = Command::Docgen(docgen_opt.into());
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-
-/* TODO: revive it when we decide to bring all features of nova-compiler back to novad
-#[no_mangle]
-pub extern "C" fn do_experimental(
-    errmsg: Option<&mut UnmanagedVector>,
-    nova_args: NovaCompilerArgument,
-    exp_opt: NovaCompilerExperimentalOption,
-) -> UnmanagedVector {
-
-    let cmd = exp_opt.into();
-
-    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
-        .unwrap_or_else(|_| Err(Error::panic()));
-
-    let ret = handle_c_error_binary(res, errmsg);
-    UnmanagedVector::new(Some(ret))
-}
-*/
-
-
 //
 // internal functions
 //
 
+#[allow(dead_code)]
 fn generate_default_move_cli(package_path_slice: Option<ByteSliceView>, verbose: bool) -> Move {
     let package_path = match package_path_slice {
         None => None,

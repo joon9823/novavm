@@ -164,62 +164,6 @@ func WithComputeCoverage() func(*TestConfig) {
 	}
 }
 
-type CoverageSummary struct {
-	Functions bool
-	OutputCSV bool
-}
-
-type CoverageSource string
-
-type CoverageBytecode string
-
-type DisassembleOption struct {
-	Interactive        bool
-	PackageName        string
-	ModuleOrScriptName string
-}
-
-type ProveOption struct {
-	TargetFilter string
-	ForTest      bool
-	Options      string
-}
-
-type ErrmapOption struct {
-	ErrorPrefix string
-	OutputFile  string
-}
-
-type DocgenOption struct {
-	SectionLevelStart          uint
-	ExcludePrivateFun          bool
-	ExcludeSpecs               bool
-	IndependentSpecs           bool
-	ExcludeImpl                bool
-	TocDeps                    uint
-	NoCollapsedSections        bool
-	OutputDirectory            string
-	Template                   []string
-	ReferencesFile             string
-	IncludeDepDiagrams         bool
-	IncludeCallDiagrams        bool
-	CompileRelativeToOutputDir bool
-}
-
-type ExperimentalCommand_ReadWriteSet struct {
-	ModuleFile string
-	FunName    string
-	Signers    string
-	Args       string
-	TypeArgs   string
-	Concretize uint8
-}
-
-type ExperimentalOption struct {
-	StorageDir string
-	Cmd        interface{}
-}
-
 type NovaCompilerArgument struct {
 	PackagePath string
 	Verbose     bool
