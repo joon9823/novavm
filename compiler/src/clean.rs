@@ -14,9 +14,8 @@ impl Clean {
             None => Path::new(".").to_path_buf(),
         };
 
-        let toml_path = path.join("Move.toml");
-        if !(toml_path.is_file()) {
-            bail!("move package not found in {}", toml_path.to_string_lossy())
+        if !(path.join("Move.toml").is_file()) {
+            bail!("move package not found in {}", path.to_string_lossy())
         }
         
         let package_path= path.join("build");
