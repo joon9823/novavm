@@ -97,6 +97,8 @@ release-build-alpine:
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
+		-v $(shell pwd)/compiler:/code/compiler \
+		$(BUILDERS_PREFIX)-centos7
 		$(BUILDERS_PREFIX)-alpine
 	cp libnovaproc/artifacts/libnovaproc_muslc.a api
 	cp libnovaproc/artifacts/libnovaproc_muslc.aarch64.a api
@@ -113,6 +115,7 @@ release-build-linux:
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
+		-v $(shell pwd)/compiler:/code/compiler \
 		$(BUILDERS_PREFIX)-centos7
 	cp libnovaproc/artifacts/libnovaproc.x86_64.so api
 	cp libnovaproc/artifacts/libnovaproc.aarch64.so api
@@ -126,6 +129,8 @@ release-build-macos:
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
+		-v $(shell pwd)/compiler:/code/compiler \
+		$(BUILDERS_PREFIX)-centos7
 		$(BUILDERS_PREFIX)-cross build_macos.sh
 	cp libnovaproc/artifacts/libnovaproc.dylib api
 	make update-bindings
