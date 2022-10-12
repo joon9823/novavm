@@ -1,27 +1,22 @@
-use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use crate::args::VM_ARG;
+use crate::compiler::{NovaCompilerArgument, NovaCompilerTestOption};
 use crate::error::handle_c_error_default;
 use crate::error::{handle_c_error_binary, Error};
-use crate::move_api::compiler::{move_compiler, Command};
 use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, vm, ByteSliceView, Db, UnmanagedVector};
 
 use move_deps::move_cli::Move;
 use move_deps::move_core_types::account_address::AccountAddress;
-
-use move_deps::move_cli::base::{
-    build::Build,
-    test::Test,
-    // TODO: implement them
-    // coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
-    // info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
-};
-use move_deps::move_package::{Architecture, BuildConfig};
+use move_deps::move_cli::base::build::Build;
+use move_deps::move_package::BuildConfig;
+use nova_compiler::New;
+use crate::compiler::{compile, Command};
 use novavm::NovaVM;
 
+#[allow(non_camel_case_types)]
 #[repr(C)]
 pub struct vm_t {}
 
@@ -235,47 +230,11 @@ pub extern "C" fn decode_script_bytes(
 #[no_mangle]
 pub extern "C" fn build_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
-    verbose: bool,
-    dev_mode: bool,
-    test_mode: bool,
-    generate_docs: bool,
-    generate_abis: bool,
-    install_dir: ByteSliceView,
-    force_recompilation: bool,
-    fetch_deps_only: bool,
+    nova_args: NovaCompilerArgument,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
-
-    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
-    let install_dir_buf = if install_dir_str.len() > 0 {
-        Some(Path::new(&install_dir_str).to_path_buf())
-    } else {
-        None
-    };
-
-    let build_config = BuildConfig {
-        dev_mode,
-        test_mode,
-        generate_docs,
-        generate_abis,
-        install_dir: install_dir_buf,
-        force_recompilation,
-        additional_named_addresses: BTreeMap::new(),
-        architecture: Some(Architecture::Move),
-        fetch_deps_only,
-    };
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose,
-        build_config,
-    };
     let cmd = Command::Build(Build);
 
-    let res = catch_unwind(AssertUnwindSafe(move || move_compiler(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
@@ -285,78 +244,71 @@ pub extern "C" fn build_move_package(
 #[no_mangle]
 pub extern "C" fn test_move_package(
     errmsg: Option<&mut UnmanagedVector>,
-    /* for build config */
-    package_path: ByteSliceView,
-    verbose: bool,
-    dev_mode: bool,
-    test_mode: bool,
-    generate_docs: bool,
-    generate_abis: bool,
-    install_dir: ByteSliceView,
-    force_recompilation: bool,
-    fetch_deps_only: bool,
-    /* for test config */
-    instruction_execution_bound: u64,
-    filter: ByteSliceView,
-    list: bool,
-    num_threads: usize,
-    report_statistics: bool,
-    report_storage_on_error: bool,
-    ignore_compile_warnings: bool,
-    check_stackless_vm: bool,
-    verbose_mode: bool,
-    compute_coverage: bool,
+    nova_args: NovaCompilerArgument,
+    test_opt: NovaCompilerTestOption,
 ) -> UnmanagedVector {
-    let package_path_str = String::from_utf8(package_path.read().unwrap().to_vec()).unwrap();
-    let package_path_buf = Path::new(&package_path_str);
+    let cmd = Command::Test(test_opt.into());
 
-    let install_dir_str = String::from_utf8(install_dir.read().unwrap().to_vec()).unwrap();
-    let install_dir_buf = if install_dir_str.len() > 0 {
-        Some(Path::new(&install_dir_str).to_path_buf())
-    } else {
-        None
-    };
-
-    let build_config = BuildConfig {
-        dev_mode,
-        test_mode,
-        generate_docs,
-        generate_abis,
-        install_dir: install_dir_buf,
-        force_recompilation,
-        additional_named_addresses: BTreeMap::new(),
-        architecture: Some(Architecture::Move),
-        fetch_deps_only,
-    };
-
-    let move_args = Move {
-        package_path: Some(package_path_buf.to_path_buf()),
-        verbose,
-        build_config,
-    };
-
-    let filter_opt = match filter.read() {
-        Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
-        None => None,
-    };
-
-    let test_arg = Test {
-        instruction_execution_bound: Some(instruction_execution_bound),
-        filter: filter_opt,
-        list,
-        num_threads,
-        report_statistics,
-        report_storage_on_error,
-        ignore_compile_warnings,
-        check_stackless_vm,
-        verbose_mode,
-        compute_coverage,
-    };
-    let cmd = Command::Test(test_arg);
-
-    let res = catch_unwind(AssertUnwindSafe(move || move_compiler(move_args, cmd)))
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
 
     let ret = handle_c_error_binary(res, errmsg);
     UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn create_new_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    nova_args: NovaCompilerArgument,
+    name_view: ByteSliceView,
+) -> UnmanagedVector {
+
+    let name: Option<String> = name_view.into();
+
+    let cmd = Command::New(
+        New{
+            name: name.unwrap_or(String::new())
+        }
+    );
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+#[no_mangle]
+pub extern "C" fn clean_move_package(
+    errmsg: Option<&mut UnmanagedVector>,
+    nova_args: NovaCompilerArgument,
+    clean_cache: bool,
+) -> UnmanagedVector {
+    let cmd = Command::Clean(nova_compiler::Clean { clean_cache });
+
+    let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
+        .unwrap_or_else(|_| Err(Error::panic()));
+
+    let ret = handle_c_error_binary(res, errmsg);
+    UnmanagedVector::new(Some(ret))
+}
+
+//
+// internal functions
+//
+
+#[allow(dead_code)]
+fn generate_default_move_cli(package_path_slice: Option<ByteSliceView>, verbose: bool) -> Move {
+    let package_path = match package_path_slice {
+        None => None,
+        Some(slice) => match slice.read(){
+            Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
+            None => None,
+        }
+    };
+    Move{
+        package_path,
+        verbose,
+        build_config: BuildConfig::default()
+    }
 }

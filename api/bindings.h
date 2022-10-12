@@ -14,6 +14,22 @@
 #include <stdlib.h>
 
 
+enum CoverageOption {
+  /**
+   * Display a coverage summary for all modules in this package
+   */
+  CoverageOption_Summary = 0,
+  /**
+   * Display coverage information about the module against source code
+   */
+  CoverageOption_Source = 1,
+  /**
+   * Display coverage information about the module against disassembled bytecode
+   */
+  CoverageOption_Bytecode = 2,
+};
+typedef uint8_t CoverageOption;
+
 enum ErrnoValue {
   ErrnoValue_Success = 0,
   ErrnoValue_Other = 1,
@@ -197,6 +213,55 @@ typedef struct {
 } ByteSliceView;
 
 typedef struct {
+  /**
+   * Compile in 'dev' mode. The 'dev-addresses' and 'dev-dependencies' fields will be used if
+   * this flag is set. This flag is useful for development of packages that expose named
+   * addresses that are not set to a specific value.
+   */
+  bool dev_mode;
+  /**
+   * Compile in 'test' mode. The 'dev-addresses' and 'dev-dependencies' fields will be used
+   * along with any code in the 'tests' directory.
+   */
+  bool test_mode;
+  /**
+   * Generate documentation for packages
+   */
+  bool generate_docs;
+  /**
+   * Generate ABIs for packages
+   */
+  bool generate_abis;
+  /**
+   * Installation directory for compiled artifacts. Defaults to current directory.
+   */
+  ByteSliceView install_dir;
+  /**
+   * Force recompilation of all packages
+   */
+  bool force_recompilation;
+  /**
+   * Only fetch dependency repos to MOVE_HOME
+   */
+  bool fetch_deps_only;
+} NovaCompilerBuildConfig;
+
+typedef struct {
+  /**
+   * Path to a package which the command should be run with respect to.
+   */
+  ByteSliceView package_path;
+  /**
+   * Print additional diagnostics if available.
+   */
+  bool verbose;
+  /**
+   * Package build options
+   */
+  NovaCompilerBuildConfig build_config;
+} NovaCompilerArgument;
+
+typedef struct {
   uint8_t _private[0];
 } db_t;
 
@@ -238,18 +303,63 @@ typedef struct {
   GoApi_vtable vtable;
 } GoApi;
 
+typedef struct {
+  /**
+   * Bound the number of instructions that can be executed by any one test.
+   * set 0 to no-boundary
+   */
+  uint64_t instruction_execution_bound;
+  /**
+   * A filter string to determine which unit tests to run. A unit test will be run only if it
+   * contains this string in its fully qualified (<addr>::<module_name>::<fn_name>) name.
+   */
+  ByteSliceView filter;
+  /**
+   * List all tests
+   */
+  bool list;
+  /**
+   * Number of threads to use for running tests.
+   */
+  size_t num_threads;
+  /**
+   * Report test statistics at the end of testing
+   */
+  bool report_statistics;
+  /**
+   * Show the storage state at the end of execution of a failing test
+   */
+  bool report_storage_on_error;
+  /**
+   * Ignore compiler's warning, and continue run tests
+   */
+  bool ignore_compile_warnings;
+  /**
+   * Use the stackless bytecode interpreter to run the tests and cross check its results with
+   * the execution result from Move VM.
+   */
+  bool check_stackless_vm;
+  /**
+   * Verbose mode
+   */
+  bool verbose_mode;
+  /**
+   * Collect coverage information for later use with the various `package coverage` subcommands
+   */
+  bool compute_coverage;
+} NovaCompilerTestOption;
+
 vm_t *allocate_vm(void);
 
-UnmanagedVector build_move_package(UnmanagedVector *errmsg,
-                                   ByteSliceView package_path,
-                                   bool verbose,
-                                   bool dev_mode,
-                                   bool test_mode,
-                                   bool generate_docs,
-                                   bool generate_abis,
-                                   ByteSliceView install_dir,
-                                   bool force_recompilation,
-                                   bool fetch_deps_only);
+UnmanagedVector build_move_package(UnmanagedVector *errmsg, NovaCompilerArgument nova_args);
+
+UnmanagedVector clean_move_package(UnmanagedVector *errmsg,
+                                   NovaCompilerArgument nova_args,
+                                   bool clean_cache);
+
+UnmanagedVector create_new_move_package(UnmanagedVector *errmsg,
+                                        NovaCompilerArgument nova_args,
+                                        ByteSliceView name_view);
 
 UnmanagedVector decode_module_bytes(UnmanagedVector *errmsg, ByteSliceView module_bytes);
 
@@ -313,25 +423,8 @@ UnmanagedVector query_contract(vm_t *vm_ptr,
 void release_vm(vm_t *vm);
 
 UnmanagedVector test_move_package(UnmanagedVector *errmsg,
-                                  ByteSliceView package_path,
-                                  bool verbose,
-                                  bool dev_mode,
-                                  bool test_mode,
-                                  bool generate_docs,
-                                  bool generate_abis,
-                                  ByteSliceView install_dir,
-                                  bool force_recompilation,
-                                  bool fetch_deps_only,
-                                  uint64_t instruction_execution_bound,
-                                  ByteSliceView filter,
-                                  bool list,
-                                  size_t num_threads,
-                                  bool report_statistics,
-                                  bool report_storage_on_error,
-                                  bool ignore_compile_warnings,
-                                  bool check_stackless_vm,
-                                  bool verbose_mode,
-                                  bool compute_coverage);
+                                  NovaCompilerArgument nova_args,
+                                  NovaCompilerTestOption test_opt);
 
 /**
  * Returns a version number of this library as a C string.

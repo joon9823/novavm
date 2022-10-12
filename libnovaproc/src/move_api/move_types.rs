@@ -19,9 +19,9 @@ use move_deps::{
     },
     move_resource_viewer::{AnnotatedMoveStruct, AnnotatedMoveValue},
 };
-
 use novavm::Module;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
+
 use std::fmt::Display;
 use std::{
     collections::BTreeMap,

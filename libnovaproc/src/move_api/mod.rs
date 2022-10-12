@@ -1,10 +1,9 @@
 pub mod handler;
-pub mod compiler;
 
 mod address;
 mod bytecode;
 mod convert;
-mod move_types;
+pub(crate) mod move_types;
 mod wrappers;
 
 /// For verifying a given struct
