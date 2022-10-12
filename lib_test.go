@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io/ioutil"
-	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -318,43 +316,4 @@ func Test_ExecuteScript(t *testing.T) {
 	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, uint64(200), num)
 	require.NotZero(t, usedGas)
-}
-
-var package_path string
-
-func init() {
-	wd, _ := os.Getwd()
-	package_path = path.Join(wd, "vm/move-test")
-}
-
-func Test_BuildContract(t *testing.T) {
-	buildConfig := types.NewBuildConfig(
-		types.WithPackagePath(package_path),
-		types.WithInstallDir(package_path),
-		types.WithDevMode(),
-		types.WithTestMode(),
-	)
-
-	res, err := api.BuildContract(buildConfig)
-	require.NoError(t, err)
-	require.Equal(t, string(res), "ok")
-}
-
-func Test_TestContract(t *testing.T) {
-	buildConfig := types.NewBuildConfig(
-		types.WithPackagePath(package_path),
-		types.WithInstallDir(package_path),
-		types.WithVerboseBuildConfig(),
-		types.WithDevMode(),
-		types.WithTestMode(),
-	)
-	testConfig := types.NewTestConfig(
-		types.WithVerboseTestConfig(),
-		types.WithReportStatistics(),
-		types.WithReportStorageOnError(),
-	)
-
-	res, err := api.TestContract(buildConfig, testConfig)
-	require.NoError(t, err)
-	require.Equal(t, string(res), "ok")
 }

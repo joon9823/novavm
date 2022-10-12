@@ -1,5 +1,17 @@
 use std::mem;
+use std::path::Path;
+use std::path::PathBuf;
 use std::slice;
+use std::str::FromStr;
+
+use move_deps::move_core_types::language_storage::TypeTag;
+use move_deps::move_core_types::parser::parse_transaction_argument;
+use move_deps::move_core_types::parser::parse_transaction_arguments;
+use move_deps::move_core_types::parser::parse_type_tag;
+use move_deps::move_core_types::parser::parse_type_tags;
+use move_deps::move_core_types::transaction_argument::TransactionArgument;
+
+use crate::move_api::move_types::MoveType;
 
 // It is a copy of the one from cosmwasm/lib crate. We owe them a lot!
 
@@ -53,6 +65,92 @@ impl ByteSliceView {
     #[allow(dead_code)]
     pub fn to_owned(&self) -> Option<Vec<u8>> {
         self.read().map(|slice| slice.to_owned())
+    }
+}
+
+impl From<ByteSliceView> for Option<String> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(String::from_utf8(s.to_vec()).unwrap()),
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<Vec<String>> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => {
+                Some(String::from_utf8(s.to_vec()).unwrap().split(',').map(|o| o.to_string()).collect())
+            },
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<PathBuf> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
+            None => None
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<MoveType> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(MoveType::from_str(std::str::from_utf8(s).unwrap()).unwrap().into()),
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<Vec<MoveType>> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => {
+                let slice = std::str::from_utf8(s).unwrap().split(',');
+                Some(slice.map(|s| MoveType::from_str(s).unwrap()).collect())
+            },
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<TypeTag> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(parse_type_tag(&std::str::from_utf8(s).unwrap()).unwrap()),
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<Vec<TypeTag>> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(parse_type_tags(&std::str::from_utf8(s).unwrap()).unwrap()),
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<TransactionArgument> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(parse_transaction_argument(&std::str::from_utf8(s).unwrap()).unwrap()),
+            None => None,
+        }
+    }
+}
+
+impl From<ByteSliceView> for Option<Vec<TransactionArgument>> {
+    fn from(val: ByteSliceView) -> Self {
+        match val.read() {
+            Some(s) => Some(parse_transaction_arguments(&std::str::from_utf8(s).unwrap()).unwrap()),
+            None => None,
+        }
     }
 }
 

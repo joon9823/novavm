@@ -18,5 +18,11 @@ Cargo.lock
 
 # no static libraries (35MB+)
 lib*.a
-
+# no shared libraries 
 libnovaproc.*
+
+# Added by cargo
+/target
+/Cargo.lock
+
+
