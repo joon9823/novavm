@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use std::{collections::BTreeMap, fmt::Display};
 
-use crate::natives::table::{TableChangeSet, TableHandle};
+use crate::natives::table::{TableChangeSet, TableHandle, TableInfo};
 use crate::session::SessionExt;
 use crate::size_change_set::{AccountSizeChangeSet, SizeChangeSet, SizeDelta};
 use crate::storage::data_view_resolver::TableMetaResolver;
@@ -83,6 +83,24 @@ fn find_all_address_occur(
     Ok(v)
 }
 
+fn filter_table_handle<S: TableMetaResolver>(
+    new_tables: &BTreeMap<TableHandle, TableInfo>,
+    data_cache: &mut TableMetaDataCache<'_, S>,
+    address_list: Vec<AccountAddress>,
+) -> VMResult<Vec<TableHandle>> {
+    let mut res: Vec<TableHandle> = Vec::default();
+    for address in address_list {
+        let handle = TableHandle(address);
+
+        // address is new table's handle or
+        // already stored table's handle
+        if new_tables.contains_key(&handle) || data_cache.is_registerd_table(&handle)? {
+            res.push(handle);
+        }
+    }
+    Ok(res)
+}
+
 pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
     session: SessionExt<'_, '_, S>,
     change_set: &ChangeSet,
@@ -103,33 +121,22 @@ pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
         for (i, op) in account_change_set.resources().iter() {
             let ty_tag = TypeTag::Struct(i.clone());
             let ty_layout = session.get_type_layout(&ty_tag)?;
-            let res = find_all_address_occur(op, &ty_layout)?;
+            let addresses = find_all_address_occur(op, &ty_layout)?;
+            let handles = filter_table_handle(new_tables, data_cache, addresses)?;
 
-            for address_found in res.into_iter() {
-                let found_handle = TableHandle(address_found);
-                // address is new table's handle or
-                // already stored table's handle
-
-                if new_tables.contains_key(&found_handle)
-                    || data_cache.is_registerd_table(&found_handle)?
-                {
-                    data_cache.set_owner(&found_handle, *addr);
-                }
+            for handle in handles {
+                data_cache.set_owner(&handle, *addr);
             }
         }
     }
 
     for (outer_handle, change) in table_change_set.changes.iter() {
         for (_key, op) in &change.entries {
-            let res = find_all_address_occur(op, &change.value_layout)?;
+            let addresses = find_all_address_occur(op, &change.value_layout)?;
+            let handles = filter_table_handle(new_tables, data_cache, addresses)?;
 
-            for address_found in res.iter() {
-                let found_handle = TableHandle(*address_found);
-                if new_tables.contains_key(&found_handle)
-                    || data_cache.is_registerd_table(&found_handle)?
-                {
-                    data_cache.set_owner(&found_handle, outer_handle.0);
-                }
+            for handle in handles {
+                data_cache.set_owner(&handle, outer_handle.0);
             }
         }
     }
