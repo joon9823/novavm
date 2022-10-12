@@ -9,12 +9,14 @@ import (
 
 // VM struct is the core of novavm.
 type VM struct {
+	inner      api.VM
 	printDebug bool
 }
 
 // NewVm return VM instance
 func NewVM(printDebug bool) VM {
-	return VM{printDebug}
+	inner := api.AllocateVM()
+	return VM{inner, printDebug}
 }
 
 // Initialize deploys std libs and move libs
@@ -28,7 +30,8 @@ func (vm *VM) Initialize(
 		return err
 	}
 
-	_, err = api.Initialize(
+	err = api.Initialize(
+		vm.inner,
 		kvStore,
 		vm.printDebug,
 		bz,
@@ -39,22 +42,31 @@ func (vm *VM) Initialize(
 
 // VM Destroyer
 // TODO: add params and returns
-func (vm *VM) Destroy() {}
+func (vm *VM) Destroy() {
+	api.ReleaseVM(vm.inner)
+}
 
-// PublishModule will publish a given module.
-// TODO: add params and returns
-func (vm *VM) PublishModule(
+// PublishModuleBundle will publish a given module.
+func (vm *VM) PublishModuleBundle(
 	kvStore api.KVStore,
 	gasLimit uint64,
+	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
-	moduleBytes []byte,
+	moduleBundle types.ModuleBundle,
 ) (uint64, error) {
-	res, err := api.PublishModule(
+	bz, err := json.Marshal(moduleBundle)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := api.PublishModuleBundle(
+		vm.inner,
 		kvStore,
 		vm.printDebug,
 		gasLimit,
+		txHash,
 		sender,
-		moduleBytes,
+		bz,
 	)
 	if err != nil {
 		return 0, err
@@ -64,14 +76,12 @@ func (vm *VM) PublishModule(
 	err = json.Unmarshal(res, &execRes)
 
 	return execRes.GasUsed, err
-
 }
 
 // Query will do a query request to VM
 func (vm *VM) QueryEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	payload types.ExecuteEntryFunctionPayload,
 ) ([]byte, error) {
@@ -81,9 +91,9 @@ func (vm *VM) QueryEntryFunction(
 	}
 
 	res, err := api.QueryContract(
+		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		bz,
@@ -104,7 +114,6 @@ func (vm *VM) QueryEntryFunction(
 func (vm *VM) ExecuteEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
@@ -116,9 +125,9 @@ func (vm *VM) ExecuteEntryFunction(
 	}
 
 	res, err := api.ExecuteContract(
+		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		txHash,
@@ -140,7 +149,6 @@ func (vm *VM) ExecuteEntryFunction(
 func (vm *VM) ExecuteScript(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
-	querier api.Querier,
 	gasLimit uint64,
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
@@ -152,9 +160,9 @@ func (vm *VM) ExecuteScript(
 	}
 
 	res, err := api.ExecuteScript(
+		vm.inner,
 		kvStore,
 		goApi,
-		querier,
 		vm.printDebug,
 		gasLimit,
 		txHash,

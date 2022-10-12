@@ -48,7 +48,7 @@ where
             .inner
             .finish_with_extensions()
             .map_err(|e| e.into_vm_status())?;
-        let table_context: NativeTableContext = extensions.remove();
+        let table_context: NativeTableContext = extensions.remove::<NativeTableContext>();
         let table_change_set = table_context
             .into_change_set()
             .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;

@@ -95,8 +95,7 @@ fn is_valid_txn_arg<S: MoveResolver>(session: &Session<S>, typ: &Type) -> bool {
         Vector(inner) => is_valid_txn_arg(session, inner),
         Struct(idx) | StructInstantiation(idx, _) => {
             if let Some(st) = session.get_struct_type(*idx) {
-                let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
-                ALLOWED_STRUCTS.contains(&full_name)
+                st.fields.iter().all(|v| is_valid_txn_arg(session, v))
             } else {
                 false
             }

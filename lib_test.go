@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"io/ioutil"
+	"os"
+	"path"
 	"testing"
+	"time"
 
 	vm "github.com/Kernel-Labs/novavm"
 	"github.com/Kernel-Labs/novavm/api"
@@ -18,7 +21,6 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 
 	kvStore := api.NewLookup()
 	vm := vm.NewVM(true)
-
 	err = vm.Initialize(
 		kvStore,
 		types.ModuleBundle{
@@ -34,22 +36,51 @@ func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	return vm, kvStore
 }
 
-func publishModule(
+func Test_PublishModuleBundle(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
+}
+
+func publishModuleBundle(
 	t *testing.T,
 	vm vm.VM,
 	kvStore *api.Lookup,
 ) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
-	require.NoError(t, err)
-
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	usedGas, err := vm.PublishModule(
+	f0, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	require.NoError(t, err)
+	f1, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle1.mv")
+	require.NoError(t, err)
+	f2, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle2.mv")
+	require.NoError(t, err)
+	f3, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle3.mv")
+	require.NoError(t, err)
+
+	usedGas, err := vm.PublishModuleBundle(
 		kvStore,
-		10000,
+		100000000,
+		bytes.Repeat([]byte{0}, 32),
 		testAccount,
-		f,
+		types.ModuleBundle{
+			Codes: []types.Module{
+				{
+					Code: f0,
+				},
+				{
+					Code: f1,
+				},
+				{
+					Code: f3,
+				},
+				{
+					Code: f2,
+				},
+			},
+		},
 	)
 	require.NoError(t, err)
 	require.NotZero(t, usedGas)
@@ -75,10 +106,10 @@ func mintCoin(
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	usedGas, events, err := vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		api.NewMockAPI(&mockAPI),
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
 		minter,
@@ -93,18 +124,15 @@ func mintCoin(
 }
 
 func Test_InitializeVM(t *testing.T) {
-	_, _ = initializeVM(t)
-}
-
-func Test_PublishModule(t *testing.T) {
-	vm, kvStore := initializeVM(t)
-
-	publishModule(t, vm, kvStore)
+	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 }
 
 func Test_ExecuteContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	minter, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -114,7 +142,9 @@ func Test_ExecuteContract(t *testing.T) {
 
 func Test_FailOnExecute(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	amount := uint64(100)
 
@@ -133,10 +163,10 @@ func Test_FailOnExecute(t *testing.T) {
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	_, _, err = vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
@@ -148,7 +178,9 @@ func Test_FailOnExecute(t *testing.T) {
 
 func Test_OutOfGas(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	amount := uint64(100)
 
@@ -165,10 +197,10 @@ func Test_OutOfGas(t *testing.T) {
 		Args:     []types.Bytes{types.SerializeUint64(amount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	_, _, err = vm.ExecuteEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		1,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
@@ -180,7 +212,9 @@ func Test_OutOfGas(t *testing.T) {
 
 func Test_QueryContract(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -198,10 +232,10 @@ func Test_QueryContract(t *testing.T) {
 		Args:     []types.Bytes{types.Bytes(testAccount)},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	res, err := vm.QueryEntryFunction(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		10000,
 		payload,
 	)
@@ -214,7 +248,9 @@ func Test_QueryContract(t *testing.T) {
 
 func Test_DecodeResource(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	bz, err := base64.StdEncoding.DecodeString("LAEAAAAAAAAB")
 	require.NoError(t, err)
@@ -226,6 +262,7 @@ func Test_DecodeResource(t *testing.T) {
 
 func Test_DecodeModule(t *testing.T) {
 	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
 	require.NoError(t, err)
@@ -237,6 +274,7 @@ func Test_DecodeModule(t *testing.T) {
 
 func Test_DecodeScript(t *testing.T) {
 	vm, _ := initializeVM(t)
+	defer vm.Destroy()
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
 	require.NoError(t, err)
@@ -248,9 +286,12 @@ func Test_DecodeScript(t *testing.T) {
 
 func Test_ExecuteScript(t *testing.T) {
 	vm, kvStore := initializeVM(t)
-	publishModule(t, vm, kvStore)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
 
 	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+	require.NoError(t, err)
 
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
@@ -261,10 +302,10 @@ func Test_ExecuteScript(t *testing.T) {
 		Args:   []types.Bytes{},
 	}
 
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
 	usedGas, events, err := vm.ExecuteScript(
 		kvStore,
-		api.NewMockAPI(&api.MockBankModule{}),
-		api.MockQuerier{},
+		mockAPI,
 		15000,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
@@ -277,4 +318,43 @@ func Test_ExecuteScript(t *testing.T) {
 	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, uint64(200), num)
 	require.NotZero(t, usedGas)
+}
+
+var package_path string
+
+func init() {
+	wd, _ := os.Getwd()
+	package_path = path.Join(wd, "vm/move-test")
+}
+
+func Test_BuildContract(t *testing.T) {
+	buildConfig := types.NewBuildConfig(
+		types.WithPackagePath(package_path),
+		types.WithInstallDir(package_path),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+
+	res, err := api.BuildContract(buildConfig)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+}
+
+func Test_TestContract(t *testing.T) {
+	buildConfig := types.NewBuildConfig(
+		types.WithPackagePath(package_path),
+		types.WithInstallDir(package_path),
+		types.WithVerboseBuildConfig(),
+		types.WithDevMode(),
+		types.WithTestMode(),
+	)
+	testConfig := types.NewTestConfig(
+		types.WithVerboseTestConfig(),
+		types.WithReportStatistics(),
+		types.WithReportStorageOnError(),
+	)
+
+	res, err := api.TestContract(buildConfig, testConfig)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
 }

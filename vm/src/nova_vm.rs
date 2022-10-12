@@ -23,9 +23,9 @@ use move_deps::{
     move_vm_types::gas::UnmeteredGasMeter,
 };
 use crate::{
-    natives::table::{NativeTableContext, TableChangeSet, TableResolver}, 
+    natives::{table::{NativeTableContext, TableChangeSet, TableResolver}, block::NativeBlockContext}, 
     args_validator::check_args_address, 
-    size_change_set::AccountSizeChangeSet
+    size_change_set::AccountSizeChangeSet, api::ChainApi
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -88,6 +88,13 @@ impl NovaVM {
         )
     }
 
+    fn create_session_with_api<'r, S: MoveResolver + TableResolver + StoredSizeResolver, A: ChainApi>(&self, remote: &'r S, api: &'r A, session_id: Vec<u8>) -> SessionExt<'r, '_, S> {
+        let mut session = self.create_session(remote, session_id);
+        session.get_native_extensions().add(NativeBlockContext::new(api));
+        session
+    }
+
+
     pub fn initialize<S: StateView>(
         &mut self,
         resolver: &DataViewResolver<'_, S>,
@@ -109,23 +116,12 @@ impl NovaVM {
 
         let lib = Modules::new(&modules);
         let dep_graph = lib.compute_dependency_graph();
-        let mut addr_opt: Option<AccountAddress> = None;
+        let mut addr: Option<AccountAddress> = None;
         let modules = dep_graph
             .compute_topological_order()
             .unwrap()
             .map(|m| {
-                let addr = *m.self_id().address();
-                if let Some(a) = addr_opt {
-                    assert_eq!(
-                        a,
-                        addr,
-                        "All genesis modules must be published under the same address, but found modules under both {} and {}",
-                        a.short_str_lossless(),
-                        addr.short_str_lossless(),
-                    );
-                } else {
-                    addr_opt = Some(addr)
-                }
+                addr = Some(*m.self_id().address());
                 let mut bytes = vec![];
                 m.serialize(&mut bytes).unwrap();
                 bytes
@@ -133,7 +129,7 @@ impl NovaVM {
             .collect::<Vec<Vec<u8>>>();
 
         session
-                .publish_module_bundle(modules, addr_opt.unwrap(), &mut UnmeteredGasMeter)
+                .publish_module_bundle(modules, addr.unwrap(), &mut UnmeteredGasMeter)
                 .map_err(|e| {
                     self.move_vm.mark_loader_cache_as_invalid();
                     println!("[VM] publish_module error, status_type: {:?}, status_code:{:?}, message:{:?}, location:{:?}", e.status_type(), e.major_status(), e.message(), e.location());
@@ -149,11 +145,12 @@ impl NovaVM {
         Ok((VMStatus::Executed, output, None))
     }
 
-    pub fn execute_message<S: StateView>(
+    pub fn execute_message<S: StateView, A: ChainApi>(
         &mut self,
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
-        gas_limit: Gas,
+        api: Option<&A>,
+        gas_limit : Gas
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         let sender = msg.sender();
 
@@ -167,13 +164,12 @@ impl NovaVM {
 
         let result = match msg.payload() {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
-                self.execute_script_or_entry_function(
-                    msg.session_id().to_vec(),
-                    sender,
-                    remote_cache,
-                    payload,
-                    &mut gas_meter,
-                )
+                let api = match api {
+                    Some(api) => Ok(api),
+                    None => Err(NovaVMError::generic_err("need ChainApi"))
+                }?;
+
+                self.execute_script_or_entry_function(msg.session_id().to_vec(), sender, remote_cache, api, payload, &mut gas_meter)
             }
             MessagePayload::ModuleBundle(m) => match sender {
                 Some(sender) => self.publish_module_bundle(
@@ -236,15 +232,16 @@ impl NovaVM {
         Ok((status, output, None))
     }
 
-    fn execute_script_or_entry_function<S: StateView>(
+    fn execute_script_or_entry_function<S: StateView, A: ChainApi>(
         &self,
         session_id: Vec<u8>,
         sender: Option<AccountAddress>,
         remote_cache: &DataViewResolver<'_, S>,
+        api: &A,
         payload: &MessagePayload,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache, session_id.clone());
+        let mut session = self.create_session_with_api(remote_cache, api, session_id.clone());
 
         let senders = match sender {
             Some(s) => vec![s],

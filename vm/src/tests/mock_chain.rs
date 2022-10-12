@@ -1,3 +1,4 @@
+use crate::api::ChainApi;
 use crate::table_meta::TableMetaChangeSet;
 use crate::table_meta::TableMetaType;
 use crate::{access_path::AccessPath, storage::state_view::StateView};
@@ -33,6 +34,10 @@ impl MockChain {
         MockState {
             map: self.map.clone(),
         }
+    }
+
+    pub fn create_api(&self, height: u64, timestamp: u64) -> MockApi {
+        MockApi { height, timestamp }
     }
 
     pub fn commit(&mut self, state: MockState) {
@@ -103,6 +108,17 @@ impl StateView for MockState {
             Some(opt_data) => Ok(opt_data.clone()),
             None => Ok(None),
         }
+    }
+}
+
+pub struct MockApi {
+    pub height: u64,
+    pub timestamp: u64,
+}
+
+impl ChainApi for MockApi {
+    fn get_block_info(&self) -> anyhow::Result<(u64 /* height */, u64 /* timestamp */)> {
+        Ok((self.height, self.timestamp))
     }
 }
 

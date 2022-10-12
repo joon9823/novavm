@@ -1,9 +1,9 @@
 .PHONY: all build build-rust build-go test
 
 # Builds the Rust library libwasmvm
-BUILDERS_PREFIX := nova/go-ext-builder:0012
+BUILDERS_PREFIX := novavm/go-ext-builder:0001
 # Contains a full Go dev environment in order to run Go tests on the built library
-ALPINE_TESTER := nova/go-ext-builder:0012-alpine
+ALPINE_TESTER := novavm/go-ext-builder:0001-alpine
 
 USER_ID := $(shell id -u)
 USER_GROUP = $(shell id -g)
@@ -25,6 +25,7 @@ else
 	endif
 endif
 
+
 all: test-filenames build test
 
 test-filenames:
@@ -35,7 +36,7 @@ test-filenames:
 test: test-rust test-go
 
 test-go: 
-	RUST_BACKTRACE=1 go test -v -count=1 ./...
+	RUST_BACKTRACE=full go test -v -count=1 ./...
 
 test-safety:
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.

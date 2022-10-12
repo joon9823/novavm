@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - "release/*"
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Rust project
@@ -26,9 +31,6 @@ jobs:
         if: steps.cache-mv-cli.outputs.cache-hit != 'true'
         run: |
           cargo install mv-cli@0.3.2 --features address20
-      - name: Build test contracts
-        run: |
-          (cd vm/move-test && move build)
       - uses: actions/cache@v3
         with:
           path: |
@@ -36,9 +38,14 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            vm/target/
             libnovaproc/target/
-          key: ${{ runner.os }}-cargo
+            vm/target/
+            vm/move-test/build/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Build test contracts
+        run: |
+          (cd vm/move-test && move build)
       - name: Build rust
         run: |
           make build-rust

@@ -9,14 +9,31 @@ import (
 	"syscall"
 )
 
+type VM struct {
+	ptr *C.vm_t
+}
+
+// ReleaseVM call ffi(`release_vm`) to release vm instance
+func ReleaseVM(vm VM) {
+	C.release_vm(vm.ptr)
+}
+
+// AllocateVM call ffi(`allocate_vm`) to allocate vm instance
+func AllocateVM() VM {
+	return VM{
+		ptr: C.allocate_vm(),
+	}
+}
+
 // Initialize call ffi(`initialize`) to initialize vm
 // and publish standard libraries
 // CONTRACT: should be executed at chain genesis
 func Initialize(
+	vm VM,
 	store KVStore,
-	isVerbose bool,
+	verbose bool,
 	moduleBundle []byte,
-) ([]byte, error) {
+) error {
 	var err error
 
 	dbState := buildDBState(store)
@@ -27,36 +44,40 @@ func Initialize(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.initialize(db, cbool(isVerbose), &errmsg, mb)
+	_, err = C.initialize(vm.ptr, db, cbool(verbose), &errmsg, mb)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
-		return nil, errorWithMessage(err, errmsg)
+		return errorWithMessage(err, errmsg)
 	}
 
-	return copyAndDestroyUnmanagedVector(res), err
+	return err
 }
 
-// PublishModule call ffi(`publish_module`) to store module
-func PublishModule(
+// PublishModuleBundle call ffi(`publish_module_bundle`) to store module bundle
+func PublishModuleBundle(
+	vm VM,
 	store KVStore,
 	isVerbose bool,
 	gasLimit uint64,
+	sessionID []byte,
 	sender []byte,
-	module []byte,
+	moduleBundle []byte,
 ) ([]byte, error) {
 	var err error
 
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 
-	mb := makeView(module)
-	defer runtime.KeepAlive(mb)
+	sid := makeView(sessionID)
+	defer runtime.KeepAlive(sid)
 	senderView := makeView([]byte(sender))
 	defer runtime.KeepAlive(senderView)
+	moduleBundleView := makeView(moduleBundle)
+	defer runtime.KeepAlive(moduleBundleView)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.publish_module(db, cbool(isVerbose), cu64(gasLimit), &errmsg, senderView, mb)
+	res, err := C.publish_module_bundle(vm.ptr, db, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, moduleBundleView)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)
@@ -68,10 +89,10 @@ func PublishModule(
 // ExecuteContract call ffi(`execute_contract`) to execute
 // script with write_op reflection
 func ExecuteContract(
+	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
 	sender []byte,
@@ -82,7 +103,6 @@ func ExecuteContract(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	sid := makeView(sessionID)
 	defer runtime.KeepAlive(sid)
@@ -93,7 +113,7 @@ func ExecuteContract(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_contract(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -104,10 +124,10 @@ func ExecuteContract(
 // ExecuteScript call ffi(`execute_script`) to execute
 // entry function with write_op reflection
 func ExecuteScript(
+	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	sessionID []byte,
 	sender []byte,
@@ -118,7 +138,6 @@ func ExecuteScript(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	sid := makeView(sessionID)
 	defer runtime.KeepAlive(sid)
@@ -129,7 +148,7 @@ func ExecuteScript(
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.execute_script(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
+	res, err := C.execute_script(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, sid, senderView, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		return nil, errorWithMessage(err, errmsg)
 	}
@@ -140,10 +159,10 @@ func ExecuteScript(
 // QueryContract call ffi(`query_contract`) to get
 // entry function execution result without write_op reflection
 func QueryContract(
+	vm VM,
 	store KVStore,
 	api GoAPI,
-	querier Querier,
-	isVerbose bool,
+	verbose bool,
 	gasLimit uint64,
 	message []byte,
 ) ([]byte, error) {
@@ -152,14 +171,13 @@ func QueryContract(
 	dbState := buildDBState(store)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
-	_querier := buildQuerier(&querier)
 
 	msg := makeView(message)
 	defer runtime.KeepAlive(msg)
 
 	errmsg := newUnmanagedVector(nil)
 
-	res, err := C.query_contract(db, _api, _querier, cbool(isVerbose), cu64(gasLimit), &errmsg, msg)
+	res, err := C.query_contract(vm.ptr, db, _api, cbool(verbose), cu64(gasLimit), &errmsg, msg)
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)

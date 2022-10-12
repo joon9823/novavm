@@ -11,33 +11,23 @@ typedef GoError (*read_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *val, 
 typedef GoError (*write_db_fn)(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 typedef GoError (*remove_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
 // and api
-typedef GoError (*bank_transfer_fn)(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
-typedef GoError (*query_external_fn)(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
+typedef GoError (*get_block_info_fn)(api_t *ptr, uint64_t *height, uint64_t *timestamp,  UnmanagedVector *errOut);
 
 // forward declarations (db)
 GoError cGet_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 GoError cSet_cgo(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cDelete_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
 // api
-GoError cBankTransfer_cgo(api_t *ptr, U8SliceView recipient, U8SliceView denom, U8SliceView amount, UnmanagedVector *errOut, uint64_t *used_gas);
-// and querier
-GoError cQueryExternal_cgo(querier_t *ptr, U8SliceView request, UnmanagedVector *result, UnmanagedVector *errOut);
-
-
+GoError cGetBlockInfo_cgo(api_t *ptr, uint64_t *height, uint64_t *timestamp, UnmanagedVector *errOut);
 */
 import "C"
 
 import (
-	"encoding/json"
 	"log"
 	"reflect"
 	"runtime/debug"
 	"unsafe"
-
-	"github.com/Kernel-Labs/novavm/types"
 )
-
-type Querier = types.Querier
 
 // Note: we have to include all exports in the same file (at least since they both import bindings.h),
 // or get odd cgo build errors about duplicate definitions
@@ -200,11 +190,11 @@ func cDelete(ptr *C.db_t, key C.U8SliceView, errOut *C.UnmanagedVector) (ret C.G
 /***** GoAPI *******/
 
 type GoAPI interface {
-	BankTransfer([]byte, types.Coin) error
+	GetBlockInfo() (uint64, uint64)
 }
 
 var api_vtable = C.GoApi_vtable{
-	bank_transfer: (C.bank_transfer_fn)(C.cBankTransfer_cgo),
+	get_block_info: (C.get_block_info_fn)(C.cGetBlockInfo_cgo),
 }
 
 // contract: original pointer/struct referenced must live longer than C.GoApi struct
@@ -216,10 +206,16 @@ func buildAPI(api *GoAPI) C.GoApi {
 	}
 }
 
-//export cBankTransfer
-func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, amount C.U8SliceView, errOut *C.UnmanagedVector) (ret C.GoError) {
+//export cGetBlockInfo
+func cGetBlockInfo(ptr *C.api_t, height *C.uint64_t, timestamp *C.uint64_t, errOut *C.UnmanagedVector) (ret C.GoError) {
 	defer recoverPanic(&ret)
 
+	if height == nil {
+		return C.GoError_BadArgument
+	}
+	if timestamp == nil {
+		return C.GoError_BadArgument
+	}
 	if errOut == nil {
 		return C.GoError_BadArgument
 	}
@@ -228,59 +224,10 @@ func cBankTransfer(ptr *C.api_t, recipient C.U8SliceView, denom C.U8SliceView, a
 	}
 
 	api := *(*GoAPI)(unsafe.Pointer(ptr))
-	r := copyU8Slice(recipient)
-	d := string(copyU8Slice(denom))
-	a := string(copyU8Slice(denom))
 
-	err := api.BankTransfer(r, types.Coin{Denom: d, Amount: a})
-	if err != nil {
-		// store the actual error message in the return buffer
-		*errOut = newUnmanagedVector([]byte(err.Error()))
-		return C.GoError_User
-	}
+	h, t := api.GetBlockInfo()
+	*height = C.uint64_t(h)
+	*timestamp = C.uint64_t(t)
 
-	return C.GoError_None
-}
-
-/****** Go Querier ********/
-
-var querier_vtable = C.Querier_vtable{
-	query_external: (C.query_external_fn)(C.cQueryExternal_cgo),
-}
-
-// contract: original pointer/struct referenced must live longer than C.GoQuerier struct
-// since this is only used internally, we can verify the code that this is the case
-func buildQuerier(q *Querier) C.GoQuerier {
-	return C.GoQuerier{
-		state:  (*C.querier_t)(unsafe.Pointer(q)),
-		vtable: querier_vtable,
-	}
-}
-
-//export cQueryExternal
-func cQueryExternal(ptr *C.querier_t, request C.U8SliceView, result *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
-	defer recoverPanic(&ret)
-
-	if ptr == nil || result == nil || errOut == nil {
-		// we received an invalid pointer
-		return C.GoError_BadArgument
-	}
-	if !(*result).is_none || !(*errOut).is_none {
-		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
-	}
-
-	// query the data
-	querier := *(*Querier)(unsafe.Pointer(ptr))
-	req := copyU8Slice(request)
-
-	res := types.RustQuery(querier, req)
-
-	// serialize the response
-	bz, err := json.Marshal(res)
-	if err != nil {
-		*errOut = newUnmanagedVector([]byte(err.Error()))
-		return C.GoError_CannotSerialize
-	}
-	*result = newUnmanagedVector(bz)
 	return C.GoError_None
 }

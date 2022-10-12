@@ -6,6 +6,7 @@ module nova_std::coin {
     use std::event::{Self, EventHandle};
 
     use nova_std::type_info;
+    use nova_std::account::create_signer_for_friend;
 
     //
     // Errors.
@@ -92,11 +93,13 @@ module nova_std::coin {
 
     /// Event emitted when some amount of a coin is deposited into an account.
     struct DepositEvent has drop, store {
+        coin_type: string::String,
         amount: u64,
     }
 
     /// Event emitted when some amount of a coin is withdrawn from an account.
     struct WithdrawEvent has drop, store {
+        coin_type: string::String,
         amount: u64,
     }
 
@@ -186,11 +189,12 @@ module nova_std::coin {
     /// Burn native coins to the recipient
     public entry fun native_burn_from<CoinType>(chain: &signer, account_addr: address, amount: u64) acquires CoinStore, CoinInfo {
         assert!(signer::address_of(chain) == @nova_std, ECOIN_UNAUTHORIZED);
+        assert!(amount > 0, error::invalid_argument(EZERO_COIN_AMOUNT));
+
         let coin_info = borrow_global_mut<CoinInfo<CoinType>>(coin_address<CoinType>());
         coin_info.supply = coin_info.supply - (amount as u128);
 
-        let Coin { value: amount } = withdraw_internal<CoinType>(account_addr, amount);
-        assert!(amount > 0, error::invalid_argument(EZERO_COIN_AMOUNT));
+        let Coin { value: _ } = withdraw_internal<CoinType>(account_addr, amount);
     }
 
     /// Mint native coins to the recipient
@@ -198,6 +202,11 @@ module nova_std::coin {
         assert!(signer::address_of(chain) == @nova_std, ECOIN_UNAUTHORIZED);
         assert!(amount > 0, error::invalid_argument(EZERO_COIN_AMOUNT));
 
+        if (!is_account_registered<CoinType>(account_addr)) {
+            let account = create_signer_for_friend(account_addr);
+            register<CoinType>(&account);
+        };
+        
         deposit<CoinType>(account_addr, Coin<CoinType> { value: amount });
 
         let coin_info = borrow_global_mut<CoinInfo<CoinType>>(coin_address<CoinType>());
@@ -253,7 +262,10 @@ module nova_std::coin {
 
         event::emit_event<DepositEvent>(
             &mut coin_store.deposit_events,
-            DepositEvent { amount: coin.value },
+            DepositEvent {
+                coin_type: type_info::type_name<CoinType>(),
+                amount: coin.value,
+            },
         );
 
         merge(&mut coin_store.coin, coin);
@@ -417,7 +429,10 @@ module nova_std::coin {
 
         event::emit_event<WithdrawEvent>(
             &mut coin_store.withdraw_events,
-            WithdrawEvent { amount },
+            WithdrawEvent { 
+                coin_type: type_info::type_name<CoinType>(),
+                amount,
+            },
         );
 
         extract(&mut coin_store.coin, amount)
