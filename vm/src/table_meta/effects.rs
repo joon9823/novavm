@@ -17,8 +17,8 @@ impl WriteCache {
     pub(crate) fn get_size(&self) -> Option<&usize> {
         match self {
             WriteCache::Updated(val) => match val {
-                WriteCacheValue::Owner(_) => panic!("not found"),
                 WriteCacheValue::Size(size) => Some(size),
+                _ => panic!("can only be called on size type"),
             },
             WriteCache::Deleted => None,
         }
@@ -28,7 +28,7 @@ impl WriteCache {
         match self {
             WriteCache::Updated(val) => match val {
                 WriteCacheValue::Owner(owner) => Some(owner),
-                WriteCacheValue::Size(_) => panic!("not"),
+                _ => panic!("can only be called on owner type"),
             },
             WriteCache::Deleted => None,
         }

@@ -50,7 +50,7 @@ impl FromStr for TableMetaType {
         match s {
             "owner" => Ok(Self::Owner),
             "size" => Ok(Self::Size),
-            _ => bail!("error"),
+            _ => bail!("unexpected table meta type"),
         }
     }
 }
@@ -109,15 +109,11 @@ pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
 ) -> VMResult<()> {
     let new_tables = &table_change_set.borrow().new_tables;
 
-    println!("new table {:?}", table_change_set.new_tables);
-    println!("remove table {:?}", table_change_set.removed_tables);
-
     for i in table_change_set.removed_tables.iter() {
         data_cache.del_owner(i);
     }
 
     for (addr, account_change_set) in change_set.borrow().accounts().iter() {
-        println!("checking changeset for {}", addr);
         for (i, op) in account_change_set.resources().iter() {
             let ty_tag = TypeTag::Struct(i.clone());
             let ty_layout = session.get_type_layout(&ty_tag)?;
@@ -158,7 +154,6 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
                 continue;
             } // skip new table
         };
-        println!("processing table {} of size {}", handle, size);
 
         match owner {
             Some(new_owner) => {
@@ -166,22 +161,16 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
                 let new_root_owner = data_cache
                     .get_root_owner(&TableHandle(*new_owner))?
                     .unwrap();
-                println!(
-                    "moving from {} to {} size {}",
-                    old_owner, new_root_owner, size
-                );
 
                 accounts_delta.move_size(old_owner, new_root_owner, size);
             }
             None => {
                 let acc = data_cache.get_old_root_owner(handle)?.unwrap();
                 let delta = SizeDelta::decreasing(size);
-                println!("deleting from {} size {}", acc, size);
                 accounts_delta.insert_size(acc, delta);
             }
         }
     }
-    println!("table size owning???? {:?}", accounts_delta);
 
     // handle size changes
     for i in table_change_set.removed_tables.iter() {
@@ -201,15 +190,12 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
 
         let mut delta = SizeDelta::increasing(current_size);
         delta.merge(size_delta.clone());
-        if delta.is_decrease {
-            panic!("dsdads");
-        }
+        assert!(!delta.is_decrease, "table size is less than zero");
+
         let new_size = delta.amount;
 
         data_cache.set_size(&handle, new_size);
     }
-
-    println!("{:?}", accounts_delta);
 
     Ok(accounts_delta)
 }
