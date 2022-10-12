@@ -9,7 +9,6 @@ use move_deps::{
         vm_status::VMStatus,
     },
 };
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use super::mock_tx::{run_transaction, MockTx};
 use super::mock_tx::{ExpectedOutput, ExpectedOutputItem};
@@ -114,6 +113,14 @@ impl EntryFunction {
             vec![],
         )
     }
+    fn table_remove() -> Self {
+        Self::new(
+            Module::get_table_test_data_module_id(),
+            Identifier::new("table_remove").unwrap(),
+            vec![],
+            vec![],
+        )
+    }
 }
 
 fn generate_account(literal: &str) -> AccountAddress {
@@ -121,6 +128,8 @@ fn generate_account(literal: &str) -> AccountAddress {
 }
 #[test]
 fn test_tables() {
+    type Item = ExpectedOutputItem;
+
     let account_two = generate_account("0x2");
     let account_three = generate_account("0x3");
 
@@ -147,10 +156,10 @@ fn test_tables() {
             // get table length
             Message::new_entry_function(vec![3; 32], Some(account_two), EntryFunction::table_len()),
             ExpectedOutput(vec![
-                ExpectedOutputItem::VMStatusReturn(VMStatus::Executed),
-                ExpectedOutputItem::ChangedAccountCount(1),
-                ExpectedOutputItem::ResultBytes(vec![3, 0, 0, 0, 0, 0, 0, 0]),
-                ExpectedOutputItem::AccountSizeChange(
+                Item::VMStatusReturn(VMStatus::Executed),
+                Item::ChangedAccountCount(1),
+                Item::ResultBytes(vec![3, 0, 0, 0, 0, 0, 0, 0]),
+                Item::AccountSizeChange(
                     [(account_two, SizeDelta::increasing(102 + 201))].into(),
                     // access_path "0000000000000000000000000000000000000002/1/0x2::TableTestData::S<u64, u64>" => 74
                     // S { address, u64 } => 20 + 8
@@ -165,14 +174,14 @@ fn test_tables() {
         ),
         MockTx::one(
             Message::new_entry_function(
-                vec![10; 32],
+                vec![4; 32],
                 Some(account_three),
                 EntryFunction::move_table(),
             ),
             ExpectedOutput(vec![
-                ExpectedOutputItem::VMStatusReturn(VMStatus::Executed),
-                ExpectedOutputItem::ChangedAccountCount(2),
-                ExpectedOutputItem::AccountSizeChange(
+                Item::VMStatusReturn(VMStatus::Executed),
+                Item::ChangedAccountCount(2),
+                Item::AccountSizeChange(
                     [
                         (account_two, SizeDelta::decreasing(303)),
                         (account_three, SizeDelta::increasing(130 + 201 + 111)),
@@ -194,7 +203,7 @@ fn test_tables() {
         MockTx::one(
             // tables in table
             Message::new_entry_function(
-                vec![4; 32],
+                vec![5; 32],
                 Some(account_two),
                 EntryFunction::table_of_tables(),
             ),
@@ -203,7 +212,7 @@ fn test_tables() {
         MockTx::one(
             // borrow mut
             Message::new_entry_function(
-                vec![5; 32],
+                vec![6; 32],
                 Some(generate_account("0x3")),
                 EntryFunction::table_borrow_mut(),
             ),
@@ -212,7 +221,7 @@ fn test_tables() {
         MockTx::one(
             // borrow mut with default
             Message::new_entry_function(
-                vec![6; 32],
+                vec![7; 32],
                 Some(generate_account("0x4")),
                 EntryFunction::table_borrow_mut_with_default(),
             ),
@@ -221,7 +230,7 @@ fn test_tables() {
         MockTx::one(
             // add after remove contents
             Message::new_entry_function(
-                vec![7; 32],
+                vec![8; 32],
                 Some(generate_account("0x5")),
                 EntryFunction::add_after_remove(),
             ),
@@ -230,7 +239,7 @@ fn test_tables() {
         MockTx::one(
             // borrow global
             Message::new_entry_function(
-                vec![8; 32],
+                vec![9; 32],
                 Some(generate_account("0x5")),
                 EntryFunction::table_borrow_global(),
             ),
@@ -239,11 +248,25 @@ fn test_tables() {
         MockTx::one(
             // tables in table
             Message::new_entry_function(
-                vec![9; 32],
+                vec![10; 32],
                 Some(generate_account("0x7")),
                 EntryFunction::table_move_from(),
             ),
             ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![245, 3, 0, 0, 0, 0, 0, 0])),
+        ),
+        MockTx::one(
+            // remove table
+            Message::new_entry_function(
+                vec![11; 32],
+                Some(generate_account("0x7")),
+                EntryFunction::table_remove(),
+            ),
+            ExpectedOutput(vec![
+                Item::VMStatusReturn(VMStatus::Executed),
+                Item::AccountSizeChange(
+                    [(generate_account("0x7"), SizeDelta::decreasing(236))].into(),
+                ),
+            ]),
         ),
     ];
 

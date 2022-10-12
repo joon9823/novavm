@@ -111,4 +111,14 @@ module TestAccount::TableTestData {
         move_to(&s, S { t: local_t });
         v
     }
+
+    public entry fun table_remove(s: signer) acquires S {
+        let acc = signer::address_of(&s);
+        
+        let S {t: tt} = move_from<S<u64, u64>>(acc);
+
+        T::remove(&mut tt, 42);
+        T::remove(&mut tt, 43);
+        T::destroy_empty(tt);
+    }
 }

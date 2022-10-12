@@ -96,7 +96,6 @@ pub fn resolve_table_ownership<S: TableMetaResolver + MoveResolver>(
 
     for i in table_change_set.removed_tables.iter() {
         data_cache.del_owner(i);
-        data_cache.del_size(i);
     }
 
     for (addr, account_change_set) in change_set.borrow().accounts().iter() {
@@ -178,8 +177,12 @@ pub fn resolve_table_size_change_by_account<S: TableMetaResolver>(
     println!("table size owning???? {:?}", accounts_delta);
 
     // handle size changes
+    for i in table_change_set.removed_tables.iter() {
+        data_cache.del_size(i);
+    }
+
     for (handle, size_delta) in table_size_change.changes() {
-        // todo: should check deleted table?? yes
+        // should check deleted table??
         if table_change_set.removed_tables.contains(handle) {
             continue;
         }
