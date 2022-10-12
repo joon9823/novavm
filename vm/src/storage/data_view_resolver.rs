@@ -17,7 +17,7 @@ use move_deps::move_core_types::{
 };
 
 pub trait StoredSizeResolver {
-    fn get_size(&self, access_path: &AccessPath) -> Option<usize>;
+    fn get_size(&self, access_path: &AccessPath) -> usize;
 }
 
 pub trait TableMetaResolver {
@@ -44,8 +44,8 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
     pub(crate) fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
         match self.data_view.get(access_path) {
             Ok(remote_data) => {
-                let mut cache = self.size_cache.borrow_mut();
-                if !cache.contains_key(access_path) {
+                let mut size_cache = self.size_cache.borrow_mut();
+                if !size_cache.contains_key(access_path) {
                     let size = match remote_data.borrow() {
                         Some(val) => {
                             let key_size = access_path.to_string().as_bytes().len();
@@ -53,8 +53,7 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
                         }
                         None => 0,
                     };
-                    // let val_size = remote_data.borrow().as_ref().map_or(0, |f| f.len());
-                    cache.insert(access_path.clone(), size);
+                    size_cache.insert(access_path.clone(), size);
                 }
                 Ok(remote_data)
             }
@@ -67,9 +66,12 @@ impl<'a, S: StateView> DataViewResolver<'a, S> {
 }
 
 impl<'block, S: StateView> StoredSizeResolver for DataViewResolver<'block, S> {
-    //TODO: should it return Result rather than Option?
-    fn get_size(&self, access_path: &AccessPath) -> Option<usize> {
-        self.size_cache.borrow().get(access_path).cloned()
+    fn get_size(&self, access_path: &AccessPath) -> usize {
+        self.size_cache
+            .borrow()
+            .get(access_path)
+            .expect("cannot get size of uncached key")
+            .clone()
     }
 }
 
