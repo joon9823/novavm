@@ -6,17 +6,14 @@ type BuildConfig struct {
 	TestMode           bool
 	GenerateDocs       bool
 	GenerateABIs       bool
-	InstallDir         []byte
+	InstallDir         string
 	ForceRecompilation bool
 	FetchDepsOnly      bool
 }
 
 // DefaultBuildConfig returns with all-false set (except PackagePath which is set to current(.)) BuildConfig
 func DefaultBuildConfig() BuildConfig {
-	return BuildConfig{
-		InstallDir: []byte(""),
-		// else all set to false
-	}
+	return BuildConfig{}
 }
 
 // NewBuildConfig returns newly create BuildConfig. unset values stays default, not unset
@@ -30,7 +27,7 @@ func NewBuildConfig(options ...func(*BuildConfig)) BuildConfig {
 
 func WithInstallDir(dir string) func(*BuildConfig) {
 	return func(bc *BuildConfig) {
-		bc.InstallDir = []byte(dir)
+		bc.InstallDir = dir
 	}
 }
 
