@@ -306,6 +306,8 @@ impl NovaVM {
         let mut session_output = session.finish()?;
 
         let temporary_session = self.create_session(remote_cache, session_id);
+        
+        // TODO: getting table size changes seems to be done in one function
         let mut data_cache = TableMetaDataCache::new(remote_cache);
 
         resolve_table_ownership(
