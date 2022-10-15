@@ -1,6 +1,7 @@
 //#![cfg_attr(feature = "backtraces", feature(backtrace))]
 
 pub mod serde_helper;
+mod session;
 
 pub use crate::backend::*;
 pub use crate::errors::BackendError;
@@ -17,6 +18,7 @@ pub mod message;
 pub mod natives;
 pub mod storage;
 pub mod table;
+pub mod table_meta;
 
 mod args_validator;
 mod errors;

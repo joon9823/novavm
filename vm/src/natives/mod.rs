@@ -6,6 +6,7 @@ mod helpers;
 pub mod account;
 pub mod block;
 pub mod code;
+pub mod table;
 pub mod type_info;
 pub mod util;
 
@@ -15,11 +16,11 @@ use move_deps::{
     move_stdlib::natives::{
         all_natives as move_natives, nursery_natives as move_nursery_natives, NurseryGasParameters,
     },
-    move_table_extension::{table_natives, GasParameters as TableGasParameter},
     move_vm_runtime::native_functions::{make_table_from_iter, NativeFunctionTable},
 };
 
 use crate::gas::NativeGasParameters;
+use table::{table_natives, GasParameters as TableGasParameter};
 
 pub mod status {
     // Failure in parsing a struct type tag
@@ -46,7 +47,7 @@ impl GasParameters {
                 },
                 create_signer: account::CreateSignerGasParameters {
                     base_cost: 0.into(),
-                },  
+                },
             },
             block: block::GasParameters {
                 get_block_info: block::GetBlockInfoGasParameters {

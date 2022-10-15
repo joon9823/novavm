@@ -1,14 +1,24 @@
-use crate::{access_path::AccessPath, api::ChainApi, storage::state_view::StateView};
+use crate::api::ChainApi;
+use crate::table_meta::TableMetaChangeSet;
+use crate::table_meta::TableMetaType;
+use crate::{access_path::AccessPath, storage::state_view::StateView};
 use std::collections::BTreeMap;
 
-use move_deps::{
-    move_core_types::{
-        effects::{ChangeSet, Op},
-        language_storage::ModuleId,
-    },
-    move_table_extension::TableChangeSet,
+use move_deps::move_core_types::{
+    account_address::AccountAddress,
+    effects::{ChangeSet, Op},
+    language_storage::ModuleId,
+    language_storage::StructTag,
+    resolver::{ModuleResolver, ResourceResolver},
+};
+use {
+    crate::natives::table::{TableHandle, TableResolver},
+    anyhow::Error,
 };
 
+use crate::natives::table::TableChangeSet;
+
+#[derive(Debug)]
 pub struct MockChain {
     map: BTreeMap<AccessPath, Option<Vec<u8>>>,
 }
@@ -52,7 +62,12 @@ impl MockState {
         }
     }
 
-    pub fn push_write_set(&mut self, changeset: ChangeSet, table_change_set: &TableChangeSet) {
+    pub fn push_write_set(
+        &mut self,
+        changeset: ChangeSet,
+        table_change_set: TableChangeSet,
+        table_meta_change_set: TableMetaChangeSet,
+    ) {
         for (addr, account_changeset) in changeset.into_inner() {
             let (modules, resources) = account_changeset.into_inner();
             for (struct_tag, blob_opt) in resources {
@@ -64,13 +79,25 @@ impl MockState {
                 let ap = AccessPath::from(&ModuleId::new(addr, name));
                 self.write_op(ap, blob_opt)
             }
+        }
 
-            for (handle, change) in &table_change_set.changes {
-                for (key, blob_opt) in &change.entries {
-                    let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-                    self.write_op(ap, blob_opt.clone())
-                }
+        for (handle, change) in table_change_set.changes {
+            for (key, blob_opt) in change.entries {
+                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+                self.write_op(ap, blob_opt.clone())
             }
+        }
+
+        let TableMetaChangeSet { owner, size } = table_meta_change_set;
+        println!("table owner changes {:?}", owner);
+        for (handle, op) in owner {
+            let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
+            self.write_op(ap, op);
+        }
+        println!("table size changes {:?}", size);
+        for (handle, op) in size {
+            let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
+            self.write_op(ap, op);
         }
     }
 }
@@ -92,5 +119,45 @@ pub struct MockApi {
 impl ChainApi for MockApi {
     fn get_block_info(&self) -> anyhow::Result<(u64 /* height */, u64 /* timestamp */)> {
         Ok((self.height, self.timestamp))
+    }
+}
+
+/// A dummy storage containing no modules or resources.
+#[derive(Debug, Clone)]
+pub struct BlankStorage;
+
+impl BlankStorage {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl ModuleResolver for BlankStorage {
+    type Error = ();
+
+    fn get_module(&self, _module_id: &ModuleId) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(None)
+    }
+}
+
+impl ResourceResolver for BlankStorage {
+    type Error = ();
+
+    fn get_resource(
+        &self,
+        _address: &AccountAddress,
+        _tag: &StructTag,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(None)
+    }
+}
+
+impl TableResolver for BlankStorage {
+    fn resolve_table_entry(
+        &self,
+        _handle: &TableHandle,
+        _key: &[u8],
+    ) -> Result<Option<Vec<u8>>, Error> {
+        Ok(None)
     }
 }

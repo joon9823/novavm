@@ -6,10 +6,12 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
-use move_deps::move_table_extension::TableChangeSet;
 use novavm::access_path::AccessPath;
 use novavm::gas::Gas;
+use novavm::natives::table::TableChangeSet;
 use novavm::storage::data_view_resolver::DataViewResolver;
+use novavm::table_meta::TableMetaChangeSet;
+use novavm::table_meta::TableMetaType;
 use novavm::BackendResult;
 use novavm::Message;
 use novavm::ModuleBundle;
@@ -35,7 +37,12 @@ pub(crate) fn initialize_vm(vm: &mut NovaVM, db_handle: Db, payload: &[u8]) -> R
 
     match status {
         VMStatus::Executed => {
-            push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
+            push_write_set(
+                &mut storage,
+                output.change_set(),
+                output.table_change_set(),
+                output.table_meta_change_set(),
+            )?;
         }
         _ => Err(Error::from(status))?,
     }
@@ -66,7 +73,12 @@ pub(crate) fn publish_module_bundle(
 
     match status {
         VMStatus::Executed => {
-            push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
+            push_write_set(
+                &mut storage,
+                output.change_set(),
+                output.table_change_set(),
+                output.table_meta_change_set(),
+            )?;
 
             let res = generate_result(status, output, retval, false)?;
             to_vec(&res)
@@ -162,7 +174,12 @@ fn execute_entry_function_internal(
     match status {
         VMStatus::Executed => {
             if !is_query {
-                push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
+                push_write_set(
+                    &mut storage,
+                    output.change_set(),
+                    output.table_change_set(),
+                    output.table_meta_change_set(),
+                )?;
             }
 
             let res = generate_result(status, output, retval, is_query)?;
@@ -191,6 +208,7 @@ pub fn push_write_set(
     go_storage: &mut GoStorage,
     changeset: &ChangeSet,
     table_change_set: &TableChangeSet,
+    table_meta_change_set: &TableMetaChangeSet,
 ) -> BackendResult<()> {
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
@@ -202,13 +220,23 @@ pub fn push_write_set(
             let ap = AccessPath::from(&ModuleId::new(addr.clone(), name.clone()));
             write_op(go_storage, &ap, &blob_opt)?;
         }
+    }
 
-        for (handle, change) in &table_change_set.changes {
-            for (key, val) in &change.entries {
-                let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-                write_op(go_storage, &ap, &val)?;
-            }
+    for (handle, change) in &table_change_set.changes {
+        for (key, val) in &change.entries {
+            let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
+            write_op(go_storage, &ap, &val)?;
         }
+    }
+
+    for (handle, op) in &table_meta_change_set.owner {
+        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
+        write_op(go_storage, &ap, &op)?;
+    }
+
+    for (handle, op) in &table_meta_change_set.size {
+        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
+        write_op(go_storage, &ap, &op)?;
     }
 
     Ok(())
@@ -248,7 +276,12 @@ fn execute_script_internal(
     match status {
         VMStatus::Executed => {
             if !is_query {
-                push_write_set(&mut storage, output.change_set(), output.table_change_set())?;
+                push_write_set(
+                    &mut storage,
+                    output.change_set(),
+                    output.table_change_set(),
+                    output.table_meta_change_set(),
+                )?;
             }
 
             let res = generate_result(status, output, retval, is_query)?;

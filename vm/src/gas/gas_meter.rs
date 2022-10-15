@@ -51,8 +51,7 @@ pub trait InitialGasSchedule: Sized {
 pub struct NativeGasParameters {
     pub move_stdlib: move_stdlib::natives::GasParameters,
     pub nova_stdlib: natives::GasParameters,
-    // TODO : add move_table_extension later
-    // pub table: move_table_extension::GasParameters,
+    // pub table: natives::table::GasParameters,
 }
 
 impl FromOnChainGasSchedule for NativeGasParameters {
@@ -79,7 +78,7 @@ impl NativeGasParameters {
         Self {
             move_stdlib: move_stdlib::natives::GasParameters::zeros(),
             nova_stdlib: natives::GasParameters::zeros(),
-            // table: move_table_extension::GasParameters::zeros(),
+            // table: natives::table::GasParameters::zeros(),
         }
     }
 }

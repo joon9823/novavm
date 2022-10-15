@@ -12,15 +12,19 @@ use move_deps::move_core_types::effects::Event;
 use move_deps::move_core_types::vm_status::*;
 use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
-use move_deps::move_table_extension::TableChangeSet;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 pub use module::{Module, ModuleBundle};
 pub use script::{EntryFunction, Script};
 
+use self::size_change_set::AccountSizeChangeSet;
+use crate::natives::table::TableChangeSet;
+use crate::table_meta::TableMetaChangeSet;
+
 mod module;
 mod script;
+pub mod size_change_set;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
@@ -227,6 +231,8 @@ pub struct MessageOutput {
     change_set: ChangeSet,
     events: Vec<Event>,
     table_change_set: TableChangeSet,
+    size_change_set: AccountSizeChangeSet,
+    table_meta_change_set: TableMetaChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -240,12 +246,16 @@ impl MessageOutput {
         change_set: ChangeSet,
         events: Vec<Event>,
         table_change_set: TableChangeSet,
+        size_change_set: AccountSizeChangeSet,
+        table_meta_change_set: TableMetaChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
         MessageOutput {
             change_set,
             table_change_set,
+            size_change_set,
+            table_meta_change_set,
             events,
             gas_used,
             status,
@@ -260,6 +270,14 @@ impl MessageOutput {
         &self.table_change_set
     }
 
+    pub fn size_change_set(&self) -> &AccountSizeChangeSet {
+        &self.size_change_set
+    }
+
+    pub fn table_meta_change_set(&self) -> &TableMetaChangeSet {
+        &self.table_meta_change_set
+    }
+
     pub fn events(&self) -> &[Event] {
         &self.events
     }
@@ -272,7 +290,25 @@ impl MessageOutput {
         &self.status
     }
 
-    pub fn into_inner(self) -> (ChangeSet, Vec<Event>, u64, MessageStatus) {
-        (self.change_set, self.events, self.gas_used, self.status)
+    pub fn into_inner(
+        self,
+    ) -> (
+        ChangeSet,
+        TableChangeSet,
+        TableMetaChangeSet,
+        AccountSizeChangeSet,
+        Vec<Event>,
+        u64,
+        MessageStatus,
+    ) {
+        (
+            self.change_set,
+            self.table_change_set,
+            self.table_meta_change_set,
+            self.size_change_set,
+            self.events,
+            self.gas_used,
+            self.status,
+        )
     }
 }

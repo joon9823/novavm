@@ -2,6 +2,11 @@
 // Copyright (c) The Move Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::gas::NativeGasParameters;
+use crate::natives::block::NativeBlockContext;
+use crate::natives::table::NativeTableContext;
+use crate::natives::{code::NativeCodeContext, nova_natives};
+use crate::tests::mock_chain::BlankStorage;
 use move_deps::{
     move_cli::base::test::{run_move_unit_tests, UnitTestResult},
     move_package, move_unit_test,
@@ -10,11 +15,11 @@ use move_deps::{
         native_extensions::NativeContextExtensions, native_functions::NativeFunctionTable,
     },
 };
-
-use crate::gas::NativeGasParameters;
-use crate::natives::{block::NativeBlockContext, code::NativeCodeContext, nova_natives};
+use once_cell::sync::Lazy;
 use std::path::PathBuf;
 use tempfile::tempdir;
+
+static DUMMY_RESOLVER: Lazy<BlankStorage> = Lazy::new(|| BlankStorage);
 
 use super::mock_chain::MockApi;
 
@@ -24,6 +29,7 @@ pub fn configure_for_unit_test() {
 
 fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
     exts.add(NativeCodeContext::default());
+    exts.add(NativeTableContext::new([0; 32], &*DUMMY_RESOLVER));
     exts.add(NativeBlockContext::new(&MockApi {
         height: 100,
         timestamp: 100,

@@ -1,37 +1,77 @@
 #![forbid(unsafe_code)]
 
+use std::{borrow::Borrow, cell::RefCell, collections::BTreeMap};
+
 use crate::access_path::AccessPath;
+use crate::table_meta::TableMetaType;
 
 use super::state_view::StateView;
+use crate::natives::table::{TableHandle, TableResolver};
 use log::error;
+use move_deps::move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
     language_storage::{ModuleId, StructTag},
     resolver::{ModuleResolver, ResourceResolver},
     vm_status::StatusCode,
 };
-use move_deps::{
-    move_binary_format::errors::{Location, PartialVMError, VMError, VMResult},
-    move_table_extension::{TableHandle, TableResolver},
-};
+
+pub trait StoredSizeResolver {
+    fn get_size(&self, access_path: &AccessPath) -> usize;
+}
+
+pub trait TableMetaResolver {
+    fn get_table_meta(
+        &self,
+        handle: &TableHandle,
+        meta: TableMetaType,
+    ) -> VMResult<Option<Vec<u8>>>;
+}
 
 pub struct DataViewResolver<'a, S> {
     data_view: &'a S,
+    pub size_cache: RefCell<BTreeMap<AccessPath, usize>>,
 }
 
 impl<'a, S: StateView> DataViewResolver<'a, S> {
     pub fn new(data_view: &'a S) -> Self {
-        Self { data_view }
+        Self {
+            data_view,
+            size_cache: RefCell::new(BTreeMap::default()),
+        }
     }
 
-    fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
+    pub(crate) fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
         match self.data_view.get(access_path) {
-            Ok(remote_data) => Ok(remote_data),
+            Ok(remote_data) => {
+                let mut size_cache = self.size_cache.borrow_mut();
+                if !size_cache.contains_key(access_path) {
+                    let size = match remote_data.borrow() {
+                        Some(val) => {
+                            let key_size = access_path.to_string().as_bytes().len();
+                            key_size + val.len()
+                        }
+                        None => 0,
+                    };
+                    size_cache.insert(access_path.clone(), size);
+                }
+                Ok(remote_data)
+            }
             Err(e) => {
                 error!("[VM] Error getting data from storage for {:?}", access_path);
                 Err(e)
             }
         }
+    }
+}
+
+impl<'block, S: StateView> StoredSizeResolver for DataViewResolver<'block, S> {
+    fn get_size(&self, access_path: &AccessPath) -> usize {
+        self.size_cache
+            .borrow()
+            .get(access_path)
+            .expect("cannot get size of uncached key")
+            .clone()
     }
 }
 
@@ -65,5 +105,20 @@ impl<'block, S: StateView> TableResolver for DataViewResolver<'block, S> {
     ) -> Result<Option<Vec<u8>>, anyhow::Error> {
         let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
         self.get(&ap)
+    }
+}
+
+impl<'block, S: StateView> TableMetaResolver for DataViewResolver<'block, S> {
+    // type Error = VMError;
+    //
+
+    fn get_table_meta(
+        &self,
+        handle: &TableHandle,
+        meta: TableMetaType,
+    ) -> VMResult<Option<Vec<u8>>> {
+        let ap = AccessPath::table_meta_access_path(handle.0, meta);
+        self.get(&ap)
+            .map_err(|_| PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined))
     }
 }
