@@ -41,7 +41,6 @@ func (vm *VM) Initialize(
 }
 
 // VM Destroyer
-// TODO: add params and returns
 func (vm *VM) Destroy() {
 	api.ReleaseVM(vm.inner)
 }
@@ -118,10 +117,10 @@ func (vm *VM) ExecuteEntryFunction(
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
 	payload types.ExecuteEntryFunctionPayload,
-) (uint64, []types.Event, error) {
+) (uint64, []types.Event, []types.SizeDelta, error) {
 	bz, err := json.Marshal(payload)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	res, err := api.ExecuteContract(
@@ -136,12 +135,12 @@ func (vm *VM) ExecuteEntryFunction(
 	)
 
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	var execRes types.ExecutionResult
 	err = json.Unmarshal(res, &execRes)
-	return execRes.GasUsed, execRes.Events, err
+	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 
 // Execute calls a given contract.
@@ -153,10 +152,10 @@ func (vm *VM) ExecuteScript(
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
 	payload types.ExecuteScriptPayload,
-) (uint64, []types.Event, error) {
+) (uint64, []types.Event, []types.SizeDelta, error) {
 	bz, err := json.Marshal(payload)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	res, err := api.ExecuteScript(
@@ -171,12 +170,12 @@ func (vm *VM) ExecuteScript(
 	)
 
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	var execRes types.ExecutionResult
 	err = json.Unmarshal(res, &execRes)
-	return execRes.GasUsed, execRes.Events, err
+	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 
 // DecodeMoveResource decode resource bytes to move resource

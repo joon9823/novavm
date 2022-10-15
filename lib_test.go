@@ -3,7 +3,7 @@ package nova_test
 import (
 	"bytes"
 	"encoding/base64"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 )
 
 func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/BasicCoin.mv")
+	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/BasicCoin.mv")
 	require.NoError(t, err)
 
 	kvStore := api.NewLookup()
@@ -49,13 +49,13 @@ func publishModuleBundle(
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	f0, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	f0, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/TestCoin.mv")
 	require.NoError(t, err)
-	f1, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle1.mv")
+	f1, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/Bundle1.mv")
 	require.NoError(t, err)
-	f2, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle2.mv")
+	f2, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/Bundle2.mv")
 	require.NoError(t, err)
-	f3, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/Bundle3.mv")
+	f3, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/Bundle3.mv")
 	require.NoError(t, err)
 
 	usedGas, err := vm.PublishModuleBundle(
@@ -105,7 +105,7 @@ func mintCoin(
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
-	usedGas, events, err := vm.ExecuteEntryFunction(
+	usedGas, events, sizeDeltas, err := vm.ExecuteEntryFunction(
 		kvStore,
 		api.NewMockAPI(&mockAPI),
 		100000000,
@@ -115,6 +115,10 @@ func mintCoin(
 	)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
+	require.Len(t, sizeDeltas, 1)
+	sizeDelta := sizeDeltas[0]
+	require.Equal(t, minter, sizeDelta.Address)
+	require.NotZero(t, sizeDelta.Amount)
 
 	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, amount, num)
@@ -162,7 +166,7 @@ func Test_FailOnExecute(t *testing.T) {
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
-	_, _, err = vm.ExecuteEntryFunction(
+	_, _, _, err = vm.ExecuteEntryFunction(
 		kvStore,
 		mockAPI,
 		100000000,
@@ -196,7 +200,7 @@ func Test_OutOfGas(t *testing.T) {
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
-	_, _, err = vm.ExecuteEntryFunction(
+	_, _, _, err = vm.ExecuteEntryFunction(
 		kvStore,
 		mockAPI,
 		1,
@@ -262,7 +266,7 @@ func Test_DecodeModule(t *testing.T) {
 	vm, _ := initializeVM(t)
 	defer vm.Destroy()
 
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_modules/TestCoin.mv")
+	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/TestCoin.mv")
 	require.NoError(t, err)
 
 	bz, err := vm.DecodeModuleBytes(f)
@@ -274,7 +278,7 @@ func Test_DecodeScript(t *testing.T) {
 	vm, _ := initializeVM(t)
 	defer vm.Destroy()
 
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_scripts/main.mv")
 	require.NoError(t, err)
 
 	bz, err := vm.DecodeScriptBytes(f)
@@ -288,7 +292,7 @@ func Test_ExecuteScript(t *testing.T) {
 
 	publishModuleBundle(t, vm, kvStore)
 
-	f, err := ioutil.ReadFile("./vm/move-test/build/test1/bytecode_scripts/main.mv")
+	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_scripts/main.mv")
 	require.NoError(t, err)
 
 	testAccount, err := types.NewAccountAddress("0x2")
@@ -301,7 +305,7 @@ func Test_ExecuteScript(t *testing.T) {
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
-	usedGas, events, err := vm.ExecuteScript(
+	usedGas, events, _, err := vm.ExecuteScript(
 		kvStore,
 		mockAPI,
 		15000,

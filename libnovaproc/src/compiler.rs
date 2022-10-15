@@ -66,31 +66,26 @@ pub struct NovaCompilerBuildConfig {
     /// this flag is set. This flag is useful for development of packages that expose named
     /// addresses that are not set to a specific value.
     pub dev_mode: bool,
-
     /// Compile in 'test' mode. The 'dev-addresses' and 'dev-dependencies' fields will be used
     /// along with any code in the 'tests' directory.
     pub test_mode: bool,
-
     /// Generate documentation for packages
     pub generate_docs: bool,
-
     /// Generate ABIs for packages
     pub generate_abis: bool,
-
     /// Installation directory for compiled artifacts. Defaults to current directory.
     pub install_dir: ByteSliceView,
-
     /// Force recompilation of all packages
     pub force_recompilation: bool,
-
     /* unused
     /// Additional named address mapping. Useful for tools in rust
     pub additional_named_addresses: BTreeMap<String, AccountAddress>,
-
     pub architecture: Option<Architecture>,
     */
     /// Only fetch dependency repos to MOVE_HOME
     pub fetch_deps_only: bool,
+    /// Skip fetching latest git dependencies
+    pub skip_fetch_latest_git_deps: bool,
 }
 
 impl From<NovaCompilerBuildConfig> for BuildConfig {
@@ -105,6 +100,7 @@ impl From<NovaCompilerBuildConfig> for BuildConfig {
             additional_named_addresses: BTreeMap::new(),
             architecture: Some(Architecture::Move),
             fetch_deps_only: val.fetch_deps_only,
+            skip_fetch_latest_git_deps: val.skip_fetch_latest_git_deps,
         }
     }
 }
@@ -125,10 +121,8 @@ pub struct NovaCompilerTestOption {
     pub report_statistics: bool,
     /// Show the storage state at the end of execution of a failing test
     pub report_storage_on_error: bool,
-
     /// Ignore compiler's warning, and continue run tests
     pub ignore_compile_warnings: bool,
-
     /// Use the stackless bytecode interpreter to run the tests and cross check its results with
     /// the execution result from Move VM.
     pub check_stackless_vm: bool,

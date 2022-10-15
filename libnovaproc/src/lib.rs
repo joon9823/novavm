@@ -14,6 +14,7 @@ mod storage;
 mod version;
 mod vm;
 mod args;
+mod size_delta;
 
 pub use db::{db_t, Db};
 pub use memory::{

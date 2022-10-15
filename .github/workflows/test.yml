@@ -39,13 +39,13 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             libnovaproc/target/
-            vm/target/
-            vm/move-test/build/
+            crates/vm/target/
+            crates/move-test/build/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: Build test contracts
         run: |
-          (cd vm/move-test && move build)
+          (cd crates/move-test && move build)
       - name: Build rust
         run: |
           make build-rust

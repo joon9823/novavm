@@ -35,21 +35,22 @@ test-filenames:
 
 test: test-rust test-go
 
-test-go: 
-	RUST_BACKTRACE=full go test -v -count=1 ./...
+test-go: build-test
+	RUST_BACKTRACE=full go test -v -count=1 -parallel=1 ./...
 
-test-safety:
+test-safety: build-test
 	# Use package list mode to include all subdirectores. The -count=1 turns off caching.
-	GODEBUG=cgocheck=2 go test -race -v -count=1 ./...
+	GODEBUG=cgocheck=2 go test -race -v -count=1 -parallel=1 ./...
 
-test-rust: test-vm test-lib
+test-rust: test-compiler test-vm test-lib
 
-test-vm:
-	(cd vm/move-test && make build)
-	(cd vm && cargo test)
+test-vm: build-test
+	(cd crates/vm && cargo test --features testing)
 
-test-lib:
-	(cd compiler && cargo test)
+test-compiler: build-test
+	(cd crates/compiler && cargo test)
+
+test-lib: build-test
 	(cd libnovaproc && cargo test)
 
 build: build-rust build-go
@@ -58,6 +59,9 @@ build-rust: build-rust-release
 
 build-go:
 	go build ./...
+
+build-test:
+	(cd crates/move-test && make build)
 
 update-bindings:
 	# After we build libnovaproc, we have to copy the generated bindings for Go code to use.
@@ -87,6 +91,8 @@ clean:
 	@-rm api/libnovaproc.dylib
 	@-rm libnovaproc/bindings.h
 	@-(cd libnovaproc && cargo clean)
+	@-(cd crates/vm && cargo clean)
+	@-(cd crates/compiler && cargo clean)
 	@echo cleaned.
 
 # Creates a release build in a containerized build environment of the static library for Alpine Linux (.a)

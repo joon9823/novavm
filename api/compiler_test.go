@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"os"
 	"path"
 	"testing"
@@ -14,23 +15,12 @@ var packagePath string
 
 func init() {
 	workingDir, _ = os.Getwd()
-	packagePath = path.Join(workingDir, "../compiler/testdata/general")
-}
-
-func Test_BuildContract(t *testing.T) {
-	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
-		types.WithInstallDir(packagePath),
-		types.WithDevMode(),
-		types.WithTestMode(),
-	)
-	res, err := BuildContract(nova_arg)
-	require.NoError(t, err)
-	require.Equal(t, string(res), "ok")
+	packagePath = path.Join(workingDir, "../crates/move-test")
 }
 
 func Test_TestContract(t *testing.T) {
 	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
-		types.WithInstallDir(packagePath),
+		types.WithInstallDir(path.Join(packagePath, "build-test")),
 		types.WithDevMode(),
 		types.WithTestMode(),
 	)
@@ -45,18 +35,52 @@ func Test_TestContract(t *testing.T) {
 	require.Equal(t, string(res), "ok")
 }
 
-func Test_CreateNewContract(t *testing.T) {
-	tmpPath := packagePath + "-tmp"
+// NOTE: should be executed before `Test_BuildContract`
+func Test_CleanContract(t *testing.T) {
+	tmpPath, err := os.MkdirTemp(os.TempDir(), "nova-compiler")
+	require.NoError(t, err)
+
+	defer os.RemoveAll(tmpPath)
+
+	// new
 	nova_arg := types.NewNovaCompilerArgument(tmpPath, false, types.DefaultBuildConfig())
 	res, err := CreateContractPackage(nova_arg, "novum_initium")
-	defer os.RemoveAll(tmpPath)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+
+	// make dummy build folder
+	buildPath := path.Join(tmpPath, "build")
+	err = os.Mkdir(buildPath, os.ModePerm)
+	require.NoError(t, err)
+
+	// clean
+	nova_arg = types.NewNovaCompilerArgument(tmpPath, false, types.DefaultBuildConfig())
+	res, err = CleanContractPackage(nova_arg, true)
+	require.NoError(t, err)
+	require.Equal(t, string(res), "ok")
+
+	_, err = os.Stat(buildPath)
+	require.True(t, errors.Is(err, os.ErrNotExist))
+}
+
+// NOTE: should be executed after `Test_CleanContract`
+func Test_BuildContract(t *testing.T) {
+	nova_arg := types.NewNovaCompilerArgumentWithBuildOption(packagePath, false,
+		types.WithInstallDir(path.Join(packagePath, "build-release")),
+	)
+	res, err := BuildContract(nova_arg)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }
 
-func Test_CleanContract(t *testing.T) {
-	nova_arg := types.NewNovaCompilerArgument(packagePath, false, types.DefaultBuildConfig())
-	res, err := CleanContractPackage(nova_arg, true)
+func Test_CreateNewContract(t *testing.T) {
+	tmpPath, err := os.MkdirTemp(os.TempDir(), "nova-compiler")
+	require.NoError(t, err)
+
+	defer os.RemoveAll(tmpPath)
+
+	nova_arg := types.NewNovaCompilerArgument(tmpPath, false, types.DefaultBuildConfig())
+	res, err := CreateContractPackage(nova_arg, "novum_initium")
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 }

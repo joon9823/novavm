@@ -244,6 +244,10 @@ typedef struct {
    * Only fetch dependency repos to MOVE_HOME
    */
   bool fetch_deps_only;
+  /**
+   * Skip fetching latest git dependencies
+   */
+  bool skip_fetch_latest_git_deps;
 } NovaCompilerBuildConfig;
 
 typedef struct {

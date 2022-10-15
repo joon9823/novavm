@@ -2,13 +2,32 @@ package types
 
 // BuildConfig is a configuration set to compile move package
 type BuildConfig struct {
-	DevMode            bool
-	TestMode           bool
-	GenerateDocs       bool
-	GenerateABIs       bool
-	InstallDir         string
+	// Compile in 'dev' mode. The 'dev-addresses' and 'dev-dependencies' fields will be used if
+	// this flag is set. This flag is useful for development of packages that expose named
+	// addresses that are not set to a specific value.
+	DevMode bool
+
+	// Compile in 'test' mode. The 'dev-addresses' and 'dev-dependencies' fields will be used
+	// along with any code in the 'tests' directory.
+	TestMode bool
+
+	// Generate documentation for packages
+	GenerateDocs bool
+
+	// Generate ABIs for packages
+	GenerateABIs bool
+
+	// Installation directory for compiled artifacts. Defaults to current directory.
+	InstallDir string
+
+	// Force recompilation of all packages
 	ForceRecompilation bool
-	FetchDepsOnly      bool
+
+	// Only fetch dependency repos to MOVE_HOME
+	FetchDepsOnly bool
+
+	// Skip fetching latest git dependencies
+	SkipFetchLatestGitDeps bool
 }
 
 // DefaultBuildConfig returns with all-false set (except PackagePath which is set to current(.)) BuildConfig
@@ -67,23 +86,51 @@ func WithFetchDepsOnly() func(*BuildConfig) {
 	}
 }
 
+func WithSkipFetchLatestGitDeps() func(*BuildConfig) {
+	return func(bc *BuildConfig) {
+		bc.SkipFetchLatestGitDeps = true
+	}
+}
+
 // TestConfig is a configuration set to test move package
 type TestConfig struct {
+	// Bound the number of instructions that can be executed by any one test.
+	// set 0 to no-boundary
 	InstructionExecutionBound uint64
-	Filter                    []byte
-	List                      bool
-	NumThreads                uint
-	ReportStatistics          bool
-	ReportStorageOnError      bool
-	IgnoreCompileWarnings     bool
-	CheckStacklessVM          bool
-	VerboseMode               bool
-	ComputeCoverage           bool
+
+	// A filter string to determine which unit tests to run. A unit test will be run only if it
+	// contains this string in its fully qualified (<addr>::<module_name>::<fn_name>) name.
+	Filter []byte
+
+	// List all tests
+	List bool
+
+	// Number of threads to use for running tests.
+	NumThreads uint
+
+	// Report test statistics at the end of testing
+	ReportStatistics bool
+
+	// Show the storage state at the end of execution of a failing test
+	ReportStorageOnError bool
+
+	// Ignore compiler's warning, and continue run tests
+	IgnoreCompileWarnings bool
+
+	// Use the stackless bytecode interpreter to run the tests and cross check its results with
+	// the execution result from Move VM.
+	CheckStacklessVM bool
+
+	// Verbose mode
+	VerboseMode bool
+
+	// Collect coverage information for later use with the various `package coverage` subcommands
+	ComputeCoverage bool
 }
 
 const (
-	DefaultInstructionExecutionBound = 200_000 // twice of aptos default
-	DefaultNumThreads                = 8       // same with move default
+	DefaultInstructionExecutionBound = 200_000
+	DefaultNumThreads                = 8
 )
 
 // DefaultTestConfig returns TestConfig with default value

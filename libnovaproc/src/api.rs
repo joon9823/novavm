@@ -2,7 +2,7 @@ use crate::error::GoError;
 use crate::memory::UnmanagedVector;
 
 use anyhow::anyhow;
-use novavm::api::ChainApi;
+use nova_natives::block::BlockInfoResolver;
 
 // this represents something passed in from the caller side of FFI
 // in this case a struct with go function pointers
@@ -38,7 +38,7 @@ pub struct GoApi {
 // see: https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe
 unsafe impl Send for GoApi {}
 
-impl ChainApi for GoApi {
+impl BlockInfoResolver for GoApi {
     // return latest block height and timestamp
     fn get_block_info(&self) -> anyhow::Result<(u64, u64)> {
         let mut height = 0_u64;

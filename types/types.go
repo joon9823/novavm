@@ -61,7 +61,7 @@ func NewAccountAddress(hexAddr string) (AccountAddress, error) {
 	if lengthDiff > 0 {
 		hexStr = strings.Repeat("0", lengthDiff) + hexStr
 	} else if lengthDiff < 0 {
-		return nil, errors.New("Invalid length of address")
+		return nil, errors.New("invalid length of address")
 	}
 
 	sender, err := hex.DecodeString(hexStr)
@@ -257,8 +257,15 @@ type Event struct {
 	Data    []byte  `json:"event_data"`
 }
 
+type SizeDelta struct {
+	Address      AccountAddress `json:"address"`
+	Amount       uint64         `json:"amount"`
+	IsDecreasing bool           `json:"is_decreasing"`
+}
+
 type ExecutionResult struct {
-	Result  []byte  `json:"result"`
-	Events  []Event `json:"events"`
-	GasUsed uint64  `json:"gas_used"`
+	Result     []byte      `json:"result"`
+	Events     []Event     `json:"events"`
+	SizeDeltas []SizeDelta `json:"size_deltas"`
+	GasUsed    uint64      `json:"gas_used"`
 }

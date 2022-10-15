@@ -6,12 +6,13 @@ use crate::storage::Storage;
 use crate::Db;
 use crate::GoStorage;
 
+use nova_gas::Gas;
+use nova_natives::table::TableChangeSet;
 use novavm::access_path::AccessPath;
-use novavm::gas::Gas;
-use novavm::natives::table::TableChangeSet;
 use novavm::storage::data_view_resolver::DataViewResolver;
-use novavm::table_meta::TableMetaChangeSet;
-use novavm::table_meta::TableMetaType;
+use novavm::storage::table_meta::table_meta_change_set::TableMetaChangeSet;
+use novavm::storage::table_meta::TableMeta;
+use novavm::BackendError;
 use novavm::BackendResult;
 use novavm::Message;
 use novavm::ModuleBundle;
@@ -204,6 +205,20 @@ fn write_op(
     }
 }
 
+fn write_table_meta_op(
+    go_storage: &mut GoStorage,
+    ap: &AccessPath,
+    blob_opt: &Op<TableMeta>,
+) -> BackendResult<()> {
+    match blob_opt {
+        Op::New(blob) | Op::Modify(blob) => go_storage.set(
+            ap.to_string().as_bytes(),
+            &TableMeta::serialize(blob).map_err(|e| BackendError::unknown(e.to_string()))?,
+        ),
+        Op::Delete => go_storage.remove(ap.to_string().as_bytes()),
+    }
+}
+
 pub fn push_write_set(
     go_storage: &mut GoStorage,
     changeset: &ChangeSet,
@@ -213,30 +228,25 @@ pub fn push_write_set(
     for (addr, account_changeset) in changeset.accounts() {
         for (struct_tag, blob_opt) in account_changeset.resources() {
             let ap = AccessPath::resource_access_path(addr.clone(), struct_tag.clone());
-            write_op(go_storage, &ap, &blob_opt)?;
+            write_op(go_storage, &ap, blob_opt)?;
         }
 
         for (name, blob_opt) in account_changeset.modules() {
             let ap = AccessPath::from(&ModuleId::new(addr.clone(), name.clone()));
-            write_op(go_storage, &ap, &blob_opt)?;
+            write_op(go_storage, &ap, blob_opt)?;
         }
     }
 
     for (handle, change) in &table_change_set.changes {
         for (key, val) in &change.entries {
             let ap = AccessPath::table_item_access_path(handle.0, key.to_vec());
-            write_op(go_storage, &ap, &val)?;
+            write_op(go_storage, &ap, val)?;
         }
     }
 
-    for (handle, op) in &table_meta_change_set.owner {
-        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Owner);
-        write_op(go_storage, &ap, &op)?;
-    }
-
-    for (handle, op) in &table_meta_change_set.size {
-        let ap = AccessPath::table_meta_access_path(handle.0, TableMetaType::Size);
-        write_op(go_storage, &ap, &op)?;
+    for (handle, op) in table_meta_change_set.changes() {
+        let ap = AccessPath::table_meta_access_path(handle.0);
+        write_table_meta_op(go_storage, &ap, op)?;
     }
 
     Ok(())

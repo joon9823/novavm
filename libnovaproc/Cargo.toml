@@ -37,10 +37,12 @@ serde = { version = "1.0.144", features = ["alloc", "derive", "serde_derive"] }
 serde_bytes = "0.11.7"
 serde_json = "1.0.85"
 thiserror = "1.0.34"
-novavm = { path = "../vm", features = ["backtraces"] }
-move-deps = { path = "../move-deps", features = ["address20"] }
 log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_warn"] }
-nova-compiler = { version = "0.1.0", path = "../compiler" }
+nova-compiler = { version = "0.1.0", path = "../crates/compiler" }
+novavm = { path = "../crates/vm", features = ["backtraces"] }
+nova-natives = { path = "../crates/natives" }
+nova-gas = { path = "../crates/gas" }
+move-deps = { path = "../crates/move-deps", features = ["address20"] }
 
 [dev-dependencies]
 
