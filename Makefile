@@ -100,6 +100,7 @@ release-build-alpine:
 	rm -rf libnovaproc/target/release
 	# build the muslc *.a file
 	docker run --rm -u $(USER_ID):$(USER_GROUP)  \
+		-v $(shell pwd)/crates:/code/crates \
 		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
@@ -117,7 +118,7 @@ release-build-alpine:
 release-build-linux:
 	rm -rf libnovaproc/target/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
-		-v $(shell pwd)/move-deps:/code/move-deps \
+		-v $(shell pwd)/crates:/code/crates \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
 		-v $(shell pwd)/compiler:/code/compiler \
@@ -131,7 +132,7 @@ release-build-macos:
 	rm -rf libnovaproc/target/x86_64-apple-darwin/release
 	rm -rf libnovaproc/target/aarch64-apple-darwin/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
-		-v $(shell pwd)/move-deps:/code/move-deps \
+		-v $(shell pwd)/crates:/code/crates \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
 		-v $(shell pwd)/vm:/code/vm \
 		-v $(shell pwd)/compiler:/code/compiler \
