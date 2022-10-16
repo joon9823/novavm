@@ -2,13 +2,13 @@
 resolver = "2"
 
 members = [
-    "libnovaproc"
+    "libnovaproc",
     "crates/compiler",
     "crates/gas",
     "crates/move-deps",
     "crates/natives",
     "crates/stdlib",
-    "crates/vm",
+    "crates/vm"
 ]
 
 [profile.bench]
