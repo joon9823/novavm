@@ -3,6 +3,7 @@ name = "move-deps"
 version = "0.0.1"
 publish = false
 edition = "2021"
+repository = "https://github.com/Kernel-Labs/novavm/tree/main/crates/move-deps"
 
 # This package is a copy from aptos-core/aptos-move/move-deps
 # CHANGES
