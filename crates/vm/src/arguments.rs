@@ -8,6 +8,8 @@ use move_deps::{
     move_vm_runtime::session::{LoadedFunctionInstantiation, Session},
     move_vm_types::loaded_data::runtime_types::Type,
 };
+use once_cell::sync::Lazy;
+use std::collections::BTreeSet;
 
 static ALLOWED_STRUCTS: Lazy<BTreeSet<String>> = Lazy::new(|| {
     ["0x1::string::String"]
