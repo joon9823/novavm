@@ -5,8 +5,8 @@
 
 //! This crate defines [`trait SizeResolver`](SizeResolver).
 
-use crate::access_path::AccessPath;
 use anyhow::Result;
+use nova_types::access_path::AccessPath;
 
 /// `SizeResolver` is a trait that defines a read-only snapshot of the global state.
 pub trait SizeResolver {

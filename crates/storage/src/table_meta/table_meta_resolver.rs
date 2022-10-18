@@ -6,7 +6,7 @@
 //! This crate defines [`trait TableMetaResolver`](TableMetaResolver).
 
 use anyhow::Result;
-use nova_natives::table::TableHandle;
+use nova_types::table::TableHandle;
 
 use super::TableMeta;
 

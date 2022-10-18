@@ -19,7 +19,7 @@ use move_deps::{
     },
     move_resource_viewer::{AnnotatedMoveStruct, AnnotatedMoveValue},
 };
-use novavm::Module;
+use nova_types::module::Module;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt::Display;

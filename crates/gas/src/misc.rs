@@ -4,21 +4,22 @@ use crate::algebra::{AbstractValueSize, AbstractValueSizePerArg};
 use crate::meter::{FromOnChainGasSchedule, InitialGasSchedule, ToOnChainGasSchedule};
 use move_deps::{
     move_core_types::{account_address::AccountAddress, gas_algebra::NumArgs},
-    move_vm_types::views::{ValueView, ValueVisitor}};
+    move_vm_types::views::{ValueView, ValueVisitor},
+};
 
 crate::params::define_gas_parameters!(
     AbstractValueSizeGasParameters,
     "misc.abs_val",
     [
         // abstract value size
-        [u8: AbstractValueSize, "u8", 1],
-        [u64: AbstractValueSize, "u64", 8],
-        [u128: AbstractValueSize, "u128", 16],
-        [bool: AbstractValueSize, "bool", 1],
-        [address: AbstractValueSize, "address", 32],
-        [struct_: AbstractValueSize, "struct", 8],
-        [vector: AbstractValueSize, "vector", 16],
-        [reference: AbstractValueSize, "reference", 16],
+        [u8: AbstractValueSize, "u8", 40],
+        [u64: AbstractValueSize, "u64", 40],
+        [u128: AbstractValueSize, "u128", 40],
+        [bool: AbstractValueSize, "bool", 40],
+        [address: AbstractValueSize, "address", 40],
+        [struct_: AbstractValueSize, "struct", 40],
+        [vector: AbstractValueSize, "vector", 40],
+        [reference: AbstractValueSize, "reference", 40],
         [per_u8_packed: AbstractValueSizePerArg, "per_u8_packed", 1],
         [per_u64_packed: AbstractValueSizePerArg, "per_u64_packed", 8],
         [

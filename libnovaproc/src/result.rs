@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::event::ContractEvent;
 use crate::size_delta::SizeDelta;
 
-use novavm::MessageOutput;
+use nova_types::message::MessageOutput;
 
 use move_deps::move_core_types::vm_status::VMStatus;
 use move_deps::move_vm_runtime::session::SerializedReturnValues;

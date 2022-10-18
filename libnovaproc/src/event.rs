@@ -17,12 +17,7 @@ pub struct ContractEvent {
 }
 
 impl ContractEvent {
-    pub fn new(
-        key: Vec<u8>,
-        sequence_number: u64,
-        type_tag: TypeTag,
-        event_data: Vec<u8>,
-    ) -> Self {
+    pub fn new(key: Vec<u8>, sequence_number: u64, type_tag: TypeTag, event_data: Vec<u8>) -> Self {
         Self {
             key,
             sequence_number,

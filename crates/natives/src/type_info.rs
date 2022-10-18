@@ -61,8 +61,7 @@ fn native_type_of(
 
     let type_tag = context.type_to_type_tag(&ty_args[0])?;
 
-    let cost = gas_params.base
-        + gas_params.unit * NumBytes::new(type_tag.to_string().len() as u64);
+    let cost = gas_params.base + gas_params.unit * NumBytes::new(type_tag.to_string().len() as u64);
 
     let type_tag = context.type_to_type_tag(&ty_args[0])?;
 

@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, path::Path};
 
-use crate::{error::Error, ByteSliceView/*, move_api::move_types::MoveType*/};
+use crate::{error::Error, ByteSliceView /*, move_api::move_types::MoveType*/};
 use move_deps::{
     move_cli::{base::test::Test, Move},
-    move_package::{Architecture, BuildConfig}
+    move_package::{Architecture, BuildConfig},
 };
 use nova_compiler::compile as nova_compile;
 

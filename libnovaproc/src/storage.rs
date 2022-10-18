@@ -1,10 +1,9 @@
 //use std::collections::HashMap;
 //use std::convert::TryInto;
 
-use novavm::access_path::AccessPath;
-//use novavm::BackendError;
+use nova_storage::state_view::StateView;
+use nova_types::access_path::AccessPath;
 use novavm::backend::BackendResult;
-use novavm::storage::state_view::StateView;
 
 use crate::db::Db;
 use crate::error::GoError;
@@ -38,14 +37,12 @@ pub struct GoStorage {
 
 impl GoStorage {
     pub fn new(db: Db) -> Self {
-        GoStorage {
-            db,
-        }
+        GoStorage { db }
     }
 }
 
 impl StateView for GoStorage {
-        fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
+    fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
         let key = access_path.to_string();
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
@@ -68,7 +65,7 @@ impl StateView for GoStorage {
         };
         unsafe {
             if let Err(err) = go_error.into_result(error_msg, default) {
-                return Err(anyhow!(err))
+                return Err(anyhow!(err));
             }
         }
 

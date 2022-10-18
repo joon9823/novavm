@@ -3,11 +3,10 @@ use std::collections::BTreeMap;
 use super::mock_chain::MockChain;
 
 use nova_gas::Gas;
+use nova_storage::data_view_resolver::DataViewResolver;
+use nova_types::{message::Message, message::MessageOutput, size_delta::SizeDelta};
 
-use crate::{
-    message::Message, nova_vm::NovaVM, storage::data_view_resolver::DataViewResolver,
-    storage::size::size_delta::SizeDelta, MessageOutput,
-};
+use crate::nova_vm::NovaVM;
 
 use move_deps::{
     move_core_types::{account_address::AccountAddress, vm_status::VMStatus},
@@ -58,15 +57,8 @@ pub struct ExpectedOutput(pub Vec<ExpectedOutputItem>);
 
 impl ExpectedOutput {
     // for compatibility with previous tests
-    pub fn new(
-        vm_status: VMStatus,
-        changed_accounts: usize,
-        result_bytes: Option<Vec<u8>>,
-    ) -> Self {
-        let mut items = vec![
-            ExpectedOutputItem::VMStatusReturn(vm_status),
-            ExpectedOutputItem::ChangedAccountCount(changed_accounts),
-        ];
+    pub fn new(vm_status: VMStatus, result_bytes: Option<Vec<u8>>) -> Self {
+        let mut items = vec![ExpectedOutputItem::VMStatusReturn(vm_status)];
         if let Some(b) = result_bytes {
             items.push(ExpectedOutputItem::ResultBytes(b));
         }
@@ -82,7 +74,6 @@ impl ExpectedOutput {
 
 pub enum ExpectedOutputItem {
     VMStatusReturn(VMStatus),
-    ChangedAccountCount(usize),
     ResultBytes(Vec<u8>),
     SizeChange(BTreeMap<AccountAddress, SizeDelta>),
 }
@@ -94,9 +85,6 @@ impl ExpectedOutputItem {
             ExpectedOutputItem::VMStatusReturn(exp_status) => {
                 println!("got:{}, exp:{}", status, exp_status);
                 assert!(status == exp_status);
-            }
-            ExpectedOutputItem::ChangedAccountCount(exp_count) => {
-                assert!(output.change_set().accounts().len() == *exp_count);
             }
             ExpectedOutputItem::ResultBytes(exp_bytes) => {
                 let result_bytes = result
@@ -129,7 +117,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
     assert!(status == VMStatus::Executed);
     let inner_output = output.into_inner();
-    state.push_write_set(inner_output.0, inner_output.1, inner_output.2);
+    state.push_write_set(inner_output.1);
     chain.commit(state);
 
     let gas_limit = Gas::new(100_000u64);
@@ -160,7 +148,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
 
             // apply output into state
             let inner_output = output.into_inner();
-            state.push_write_set(inner_output.0, inner_output.1, inner_output.2);
+            state.push_write_set(inner_output.1);
 
             println!("size change of accounts {:?}", &inner_output.3);
         }

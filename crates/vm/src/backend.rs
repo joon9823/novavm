@@ -1,6 +1,6 @@
 use nova_natives::block::BlockInfoResolver;
-use crate::errors::BackendError;
-use crate::storage::state_view::StateView;
+use nova_storage::state_view::StateView;
+use nova_types::errors::BackendError;
 
 /// Holds all external dependencies of the contract.
 /// Designed to allow easy dependency injection at runtime.

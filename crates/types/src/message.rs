@@ -8,22 +8,17 @@ pub fn genesis_address() -> AccountAddress {
 
 use anyhow::{format_err, Error, Result};
 
+use move_deps::move_core_types::account_address::AccountAddress;
 use move_deps::move_core_types::effects::Event;
 use move_deps::move_core_types::vm_status::*;
-use move_deps::move_core_types::{account_address::AccountAddress, effects::ChangeSet};
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-pub use module::{Module, ModuleBundle};
-pub use script::{EntryFunction, Script};
-
-use crate::storage::size::size_change_set::SizeChangeSet;
-use crate::storage::table_meta::table_meta_change_set::TableMetaChangeSet;
-use nova_natives::table::TableChangeSet;
-
-mod module;
-mod script;
+use crate::entry_function::EntryFunction;
+use crate::module::ModuleBundle;
+use crate::script::Script;
+use crate::{size_change_set::SizeChangeSet, write_set::WriteSet};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
@@ -227,11 +222,9 @@ impl From<VMStatus> for MessageStatus {
 }
 
 pub struct MessageOutput {
-    change_set: ChangeSet,
     events: Vec<Event>,
-    table_change_set: TableChangeSet,
+    write_set: WriteSet,
     size_change_set: SizeChangeSet,
-    table_meta_change_set: TableMetaChangeSet,
 
     /// The amount of gas used during execution.
     gas_used: u64,
@@ -242,43 +235,31 @@ pub struct MessageOutput {
 
 impl MessageOutput {
     pub fn new(
-        change_set: ChangeSet,
         events: Vec<Event>,
-        table_change_set: TableChangeSet,
+        write_set: WriteSet,
         size_change_set: SizeChangeSet,
-        table_meta_change_set: TableMetaChangeSet,
         gas_used: u64,
         status: MessageStatus,
     ) -> Self {
         MessageOutput {
-            change_set,
-            table_change_set,
-            size_change_set,
-            table_meta_change_set,
             events,
+            write_set,
+            size_change_set,
             gas_used,
             status,
         }
     }
 
-    pub fn change_set(&self) -> &ChangeSet {
-        &self.change_set
+    pub fn events(&self) -> &[Event] {
+        &self.events
     }
 
-    pub fn table_change_set(&self) -> &TableChangeSet {
-        &self.table_change_set
+    pub fn write_set(&self) -> &WriteSet {
+        &self.write_set
     }
 
     pub fn size_change_set(&self) -> &SizeChangeSet {
         &self.size_change_set
-    }
-
-    pub fn table_meta_change_set(&self) -> &TableMetaChangeSet {
-        &self.table_meta_change_set
-    }
-
-    pub fn events(&self) -> &[Event] {
-        &self.events
     }
 
     pub fn gas_used(&self) -> u64 {
@@ -289,23 +270,11 @@ impl MessageOutput {
         &self.status
     }
 
-    pub fn into_inner(
-        self,
-    ) -> (
-        ChangeSet,
-        TableChangeSet,
-        TableMetaChangeSet,
-        SizeChangeSet,
-        Vec<Event>,
-        u64,
-        MessageStatus,
-    ) {
+    pub fn into_inner(self) -> (Vec<Event>, WriteSet, SizeChangeSet, u64, MessageStatus) {
         (
-            self.change_set,
-            self.table_change_set,
-            self.table_meta_change_set,
-            self.size_change_set,
             self.events,
+            self.write_set,
+            self.size_change_set,
             self.gas_used,
             self.status,
         )

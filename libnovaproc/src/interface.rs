@@ -8,12 +8,12 @@ use crate::error::{handle_c_error_binary, Error};
 use crate::move_api::handler as api_handler;
 use crate::{api::GoApi, vm, ByteSliceView, Db, UnmanagedVector};
 
+use crate::compiler::{compile, Command};
+use move_deps::move_cli::base::build::Build;
 use move_deps::move_cli::Move;
 use move_deps::move_core_types::account_address::AccountAddress;
-use move_deps::move_cli::base::build::Build;
 use move_deps::move_package::BuildConfig;
 use nova_compiler::New;
-use crate::compiler::{compile, Command};
 use novavm::NovaVM;
 
 #[allow(non_camel_case_types)]
@@ -262,14 +262,11 @@ pub extern "C" fn create_new_move_package(
     nova_args: NovaCompilerArgument,
     name_view: ByteSliceView,
 ) -> UnmanagedVector {
-
     let name: Option<String> = name_view.into();
 
-    let cmd = Command::New(
-        New{
-            name: name.unwrap_or(String::new())
-        }
-    );
+    let cmd = Command::New(New {
+        name: name.unwrap_or(String::new()),
+    });
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));
@@ -301,14 +298,14 @@ pub extern "C" fn clean_move_package(
 fn generate_default_move_cli(package_path_slice: Option<ByteSliceView>, verbose: bool) -> Move {
     let package_path = match package_path_slice {
         None => None,
-        Some(slice) => match slice.read(){
+        Some(slice) => match slice.read() {
             Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
             None => None,
-        }
+        },
     };
-    Move{
+    Move {
         package_path,
         verbose,
-        build_config: BuildConfig::default()
+        build_config: BuildConfig::default(),
     }
 }

@@ -1,4 +1,4 @@
-use novavm::BackendError;
+use nova_types::errors::BackendError;
 
 use crate::memory::UnmanagedVector;
 

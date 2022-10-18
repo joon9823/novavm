@@ -19,7 +19,6 @@ pub trait BlockInfoResolver {
     fn get_block_info(&self) -> Result<(u64 /* height */, u64 /* timestamp */)>;
 }
 
-
 /***************************************************************************************************
  * native fun create_address
  *
@@ -73,19 +72,16 @@ pub fn make_native_get_block_info(gas_params: GetBlockInfoGasParameters) -> Nati
  * module
  *
  **************************************************************************************************/
- #[derive(Debug, Clone)]
- pub struct GasParameters {
-     pub get_block_info: GetBlockInfoGasParameters,
- }
+#[derive(Debug, Clone)]
+pub struct GasParameters {
+    pub get_block_info: GetBlockInfoGasParameters,
+}
 
- 
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
-    let natives = [
-        (
-            "get_block_info_internal",
-            make_native_get_block_info(gas_params.get_block_info),
-        ),
-    ];
+    let natives = [(
+        "get_block_info_internal",
+        make_native_get_block_info(gas_params.get_block_info),
+    )];
 
     crate::helpers::make_module_natives(natives)
 }

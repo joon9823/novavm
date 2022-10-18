@@ -11,4 +11,3 @@ pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0"); // Add trai
 pub extern "C" fn version_str() -> *const c_char {
     VERSION.as_ptr() as *const _
 }
-

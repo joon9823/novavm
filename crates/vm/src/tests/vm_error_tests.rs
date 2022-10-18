@@ -1,4 +1,4 @@
-use crate::NovaVMError;
+use nova_types::errors::NovaVMError;
 
 // constructors
 
@@ -22,4 +22,3 @@ fn generic_err_works() {
         e => panic!("Unexpected error: {:?}", e),
     }
 }
-

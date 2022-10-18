@@ -2,6 +2,7 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref, clippy::missing_safety_doc)]
 
 mod api;
+mod args;
 mod compiler;
 mod db;
 mod error;
@@ -10,11 +11,10 @@ mod interface;
 mod memory;
 mod move_api;
 mod result;
+mod size_delta;
 mod storage;
 mod version;
 mod vm;
-mod args;
-mod size_delta;
 
 pub use db::{db_t, Db};
 pub use memory::{

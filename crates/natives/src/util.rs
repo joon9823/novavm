@@ -3,7 +3,7 @@
 
 use move_deps::{
     move_binary_format::errors::{PartialVMError, PartialVMResult},
-    move_core_types::{vm_status::StatusCode, gas_algebra::InternalGas},
+    move_core_types::{gas_algebra::InternalGas, vm_status::StatusCode},
     move_vm_runtime::native_functions::{NativeContext, NativeFunction},
     move_vm_types::{
         loaded_data::runtime_types::Type, natives::function::NativeResult, pop_arg, values::Value,
@@ -14,7 +14,6 @@ use std::{collections::VecDeque, sync::Arc};
 
 /// Abort code when from_bytes fails (0x03 == INVALID_ARGUMENT)
 const EFROM_BYTES: u64 = 0x01_0001;
-
 
 /// Used to pass gas parameters into native functions.
 pub fn make_native_from_func<T: std::marker::Send + std::marker::Sync + 'static>(
