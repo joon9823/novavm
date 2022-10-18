@@ -124,7 +124,7 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     let mut vm = NovaVM::new();
 
     let mut state = chain.create_state();
-    let api = chain.create_api(100, 100);
+    let api = chain.create_api(0, 0);
     let resolver = DataViewResolver::new(&state);
     let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
     assert!(status == VMStatus::Executed);

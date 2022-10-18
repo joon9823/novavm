@@ -16,4 +16,10 @@ crate::natives::define_gas_parameters_for_natives!(GasParameters, "nova", [
 
     [.code.request_publish.base, "code.request_publish.base", 1],
     [.code.request_publish.unit, "code.request_publish.unit", 1],
+
+    // TODO(Gas): these should only be enabled when feature "testing" is present
+    // TODO(Gas): rename these in the move repo
+    [test_only .unit_test.create_signers_for_testing.base_cost, "unit_test.create_signers_for_testing.base", 1],
+    [test_only .unit_test.create_signers_for_testing.unit_cost, "unit_test.create_signers_for_testing.unit", 1],
+    [test_only .unit_test.set_block_info_for_testing.base_cost, "unit_test.set_block_info_for_testing.base", 1]
 ]);

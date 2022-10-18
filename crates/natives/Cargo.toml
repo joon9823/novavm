@@ -12,9 +12,13 @@ better_any = "0.1.1"
 serde = { version = "1.0.130", default-features = false, features = ["derive", "alloc"] }
 serde_bytes = "0.11.5"
 smallvec = "1.6.1"
-move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20", "testing"] }
+move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20"] }
 sha3 = "0.9.1"
 
 
 [dev-dependencies]
 serial_test = "0.9.0"
+
+[features]
+default = []
+testing = ["move-deps/testing"]

@@ -5,10 +5,15 @@ module nova_std::block {
         get_block_info_internal()
     }
 
+    #[test_only]
+    use std::unit_test::set_block_info_for_testing;
+
     #[test]
     public fun test_get_block_info_internal(){
+        set_block_info_for_testing(12321u64, 9999999u64);
+
         let (height, timestamp) = get_block_info_internal();
-        assert!(height == 100u64, 0);
-        assert!(timestamp == 100u64, 1);
+        assert!(height == 12321u64, 0);
+        assert!(timestamp == 9999999u64, 1);
     }
 }

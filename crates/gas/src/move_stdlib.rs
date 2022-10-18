@@ -18,10 +18,5 @@ crate::natives::define_gas_parameters_for_natives!(GasParameters, "move_stdlib",
     [.string.sub_string.per_byte, "string.sub_string.per_byte", 1],
     [.string.index_of.base, "string.index_of.base", 1],
     [.string.index_of.per_byte_pattern, "string.index_of.per_byte_pattern", 1],
-    [.string.index_of.per_byte_searched, "string.index_of.per_byte_searched", 1],
-
-    // TODO(Gas): these should only be enabled when feature "testing" is present
-    // TODO(Gas): rename these in the move repo
-    [.unit_test.create_signers_for_testing.base_cost, "unit_test.create_signers_for_testing.base", 1],
-    [.unit_test.create_signers_for_testing.unit_cost, "unit_test.create_signers_for_testing.unit", 1]
+    [.string.index_of.per_byte_searched, "string.index_of.per_byte_searched", 1]
 ], allow_unmapped = 1 /* bcs */ + 2 /* hash */ + 8 /* vector */);

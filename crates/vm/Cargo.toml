@@ -13,7 +13,7 @@ exclude = [".gitignore"]
 [features]
 default = []
 backtraces = []
-testing = ["move-deps/testing"]
+testing = ["nova-natives/testing", "move-deps/testing"]
 
 [dependencies]
 nova-stdlib = { path = "../stdlib" }
