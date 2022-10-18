@@ -9,4 +9,7 @@ module std::unit_test {
     /// This will cause a linking failure if an attempt is made to publish a
     /// test module in a VM that isn't in unit test mode.
     native public fun create_signers_for_testing(num_signers: u64): vector<signer>;
+
+    /// Set block info for testing purpose
+    native public fun set_block_info_for_testing(height: u64, timestamp: u64);
 }

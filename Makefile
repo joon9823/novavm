@@ -83,7 +83,7 @@ update-bindings:
 # In order to use "--features backtraces" here we need a Rust nightly toolchain, which we don't have by default
 build-rust-debug:
 	(cd libnovaproc && cargo build)
-	cp -fp libnovaproc/target/debug/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
+	cp -fp target/debug/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
 	make update-bindings
 
 # use release build to actually ship - smaller and much faster
@@ -92,29 +92,25 @@ build-rust-debug:
 # enable stripping through cargo (if that is desired).
 build-rust-release:
 	(cd libnovaproc && cargo build --release)
-	cp -fp libnovaproc/target/release/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
+	cp -fp target/release/$(SHARED_LIB_SRC) api/$(SHARED_LIB_DST)
 	make update-bindings
 	@ #this pulls out ELF symbols, 80% size reduction!
 
 clean:
+	cargo clean
 	@-rm api/bindings.h 
 	@-rm api/libnovaproc.dylib
 	@-rm libnovaproc/bindings.h
-	@-(cd libnovaproc && cargo clean)
-	@-(cd crates/vm && cargo clean)
-	@-(cd crates/compiler && cargo clean)
 	@echo cleaned.
 
 # Creates a release build in a containerized build environment of the static library for Alpine Linux (.a)
 release-build-alpine:
-	rm -rf libnovaproc/target/release
+	rm -rf target/release
 	# build the muslc *.a file
 	docker run --rm -u $(USER_ID):$(USER_GROUP)  \
 		-v $(shell pwd)/crates:/code/crates \
-		-v $(shell pwd)/move-deps:/code/move-deps \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/vm:/code/vm \
-		-v $(shell pwd)/compiler:/code/compiler \
+		-v $(shell pwd)/Cargo.toml \
 		$(BUILDERS_PREFIX)-alpine
 	cp libnovaproc/artifacts/libnovaproc_muslc.a api
 	cp libnovaproc/artifacts/libnovaproc_muslc.aarch64.a api
@@ -126,12 +122,11 @@ release-build-alpine:
 
 # Creates a release build in a containerized build environment of the shared library for glibc Linux (.so)
 release-build-linux:
-	rm -rf libnovaproc/target/release
+	rm -rf target/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
 		-v $(shell pwd)/crates:/code/crates \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/vm:/code/vm \
-		-v $(shell pwd)/compiler:/code/compiler \
+		-v $(shell pwd)/Cargo.toml \
 		$(BUILDERS_PREFIX)-centos7
 	cp libnovaproc/artifacts/libnovaproc.x86_64.so api
 	cp libnovaproc/artifacts/libnovaproc.aarch64.so api
@@ -139,13 +134,12 @@ release-build-linux:
 
 # Creates a release build in a containerized build environment of the shared library for macOS (.dylib)
 release-build-macos:
-	rm -rf libnovaproc/target/x86_64-apple-darwin/release
-	rm -rf libnovaproc/target/aarch64-apple-darwin/release
+	rm -rf target/x86_64-apple-darwin/release
+	rm -rf target/aarch64-apple-darwin/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
 		-v $(shell pwd)/crates:/code/crates \
 		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/vm:/code/vm \
-		-v $(shell pwd)/compiler:/code/compiler \
+		-v $(shell pwd)/Cargo.toml \
 		$(BUILDERS_PREFIX)-cross build_macos.sh
 	cp libnovaproc/artifacts/libnovaproc.dylib api
 	make update-bindings

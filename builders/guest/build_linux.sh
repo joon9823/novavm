@@ -16,7 +16,7 @@ export CXX=clang++
 export OPENSSL_STATIC=1
 export OPENSSL_DIR=/opt/x86_64-openssl
 cargo build --release --target x86_64-unknown-linux-gnu
-cp target/x86_64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.x86_64.so
+cp ../target/x86_64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.x86_64.so
 
 echo "Starting aarch64-unknown-linux-gnu build"
 export qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
@@ -30,4 +30,4 @@ export OPENSSL_DIR=/opt/aarch64-openssl
 
 # build libnovaproc for aarch64
 cargo build --release --target aarch64-unknown-linux-gnu
-cp -R target/aarch64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.aarch64.so
+cp -R ../target/aarch64-unknown-linux-gnu/release/libnovaproc.so artifacts/libnovaproc.aarch64.so

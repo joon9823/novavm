@@ -10,3 +10,7 @@ tempfile = "3.2.0"
 
 [dev-dependencies]
 serial_test = "0.9.0"
+
+[features]
+default = []
+testing = ["move-deps/testing"]

@@ -18,9 +18,9 @@ fn move_stdlib_files() -> Vec<TempPath> {
         include_str!("move_stdlib/sources/option.move"),
         include_str!("move_stdlib/sources/signer.move"),
         include_str!("move_stdlib/sources/string.move"),
+        include_str!("move_stdlib/sources/vector.move"),
         #[cfg(feature = "testing")]
         include_str!("move_stdlib/sources/unit_test.move"),
-        include_str!("move_stdlib/sources/vector.move"),
     ];
 
     files

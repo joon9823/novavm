@@ -10,6 +10,9 @@ pub mod table;
 pub mod type_info;
 pub mod util;
 
+#[cfg(feature = "testing")]
+pub mod unit_test;
+
 use move_deps::{
     move_core_types::language_storage::CORE_CODE_ADDRESS,
     move_core_types::{account_address::AccountAddress, identifier::Identifier},
@@ -33,6 +36,9 @@ pub struct GasParameters {
     pub type_info: type_info::GasParameters,
     pub util: util::GasParameters,
     pub code: code::GasParameters,
+
+    #[cfg(feature = "testing")]
+    pub unit_test: unit_test::GasParameters,
 }
 
 impl GasParameters {
@@ -73,12 +79,22 @@ impl GasParameters {
                     unit: 0.into(),
                 },
             },
+            #[cfg(feature = "testing")]
+            unit_test: unit_test::GasParameters {
+                create_signers_for_testing: unit_test::CreateSignersForTestingGasParameters {
+                    base_cost: 0.into(),
+                    unit_cost: 0.into(),
+                },
+                set_block_info_for_testing: unit_test::SetBlockInfoForTestingGasParameters {
+                    base_cost: 0.into(),
+                },
+            },
         }
     }
 }
 
 pub fn nova_natives(
-    framework_addr: AccountAddress,
+    nova_std_addr: AccountAddress,
     gas_params: GasParameters,
 ) -> NativeFunctionTable {
     let mut natives = vec![];
@@ -94,10 +110,13 @@ pub fn nova_natives(
     add_natives_from_module!("account", account::make_all(gas_params.account));
     add_natives_from_module!("block", block::make_all(gas_params.block));
     add_natives_from_module!("type_info", type_info::make_all(gas_params.type_info));
-    add_natives_from_module!("util", util::make_all(gas_params.util.clone()));
+    add_natives_from_module!("util", util::make_all(gas_params.util));
     add_natives_from_module!("code", code::make_all(gas_params.code));
 
-    make_table_from_iter(framework_addr, natives)
+    #[cfg(feature = "testing")]
+    add_natives_from_module!("unit_test", unit_test::make_all(gas_params.unit_test));
+
+    make_table_from_iter(nova_std_addr, natives)
 }
 
 /// A temporary hack to patch Table -> table module name as long as it is not upgraded
@@ -116,6 +135,7 @@ pub fn all_natives(
 ) -> NativeFunctionTable {
     move_natives::all_natives(CORE_CODE_ADDRESS, move_natives_gas_params)
         .into_iter()
+        .filter(|(_, name, _, _)| name.as_str() != "unit_test")
         .chain(nursery_natives(
             CORE_CODE_ADDRESS,
             // TODO - change this as arguments

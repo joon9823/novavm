@@ -308,7 +308,7 @@ func Test_ExecuteScript(t *testing.T) {
 	usedGas, events, _, err := vm.ExecuteScript(
 		kvStore,
 		mockAPI,
-		15000,
+		100000,
 		bytes.Repeat([]byte{0}, 32),
 		testAccount,
 		payload,

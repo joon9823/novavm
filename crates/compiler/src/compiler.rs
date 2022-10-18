@@ -20,6 +20,7 @@ pub fn compile(move_args: Move, cmd: Command) -> anyhow::Result<Vec<u8>> {
         gas_params.nova_stdlib,
         gas_params.table,
     );
+
     configure_for_unit_test();
 
     let res = run_compiler(

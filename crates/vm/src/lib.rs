@@ -6,10 +6,12 @@ pub use crate::backend::*;
 pub use crate::nova_vm::NovaVM;
 
 pub mod backend;
-pub mod test_utils;
 
 mod arguments;
 mod nova_vm;
+
+#[cfg(test)]
+pub mod test_utils;
 
 #[cfg(test)]
 mod tests;

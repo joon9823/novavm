@@ -29,8 +29,8 @@ fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
     exts.add(NativeCodeContext::default());
     exts.add(NativeTableContext::new([0; 32], &*DUMMY_RESOLVER));
     exts.add(NativeBlockContext::new(&MockApi {
-        height: 100,
-        timestamp: 100,
+        height: 0,
+        timestamp: 0,
     }));
 }
 

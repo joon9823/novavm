@@ -7,6 +7,7 @@ pub mod compiler;
 pub mod new;
 
 mod extensions;
+mod mock_chain;
 
 pub use clean::Clean;
 pub use command::Command;
