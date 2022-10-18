@@ -58,7 +58,7 @@ func publishModuleBundle(
 	f3, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/Bundle3.mv")
 	require.NoError(t, err)
 
-	usedGas, err := vm.PublishModuleBundle(
+	usedGas, _, sizeDeltas, err := vm.PublishModuleBundle(
 		kvStore,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
@@ -82,6 +82,12 @@ func publishModuleBundle(
 	)
 	require.NoError(t, err)
 	require.NotZero(t, usedGas)
+
+	require.NoError(t, err)
+	require.Len(t, sizeDeltas, 1)
+	sizeDelta := sizeDeltas[0]
+	require.Equal(t, testAccount, sizeDelta.Address)
+	require.NotZero(t, sizeDelta.Amount)
 }
 
 func mintCoin(
