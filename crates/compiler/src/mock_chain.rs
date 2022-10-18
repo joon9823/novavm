@@ -4,10 +4,8 @@ use move_deps::move_core_types::{
     language_storage::{ModuleId, StructTag},
     resolver::{ModuleResolver, ResourceResolver},
 };
-use nova_natives::{
-    block::BlockInfoResolver,
-    table::{TableHandle, TableResolver},
-};
+use nova_natives::{block::BlockInfoResolver, table::TableResolver};
+use nova_types::table::TableHandle;
 
 /// A dummy storage containing no modules or resources.
 #[derive(Debug, Clone)]
