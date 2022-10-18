@@ -52,10 +52,10 @@ func (vm *VM) PublishModuleBundle(
 	txHash types.Bytes, // txHash is used for sessionID
 	sender types.AccountAddress,
 	moduleBundle types.ModuleBundle,
-) (uint64, error) {
+) (uint64, []types.Event, []types.SizeDelta, error) {
 	bz, err := json.Marshal(moduleBundle)
 	if err != nil {
-		return 0, err
+		return 0, nil, nil, err
 	}
 
 	res, err := api.PublishModuleBundle(
@@ -68,13 +68,13 @@ func (vm *VM) PublishModuleBundle(
 		bz,
 	)
 	if err != nil {
-		return 0, err
+		return 0, nil, nil, err
 	}
 
 	var execRes types.ExecutionResult
 	err = json.Unmarshal(res, &execRes)
 
-	return execRes.GasUsed, err
+	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 
 // Query will do a query request to VM
