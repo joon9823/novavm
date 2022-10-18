@@ -2,12 +2,9 @@
 
 use std::{cell::RefCell, collections::BTreeMap};
 
-use crate::access_path::AccessPath;
-
 use super::size::size_resolver::SizeResolver;
 use super::state_view::StateView;
 use super::table_meta::table_meta_resolver::TableMetaResolver;
-use super::table_meta::TableMeta;
 
 use move_deps::move_binary_format::errors::{Location, PartialVMError, VMError, VMResult};
 use move_deps::move_core_types::{
@@ -17,7 +14,8 @@ use move_deps::move_core_types::{
     vm_status::StatusCode,
 };
 
-use nova_natives::table::{TableHandle, TableResolver};
+use nova_natives::table::TableResolver;
+use nova_types::{access_path::AccessPath, table::TableHandle, table_meta::TableMeta};
 
 pub struct DataViewResolver<'a, S> {
     data_view: &'a S,

@@ -1,4 +1,4 @@
-use crate::message::{EntryFunction, Message, Module, ModuleBundle};
+use nova_types::{entry_function::EntryFunction, message::Message, module::ModuleBundle};
 
 use move_deps::move_core_types::{
     account_address::AccountAddress,
@@ -9,18 +9,7 @@ use move_deps::move_core_types::{
 };
 
 use crate::test_utils::mock_tx::{run_transaction, ExpectedOutput, MockTx};
-
-#[cfg(test)]
-impl Module {
-    fn create_std_coin() -> Self {
-        Self::new(
-            include_bytes!("../../../move-test/build/test1/bytecode_modules/StdCoin.mv").to_vec(),
-        )
-    }
-}
-
-#[cfg(test)]
-impl EntryFunction {}
+use crate::test_utils::module;
 
 #[test]
 fn test_std_coin() {
@@ -37,9 +26,9 @@ fn test_std_coin() {
             Message::new_module(
                 vec![1; 32],
                 Some(account_two),
-                ModuleBundle::from(Module::create_std_coin()),
+                ModuleBundle::from(module::create_std_coin()),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, None),
+            ExpectedOutput::new(VMStatus::Executed, None),
         ),
         MockTx::one(
             // initialize coin and capabilities
@@ -53,7 +42,7 @@ fn test_std_coin() {
                     vec![],
                 ),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![])),
         ),
         MockTx::one(
             // register 0x3 to receive coin
@@ -67,7 +56,7 @@ fn test_std_coin() {
                     vec![],
                 ),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 1, Some(vec![])),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![])),
         ),
         MockTx::one(
             // mint coin to 0x3
@@ -81,7 +70,7 @@ fn test_std_coin() {
                     vec![account_three.to_vec(), 100u64.to_le_bytes().to_vec()],
                 ),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 2, Some(vec![])),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![])),
         ),
         MockTx::one(
             // get 0x3's balance
@@ -97,7 +86,7 @@ fn test_std_coin() {
                     vec![account_three.to_vec()],
                 ),
             ),
-            ExpectedOutput::new(VMStatus::Executed, 0, Some(vec![100, 0, 0, 0, 0, 0, 0, 0])),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![100, 0, 0, 0, 0, 0, 0, 0])),
         ),
     ];
 

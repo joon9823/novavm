@@ -1,6 +1,6 @@
+use move_deps::move_compiler::Flags;
 use std::collections::BTreeMap;
 use std::io::Write;
-use move_deps::move_compiler::Flags;
 use tempfile::{NamedTempFile, TempPath};
 
 use move_deps::move_binary_format::CompiledModule;
@@ -125,7 +125,8 @@ fn compile_modules(
             .map(|f| f.as_os_str().to_str().unwrap())
             .collect(),
         name_address_map,
-    ).set_flags(Flags::empty())
+    )
+    .set_flags(Flags::empty())
     .build_and_report()
     .expect("Error compiling...");
     compiled_units

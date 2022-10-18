@@ -3,51 +3,19 @@ use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{StatusCode, VMStatus},
 };
-use nova_natives::table::{TableChangeSet, TableHandle};
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fmt};
 
-use crate::access_path::AccessPath;
+use nova_types::access_path::AccessPath;
+use nova_types::table::{TableChangeSet, TableHandle};
+
+use std::collections::BTreeMap;
 
 use self::table_meta_resolver::TableMetaResolver;
+use super::size::{get_kv_stored_size, size_resolver::SizeResolver};
 
-use super::size::{get_kv_stored_size, size_delta::SizeDelta, size_resolver::SizeResolver};
+use nova_types::size_delta::SizeDelta;
+use nova_types::table_meta::TableMeta;
 
-pub mod table_meta_change_set;
 pub mod table_meta_resolver;
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct TableMeta {
-    pub payer: AccountAddress,
-    pub size: usize,
-}
-
-impl TableMeta {
-    pub fn new() -> Self {
-        TableMeta {
-            payer: AccountAddress::ZERO,
-            size: 0,
-        }
-    }
-
-    pub fn serialize(&self) -> anyhow::Result<Vec<u8>> {
-        bcs::to_bytes(self).map_err(|_| anyhow::anyhow!("failed to serialize TableMeta"))
-    }
-
-    pub fn deserialize(bytes: &[u8]) -> anyhow::Result<Self> {
-        bcs::from_bytes(bytes).map_err(|_| anyhow::anyhow!("failed to deserialize TableMeta"))
-    }
-}
-
-impl fmt::Display for TableMeta {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "TableMeta {{\"payer\": {}, \"size\": {}}}",
-            self.payer, self.size
-        )
-    }
-}
 
 pub fn compute_table_meta_changes<S: MoveResolver + SizeResolver + TableMetaResolver>(
     remote: &S,

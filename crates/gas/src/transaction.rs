@@ -1,16 +1,16 @@
 //! This module defines all the gas parameters for transactions, along with their initial values
 //! in the genesis and a mapping between the Rust representation and the on-chain gas schedule.
 
-use crate::algebra::{FeePerGasUnit, Gas, GasScalingFactor, GasUnit};
+use crate::algebra::{GasScalingFactor, GasUnit};
 // use aptos_types::{state_store::state_key::StateKey, write_set::WriteOp};
 use move_deps::move_core_types::{
-    account_address::AccountAddress,
-    effects::{AccountChangeSet, Op},
+    effects::Op,
     gas_algebra::{
         InternalGas, InternalGasPerArg, InternalGasPerByte, InternalGasUnit, NumArgs, NumBytes,
         ToUnitFractionalWithParams, ToUnitWithParams,
     },
 };
+use nova_types::access_path::AccessPath;
 
 crate::params::define_gas_parameters!(
     TransactionGasParameters,
@@ -21,81 +21,56 @@ crate::params::define_gas_parameters!(
         [
             min_transaction_gas_units: InternalGas,
             "min_transaction_gas_units",
-            600
+            5_000 * 10_000 // 5_000 SDK gas cost per execute
         ],
         // Any transaction over this size will be charged an additional amount per byte.
         [
             large_transaction_cutoff: NumBytes,
             "large_transaction_cutoff",
-            600
+            600 // 600 bytes
         ],
         // The units of gas that to be charged per byte over the `large_transaction_cutoff` in addition to
         // `min_transaction_gas_units` for transactions whose size exceeds `large_transaction_cutoff`.
         [
             intrinsic_gas_per_byte: InternalGasPerByte,
             "intrinsic_gas_per_byte",
-            8
+            10_000 * 2 / 10 // 0.2 SDK gas per bytes
         ],
-        // ~5 microseconds should equal one unit of computational gas. We bound the maximum
-        // computational time of any given transaction at roughly 20 seconds. We want this number and
-        // `MAX_PRICE_PER_GAS_UNIT` to always satisfy the inequality that
-        // MAXIMUM_NUMBER_OF_GAS_UNITS * MAX_PRICE_PER_GAS_UNIT < min(u64::MAX, GasUnits<GasCarrier>::MAX)
-        [
-            maximum_number_of_gas_units: Gas,
-            "maximum_number_of_gas_units",
-            4_000_000
-        ],
-        // The minimum gas price that a transaction can be submitted with.
-        // TODO(Gas): should probably change this to something > 0
-        [
-            min_price_per_gas_unit: FeePerGasUnit,
-            "min_price_per_gas_unit",
-            0
-        ],
-        // The maximum gas unit price that a transaction can be submitted with.
-        [
-            max_price_per_gas_unit: FeePerGasUnit,
-            "max_price_per_gas_unit",
-            10_000
-        ],
-        [
-            max_transaction_size_in_bytes: NumBytes,
-            "max_transaction_size_in_bytes",
-            32 * 1024
-        ],
+        // The scaling factor is used to scale up the passed `CosmosSDK.GasLimit`
+        // i.e. The gas cost defined vm will be scale down with this value,
+        // when we return used gas to chain.
         [
             gas_unit_scaling_factor: GasScalingFactor,
             "gas_unit_scaling_factor",
-            1 // TODO: how many should we scale?
+            10_000
         ],
         // Gas Parameters for reading data from storage.
-        [load_data_base: InternalGas, "load_data.base", 1],
+        [
+            load_data_base: InternalGas,
+            "load_data.base",
+            1_000 * 10_000 // sdk.ReadCostFlat = 1_000
+        ],
         [
             load_data_per_byte: InternalGasPerByte,
             "load_data.per_byte",
-            1
+            3 * 10_000 // sdk.ReadCostPerByte = 3
         ],
-        [load_data_failure: InternalGas, "load_data.failure", 1],
+        [load_data_failure: InternalGas, "load_data.failure", 0],
         // Gas parameters for writing data to storage.
         [
             write_data_per_op: InternalGasPerArg,
             "write_data.per_op",
-            100
-        ],
-        [
-            write_data_per_new_item: InternalGasPerArg,
-            "write_data.new_item",
-            1000
+            2_000 * 10_000 // sdk.WriteCostFlat = 2_000
         ],
         [
             write_data_per_byte_in_key: InternalGasPerByte,
             "write_data.per_byte_in_key",
-            100
+            30 * 10_000 // sdk.WriteCostPerByte = 3
         ],
         [
             write_data_per_byte_in_val: InternalGasPerByte,
             "write_data.per_byte_in_val",
-            100
+            30 * 10_000 // sdk.WriteCostPerByte = 3
         ],
     ]
 );
@@ -124,19 +99,18 @@ impl TransactionGasParameters {
         }
     }
 
-    pub fn calculate_change_set_gas<'a>(
+    pub fn calculate_write_set_gas<'a>(
         &self,
-        ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>, // ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>,
+        ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>, // ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>,
     ) -> InternalGas {
         use Op::*;
 
         // Counting
         let mut num_ops = NumArgs::zero();
-        let mut num_new_items = NumArgs::zero();
         let mut num_bytes_key = NumBytes::zero();
         let mut num_bytes_val = NumBytes::zero();
 
-        for (key, acs) in ops.into_iter() {
+        for (key, op) in ops.into_iter() {
             num_ops += 1.into();
 
             if self.write_data_per_byte_in_key > 0.into() {
@@ -148,41 +122,23 @@ impl TransactionGasParameters {
                 );
             }
 
-            // TODO : Does this double charging?
-            for (_, op) in acs.modules().into_iter() {
-                match op {
-                    New(data) => {
-                        num_new_items += 1.into();
-                        num_bytes_val += NumBytes::new(data.len() as u64);
-                    }
-                    Modify(data) => {
-                        num_bytes_val += NumBytes::new(data.len() as u64);
-                    }
-                    Delete => (),
+            match op {
+                New(data) => {
+                    num_bytes_val += NumBytes::new(data.len() as u64);
                 }
-            }
-
-            for (_, op) in acs.resources().into_iter() {
-                match op {
-                    New(data) => {
-                        num_new_items += 1.into();
-                        num_bytes_val += NumBytes::new(data.len() as u64);
-                    }
-                    Modify(data) => {
-                        num_bytes_val += NumBytes::new(data.len() as u64);
-                    }
-                    Delete => (),
+                Modify(data) => {
+                    num_bytes_val += NumBytes::new(data.len() as u64);
                 }
+                Delete => (),
             }
         }
 
         // Calculate the costs
         let cost_ops = self.write_data_per_op * num_ops;
-        let cost_new_items = self.write_data_per_new_item * num_new_items;
         let cost_bytes = self.write_data_per_byte_in_key * num_bytes_key
             + self.write_data_per_byte_in_val * num_bytes_val;
 
-        cost_ops + cost_new_items + cost_bytes
+        cost_ops + cost_bytes
     }
 }
 

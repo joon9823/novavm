@@ -8,12 +8,11 @@ use move_deps::move_core_types::{
     vm_status::{StatusCode, VMStatus},
 };
 
-use crate::access_path::AccessPath;
+use nova_types::access_path::AccessPath;
+use nova_types::size_delta::SizeDelta;
 
-use self::{size_delta::SizeDelta, size_resolver::SizeResolver};
+use self::size_resolver::SizeResolver;
 
-pub mod size_change_set;
-pub mod size_delta;
 pub mod size_resolver;
 
 pub fn compute_size_changes<S: MoveResolver + SizeResolver>(

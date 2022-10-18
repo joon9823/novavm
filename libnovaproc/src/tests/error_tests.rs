@@ -1,5 +1,5 @@
 use crate::{error::GoError, UnmanagedVector};
-use novavm::BackendError;
+use nova_types::errors::BackendError;
 
 // GoError test
 #[test]

@@ -16,6 +16,8 @@ backtraces = []
 testing = ["nova-natives/testing", "move-deps/testing"]
 
 [dependencies]
+nova-types = { path = "../types" }
+nova-storage = { path = "../storage" }
 nova-stdlib = { path = "../stdlib" }
 nova-natives = { path = "../natives" }
 nova-gas = { path = "../gas" }

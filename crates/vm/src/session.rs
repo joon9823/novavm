@@ -3,35 +3,26 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use nova_natives::table::{NativeTableContext, TableChangeSet, TableHandle, TableResolver};
+use nova_natives::table::{NativeTableContext, TableResolver};
+use nova_types::{
+    size_change_set::SizeChangeSet, size_delta::SizeDelta, table::TableHandle,
+    table_meta::TableMeta, table_meta_change_set::TableMetaChangeSet, write_set::WriteSet,
+};
 
-use crate::storage::size::size_resolver::SizeResolver;
-use crate::storage::table_meta::{
-    table_meta_change_set::TableMetaChangeSet, table_meta_resolver::TableMetaResolver,
-};
-use crate::storage::{
-    size::{compute_size_changes, size_change_set::SizeChangeSet, size_delta::SizeDelta},
-    table_meta::{compute_table_meta_changes, TableMeta},
-};
+use nova_storage::size::size_resolver::SizeResolver;
+use nova_storage::table_meta::table_meta_resolver::TableMetaResolver;
+use nova_storage::{size::compute_size_changes, table_meta::compute_table_meta_changes};
 
 use move_deps::{
     move_binary_format::errors::Location,
     move_core_types::{
-        account_address::AccountAddress,
-        effects::{ChangeSet, Event},
-        resolver::MoveResolver,
+        account_address::AccountAddress, effects::Event, resolver::MoveResolver,
         vm_status::VMStatus,
     },
     move_vm_runtime::session::Session,
 };
 
-pub type SessionOutput = (
-    ChangeSet,
-    Vec<Event>,
-    TableChangeSet,
-    SizeChangeSet,
-    TableMetaChangeSet,
-);
+pub type SessionOutput = (Vec<Event>, WriteSet, SizeChangeSet);
 
 pub struct SessionExt<'r, 'l, S> {
     remote: &'r S,
@@ -68,16 +59,13 @@ where
             table_meta_changes,
             &table_change_set.new_tables,
             &table_change_set.removed_tables,
-        );
-        let size_change_set = SizeChangeSet::new(size_changes);
+        )?;
 
-        Ok((
-            change_set,
-            events,
-            table_change_set,
-            size_change_set,
-            table_meta_change_set,
-        ))
+        // build output change set from the changes
+        let size_change_set = SizeChangeSet::new(size_changes);
+        let write_set = WriteSet::new(change_set, table_change_set, table_meta_change_set);
+
+        Ok((events, write_set, size_change_set))
     }
 }
 

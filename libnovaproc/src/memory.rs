@@ -80,9 +80,13 @@ impl From<ByteSliceView> for Option<String> {
 impl From<ByteSliceView> for Option<Vec<String>> {
     fn from(val: ByteSliceView) -> Self {
         match val.read() {
-            Some(s) => {
-                Some(String::from_utf8(s.to_vec()).unwrap().split(',').map(|o| o.to_string()).collect())
-            },
+            Some(s) => Some(
+                String::from_utf8(s.to_vec())
+                    .unwrap()
+                    .split(',')
+                    .map(|o| o.to_string())
+                    .collect(),
+            ),
             None => None,
         }
     }
@@ -92,7 +96,7 @@ impl From<ByteSliceView> for Option<PathBuf> {
     fn from(val: ByteSliceView) -> Self {
         match val.read() {
             Some(s) => Some(Path::new(&String::from_utf8(s.to_vec()).unwrap()).to_path_buf()),
-            None => None
+            None => None,
         }
     }
 }
@@ -100,7 +104,11 @@ impl From<ByteSliceView> for Option<PathBuf> {
 impl From<ByteSliceView> for Option<MoveType> {
     fn from(val: ByteSliceView) -> Self {
         match val.read() {
-            Some(s) => Some(MoveType::from_str(std::str::from_utf8(s).unwrap()).unwrap().into()),
+            Some(s) => Some(
+                MoveType::from_str(std::str::from_utf8(s).unwrap())
+                    .unwrap()
+                    .into(),
+            ),
             None => None,
         }
     }
@@ -112,7 +120,7 @@ impl From<ByteSliceView> for Option<Vec<MoveType>> {
             Some(s) => {
                 let slice = std::str::from_utf8(s).unwrap().split(',');
                 Some(slice.map(|s| MoveType::from_str(s).unwrap()).collect())
-            },
+            }
             None => None,
         }
     }

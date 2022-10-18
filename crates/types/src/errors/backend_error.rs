@@ -36,7 +36,6 @@ impl BackendError {
         BackendError::InvalidUtf8 {}
     }
 
-
     pub fn out_of_gas() -> Self {
         BackendError::OutOfGas {}
     }

@@ -2,7 +2,7 @@ use crate::move_api::convert::MoveConverter;
 use crate::move_api::move_types::{MoveModuleBytecode, MoveScriptBytecode};
 use crate::{error::Error, Db, GoStorage};
 
-use novavm::storage::data_view_resolver::DataViewResolver;
+use nova_storage::data_view_resolver::DataViewResolver;
 
 pub(crate) fn decode_move_resource(
     db_handle: Db,

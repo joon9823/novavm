@@ -5,8 +5,8 @@
 
 //! This crate defines [`trait StateView`](StateView).
 
-use crate::access_path::AccessPath;
 use anyhow::Result;
+use nova_types::access_path::AccessPath;
 
 /// `StateView` is a trait that defines a read-only snapshot of the global state. It is passed to
 /// the VM for transaction execution, during which the VM is guaranteed to read anything at the

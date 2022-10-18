@@ -32,7 +32,6 @@ test-filenames:
 	echo $(SHARED_LIB_DST)
 	echo $(SHARED_LIB_SRC)
 
-
 test: test-rust test-go
 
 test-go: build-test
@@ -62,6 +61,17 @@ build-go:
 
 build-test:
 	(cd crates/move-test && make build)
+
+fmt:
+	(cd crates/compiler && cargo fmt)
+	(cd crates/gas && cargo fmt)
+	(cd crates/move-deps && cargo fmt)
+	(cd crates/natives && cargo fmt)
+	(cd crates/stdlib && cargo fmt)
+	(cd crates/storage && cargo fmt)
+	(cd crates/types && cargo fmt)
+	(cd crates/vm && cargo fmt)
+	(cd libnovaproc && cargo fmt)
 
 update-bindings:
 	# After we build libnovaproc, we have to copy the generated bindings for Go code to use.

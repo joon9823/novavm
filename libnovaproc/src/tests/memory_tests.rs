@@ -1,4 +1,4 @@
-use crate::memory::{UnmanagedVector, ByteSliceView};
+use crate::memory::{ByteSliceView, UnmanagedVector};
 
 #[test]
 fn byte_slice_view_read_works() {

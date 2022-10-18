@@ -1,6 +1,6 @@
 use errno::{set_errno, Errno};
 use move_deps::move_core_types::vm_status::{StatusCode, VMStatus};
-use novavm::{BackendError, NovaVMError};
+use nova_types::errors::{BackendError, NovaVMError};
 use thiserror::Error;
 
 use crate::memory::UnmanagedVector;

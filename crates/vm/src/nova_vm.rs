@@ -1,6 +1,6 @@
 use anyhow::Result;
-pub use log::{debug, error, info, log, log_enabled, trace, warn, Level, LevelFilter};
-pub use move_deps::move_core_types::{
+use log::info;
+use move_deps::move_core_types::{
     resolver::MoveResolver,
     vm_status::{KeptVMStatus, VMStatus},
 };
@@ -11,10 +11,7 @@ use move_deps::{
         errors::{Location, PartialVMError, VMError, VMResult},
     },
     move_bytecode_utils::Modules,
-    move_core_types::{
-        account_address::AccountAddress, effects::ChangeSet,
-        vm_status::StatusCode,
-    },
+    move_core_types::{account_address::AccountAddress, vm_status::StatusCode},
     move_vm_runtime::{
         move_vm::MoveVM,
         native_extensions::NativeContextExtensions,
@@ -30,19 +27,29 @@ use std::{
     sync::Arc,
 };
 
+use nova_gas::{Gas, InitialGasSchedule, NativeGasParameters, NovaGasMeter, NovaGasParameters};
 use nova_natives::{
-    table::{NativeTableContext, TableChangeSet, TableResolver}, block::NativeBlockContext,
-    code::{NativeCodeContext, PublishRequest},
-    block::BlockInfoResolver,
     all_natives,
-} ;
-use nova_gas::{Gas, NativeGasParameters, NovaGasMeter, NovaGasParameters, InitialGasSchedule};
+    block::BlockInfoResolver,
+    block::NativeBlockContext,
+    code::{NativeCodeContext, PublishRequest},
+    table::{NativeTableContext, TableResolver},
+};
+use nova_storage::{
+    data_view_resolver::DataViewResolver, size::size_resolver::SizeResolver, state_view::StateView,
+    table_meta::table_meta_resolver::TableMetaResolver,
+};
+use nova_types::{
+    errors::NovaVMError,
+    message::{Message, MessageOutput, MessagePayload, MessageStatus},
+    module::ModuleBundle,
+    size_change_set::SizeChangeSet,
+    write_set::WriteSet,
+};
+
 use crate::{
-    args_validator::{validate_combine_signer_and_txn_args}, 
-    message::*,
-    storage::{data_view_resolver::DataViewResolver, size::{size_resolver::SizeResolver, size_change_set::SizeChangeSet}, state_view::StateView, table_meta::{table_meta_resolver::TableMetaResolver, table_meta_change_set::TableMetaChangeSet}},
+    arguments::validate_combine_signer_and_txn_args,
     session::{SessionExt, SessionOutput},
-    NovaVMError,
 };
 
 #[derive(Clone)]
@@ -60,7 +67,7 @@ impl NovaVM {
             gas_params.nova_stdlib,
             gas_params.table,
         ))
-            .expect("should be able to create Move VM; check if there are duplicated natives");
+        .expect("should be able to create Move VM; check if there are duplicated natives");
 
         Self {
             move_vm: Arc::new(inner),
@@ -87,12 +94,22 @@ impl NovaVM {
         )
     }
 
-    fn create_session_with_api<'r, S: MoveResolver + TableResolver + SizeResolver + TableMetaResolver, A: BlockInfoResolver>(&self, remote: &'r S, api: &'r A, session_id: Vec<u8>) -> SessionExt<'r, '_, S> {
+    fn create_session_with_api<
+        'r,
+        S: MoveResolver + TableResolver + SizeResolver + TableMetaResolver,
+        A: BlockInfoResolver,
+    >(
+        &self,
+        remote: &'r S,
+        api: &'r A,
+        session_id: Vec<u8>,
+    ) -> SessionExt<'r, '_, S> {
         let mut session = self.create_session(remote, session_id);
-        session.get_native_extensions().add(NativeBlockContext::new(api));
+        session
+            .get_native_extensions()
+            .add(NativeBlockContext::new(api));
         session
     }
-
 
     pub fn initialize<S: StateView>(
         &mut self,
@@ -148,7 +165,7 @@ impl NovaVM {
         msg: Message,
         remote_cache: &DataViewResolver<'_, S>,
         api: Option<&A>,
-        gas_limit : Gas
+        gas_limit: Gas,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         let sender = msg.sender();
 
@@ -164,10 +181,17 @@ impl NovaVM {
             payload @ MessagePayload::Script(_) | payload @ MessagePayload::EntryFunction(_) => {
                 let api = match api {
                     Some(api) => Ok(api),
-                    None => Err(NovaVMError::generic_err("need BlockInfoResolver"))
+                    None => Err(NovaVMError::generic_err("need BlockInfoResolver")),
                 }?;
 
-                self.execute_script_or_entry_function(msg.session_id().to_vec(), sender, remote_cache, api, payload, &mut gas_meter)
+                self.execute_script_or_entry_function(
+                    msg.session_id().to_vec(),
+                    sender,
+                    remote_cache,
+                    api,
+                    payload,
+                    &mut gas_meter,
+                )
             }
             MessagePayload::ModuleBundle(m) => match sender {
                 Some(sender) => self.publish_module_bundle(
@@ -253,7 +277,7 @@ impl NovaVM {
                     let loaded_func =
                         session.load_script(script.code(), script.ty_args().to_vec())?;
                     let args = validate_combine_signer_and_txn_args(&session, senders, script.args().to_vec(), &loaded_func)?;
-                    
+
                     session.execute_script(
                         script.code().to_vec(),
                         script.ty_args().to_vec(),
@@ -268,7 +292,7 @@ impl NovaVM {
                         entry_fn.ty_args(),
                     )?;
                     let args = validate_combine_signer_and_txn_args(&session, senders, entry_fn.args().to_vec(), &function)?;
-                    
+
                     session.execute_entry_function(
                         entry_fn.module(),
                         entry_fn.function(),
@@ -294,29 +318,24 @@ impl NovaVM {
         self.resolve_pending_code_publish(&mut session, gas_meter)?;
 
         let session_output = session.finish()?;
-        
-        // Charge for change set
-        gas_meter.charge_change_set_gas(session_output.0.accounts())?;
-        let (status, output) =
-            self.success_message_cleanup(session_output,  gas_meter)?;
+
+        // Charge for gas cost for write set ops
+        gas_meter.charge_write_set_gas(&session_output.1)?;
+        let (status, output) = self.success_message_cleanup(session_output, gas_meter)?;
 
         Ok((status, output, res.into()))
     }
 
     fn success_message_cleanup(
         &self,
-        session_output: SessionOutput, 
+        session_output: SessionOutput,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput), VMStatus> {
         let gas_limit = gas_meter.gas_limit();
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
         Ok((
             VMStatus::Executed,
-            get_message_output(
-                session_output,
-                gas_used,
-                KeptVMStatus::Executed,
-            )?,
+            get_message_output(session_output, gas_used, KeptVMStatus::Executed)?,
         ))
     }
 
@@ -457,11 +476,9 @@ pub(crate) fn discard_error_output(err: StatusCode, gas_used: Gas) -> MessageOut
     info!("discard error output: {:?}", err);
     // Since this message will be discarded, no writeset will be included.
     MessageOutput::new(
-        ChangeSet::new(),
         vec![],
-        TableChangeSet::default(),
+        WriteSet::default(),
         SizeChangeSet::default(),
-        TableMetaChangeSet::default(),
         gas_used.into(),
         MessageStatus::Discard(err),
     )
@@ -485,15 +502,12 @@ pub(crate) fn get_message_output(
     gas_used: Gas,
     status: KeptVMStatus,
 ) -> Result<MessageOutput, VMStatus> {
-    let (
-        change_set, events, table_change_set, size_change_set, table_meta_change_set) = session_output;
+    let (events, write_set, size_change_set) = session_output;
 
     Ok(MessageOutput::new(
-        change_set,
         events,
-        table_change_set,
+        write_set,
         size_change_set,
-        table_meta_change_set,
         gas_used.into(),
         MessageStatus::Keep(status),
     ))

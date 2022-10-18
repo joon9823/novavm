@@ -41,7 +41,9 @@ log = { version = "0.4.17", features = ["max_level_debug", "release_max_level_wa
 nova-compiler = { version = "0.1.0", path = "../crates/compiler" }
 novavm = { path = "../crates/vm", features = ["backtraces"] }
 nova-natives = { path = "../crates/natives" }
+nova-types = { path = "../crates/types" }
 nova-gas = { path = "../crates/gas" }
+nova-storage = { path = "../crates/storage" }
 move-deps = { path = "../crates/move-deps", features = ["address20"] }
 
 [dev-dependencies]

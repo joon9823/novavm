@@ -8,7 +8,9 @@ members = [
     "crates/move-deps",
     "crates/natives",
     "crates/stdlib",
-    "crates/vm"
+    "crates/vm",
+    "crates/types",
+    "crates/storage"
 ]
 
 [profile.bench]

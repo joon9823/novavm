@@ -81,7 +81,7 @@ impl<'de> Deserialize<'de> for Address {
 
 #[cfg(test)]
 mod tests {
-    use super::{Address, AccountAddress};
+    use super::{AccountAddress, Address};
     use serde_json::{json, Value};
 
     #[test]

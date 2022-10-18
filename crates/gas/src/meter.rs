@@ -7,9 +7,8 @@ use crate::{
 };
 
 use move_deps::move_binary_format::errors::{Location, PartialVMError, PartialVMResult, VMResult};
+use move_deps::move_core_types::effects::Op;
 use move_deps::move_core_types::{
-    account_address::AccountAddress,
-    effects::AccountChangeSet,
     gas_algebra::{InternalGas, NumArgs, NumBytes},
     language_storage::ModuleId,
     vm_status::StatusCode,
@@ -19,9 +18,11 @@ use move_deps::move_vm_types::{
     gas::{GasMeter, SimpleInstruction},
     views::{TypeView, ValueView},
 };
+use nova_types::access_path::AccessPath;
 use std::collections::BTreeMap;
 
-// TODO : remove this if we don't need to store gas schedule on chain
+pub(crate) const EXECUTION_GAS_MULTIPLIER: u64 = 20;
+
 /// A trait for converting from a map representation of the on-chain gas schedule.
 pub trait FromOnChainGasSchedule: Sized {
     /// Constructs a value of this type from a map representation of the on-chain gas schedule.
@@ -482,11 +483,11 @@ impl NovaGasMeter {
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))
     }
 
-    pub fn charge_change_set_gas<'a>(
+    pub fn charge_write_set_gas<'a>(
         &mut self,
-        ops: impl IntoIterator<Item = (&'a AccountAddress, &'a AccountChangeSet)>,
+        ops: impl IntoIterator<Item = (&'a AccessPath, &'a Op<Vec<u8>>)>,
     ) -> VMResult<()> {
-        let cost = self.gas_params.txn.calculate_change_set_gas(ops);
+        let cost = self.gas_params.txn.calculate_write_set_gas(ops);
         self.charge(cost).map_err(|e| e.finish(Location::Undefined))
     }
 }
