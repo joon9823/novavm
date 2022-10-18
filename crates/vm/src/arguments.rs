@@ -8,6 +8,15 @@ use move_deps::{
     move_vm_runtime::session::{LoadedFunctionInstantiation, Session},
     move_vm_types::loaded_data::runtime_types::Type,
 };
+use once_cell::sync::Lazy;
+use std::collections::BTreeSet;
+
+static ALLOWED_STRUCTS: Lazy<BTreeSet<String>> = Lazy::new(|| {
+    ["0x1::string::String"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+});
 
 /// Validate and generate args with senders and non-signer arguments
 ///
@@ -73,7 +82,8 @@ fn is_valid_txn_arg<S: MoveResolver>(session: &Session<S>, typ: &Type) -> bool {
         Vector(inner) => is_valid_txn_arg(session, inner),
         Struct(idx) | StructInstantiation(idx, _) => {
             if let Some(st) = session.get_struct_type(*idx) {
-                st.fields.iter().all(|v| is_valid_txn_arg(session, v))
+                let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
+                ALLOWED_STRUCTS.contains(&full_name)
             } else {
                 false
             }
