@@ -10,7 +10,6 @@ repository = "https://github.com/Kernel-Labs/novavm/tree/main/crates/compiler"
 anyhow = "1.0.65"
 bcs = "0.1.4"
 once_cell = "1.7.2"
-novavm = { version = "0.1.0", path = "../vm", features = ["backtraces", "testing"] }
 nova-natives = { path = "../natives", features = ["testing"] }
 nova-gas = { path = "../gas" }
 move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20", "testing"] }

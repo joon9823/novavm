@@ -13,11 +13,13 @@ pub mod access_path;
 pub mod backend;
 pub mod message;
 pub mod storage;
-pub mod test_utils;
 
 mod args_validator;
 mod errors;
 mod nova_vm;
+
+#[cfg(test)]
+pub mod test_utils;
 
 #[cfg(test)]
 mod tests;
