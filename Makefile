@@ -108,9 +108,7 @@ release-build-alpine:
 	rm -rf target/release
 	# build the muslc *.a file
 	docker run --rm -u $(USER_ID):$(USER_GROUP)  \
-		-v $(shell pwd)/crates:/code/crates \
-		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/Cargo.toml \
+		-v $(shell pwd):/code/ \
 		$(BUILDERS_PREFIX)-alpine
 	cp libnovaproc/artifacts/libnovaproc_muslc.a api
 	cp libnovaproc/artifacts/libnovaproc_muslc.aarch64.a api
@@ -124,9 +122,7 @@ release-build-alpine:
 release-build-linux:
 	rm -rf target/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
-		-v $(shell pwd)/crates:/code/crates \
-		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/Cargo.toml \
+		-v $(shell pwd):/code/ \
 		$(BUILDERS_PREFIX)-centos7
 	cp libnovaproc/artifacts/libnovaproc.x86_64.so api
 	cp libnovaproc/artifacts/libnovaproc.aarch64.so api
@@ -137,9 +133,7 @@ release-build-macos:
 	rm -rf target/x86_64-apple-darwin/release
 	rm -rf target/aarch64-apple-darwin/release
 	docker run --rm -u $(USER_ID):$(USER_GROUP) \
-		-v $(shell pwd)/crates:/code/crates \
-		-v $(shell pwd)/libnovaproc:/code/libnovaproc \
-		-v $(shell pwd)/Cargo.toml \
+		-v $(shell pwd):/code/ \
 		$(BUILDERS_PREFIX)-cross build_macos.sh
 	cp libnovaproc/artifacts/libnovaproc.dylib api
 	make update-bindings
