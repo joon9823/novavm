@@ -80,10 +80,23 @@ fn is_valid_txn_arg<S: MoveResolver>(session: &Session<S>, typ: &Type) -> bool {
     match typ {
         Bool | U8 | U64 | U128 | Address => true,
         Vector(inner) => is_valid_txn_arg(session, inner),
-        Struct(idx) | StructInstantiation(idx, _) => {
+        Struct(idx) => {
             if let Some(st) = session.get_struct_type(*idx) {
                 let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
                 ALLOWED_STRUCTS.contains(&full_name)
+            } else {
+                false
+            }
+        }
+        StructInstantiation(idx, inner_types) => {
+            if let Some(st) = session.get_struct_type(*idx) {
+                let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
+                if full_name == "0x1::option::Option" {
+                    inner_types.len() == 1
+                        && is_valid_txn_arg(session, inner_types.first().unwrap())
+                } else {
+                    ALLOWED_STRUCTS.contains(&full_name)
+                }
             } else {
                 false
             }
