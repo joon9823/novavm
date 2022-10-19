@@ -304,10 +304,13 @@ func Test_ExecuteScript(t *testing.T) {
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
+	optionalUint64 := []byte{1}
+	optionalUint64 = append(optionalUint64, types.SerializeUint64(300)...)
+
 	payload := types.ExecuteScriptPayload{
 		Code:   f,
 		TyArgs: []types.TypeTag{"0x2::TestCoin::Nova", "bool"},
-		Args:   []types.Bytes{},
+		Args:   []types.Bytes{optionalUint64},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -324,6 +327,6 @@ func Test_ExecuteScript(t *testing.T) {
 	require.Len(t, events, 1)
 
 	num := types.DeserializeUint64(events[0].Data)
-	require.Equal(t, uint64(200), num)
+	require.Equal(t, uint64(300), num)
 	require.NotZero(t, usedGas)
 }
