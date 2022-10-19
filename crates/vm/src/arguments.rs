@@ -17,7 +17,7 @@ static ALLOWED_STRUCTS: Lazy<BTreeSet<String>> = Lazy::new(|| {
         .map(|s| s.to_string())
         .collect()
 });
-static OPTION_TYPE_NAME: String = "0x1::option::Option".to_owned();
+static OPTION_TYPE_NAME: &str = "0x1::option::Option";
 
 /// Validate and generate args with senders and non-signer arguments
 ///
