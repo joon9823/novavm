@@ -18,7 +18,7 @@ func serializeU32AsUleb128(value uint32) []byte {
 	return output
 }
 
-// SerializeString serialize bytes to BCS bytes
+// SerializeBytes serialize bytes to BCS bytes
 func SerializeBytes(bz []byte) []byte {
 	var output []byte
 	output = append(output, serializeSequenceLen(len(bz))...)
