@@ -133,7 +133,7 @@ func CreateContractPackage(arg types.NovaCompilerArgument, name string) ([]byte,
 	return copyAndDestroyUnmanagedVector(res), err
 }
 
-func CleanContractPackage(arg types.NovaCompilerArgument, cleanCache bool) ([]byte, error) {
+func CleanContractPackage(arg types.NovaCompilerArgument, cleanCache, cleanByproduct, force bool) ([]byte, error) {
 	var err error
 
 	errmsg := newUnmanagedVector(nil)
@@ -158,7 +158,7 @@ func CleanContractPackage(arg types.NovaCompilerArgument, cleanCache bool) ([]by
 		},
 	}
 
-	res, err := C.clean_move_package(&errmsg, compArg, cbool(cleanCache))
+	res, err := C.clean_move_package(&errmsg, compArg, cbool(cleanCache), cbool(cleanByproduct), cbool(force))
 	if err != nil && err.(syscall.Errno) != C.ErrnoValue_Success {
 		// Depending on the nature of the error, `gasUsed` will either have a meaningful value, or just 0.                                                                            │                                 struct ByteSliceView checksum,
 		return nil, errorWithMessage(err, errmsg)

@@ -55,11 +55,21 @@ func Test_CleanContract(t *testing.T) {
 
 	// clean
 	nova_arg = types.NewNovaCompilerArgument(tmpPath, false, types.DefaultBuildConfig())
-	res, err = CleanContractPackage(nova_arg, true)
+	res, err = CleanContractPackage(nova_arg, true, true, true)
 	require.NoError(t, err)
 	require.Equal(t, string(res), "ok")
 
 	_, err = os.Stat(buildPath)
+	require.True(t, errors.Is(err, os.ErrNotExist))
+	_, err = os.Stat(path.Join(buildPath, "doc"))
+	require.True(t, errors.Is(err, os.ErrNotExist))
+	_, err = os.Stat(path.Join(buildPath, "abi"))
+	require.True(t, errors.Is(err, os.ErrNotExist))
+	_, err = os.Stat(path.Join(buildPath, "error_map.errmap"))
+	require.True(t, errors.Is(err, os.ErrNotExist))
+	_, err = os.Stat(path.Join(buildPath, ".coverage_map.mvcov"))
+	require.True(t, errors.Is(err, os.ErrNotExist))
+	_, err = os.Stat(path.Join(buildPath, ".trace"))
 	require.True(t, errors.Is(err, os.ErrNotExist))
 }
 
