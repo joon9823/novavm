@@ -15,6 +15,7 @@ pub struct MoveConverter<'a, R: ?Sized> {
     inner: MoveValueAnnotator<'a, R>,
 }
 
+#[allow(dead_code)]
 impl<'a, R: MoveResolver + TableResolver + ?Sized> MoveConverter<'a, R> {
     pub fn new(inner: &'a R) -> Self {
         Self {

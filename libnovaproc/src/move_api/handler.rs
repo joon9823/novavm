@@ -4,6 +4,7 @@ use crate::{error::Error, Db, GoStorage};
 
 use nova_storage::data_view_resolver::DataViewResolver;
 
+#[allow(dead_code)]
 pub(crate) fn decode_move_resource(
     db_handle: Db,
     struct_tag: String,
@@ -21,6 +22,7 @@ pub(crate) fn decode_move_resource(
     serde_json::to_vec(&resource).map_err(|e| Error::BackendFailure { msg: e.to_string() })
 }
 
+#[allow(dead_code)]
 pub(crate) fn decode_script_bytes(script_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let script: MoveScriptBytecode = MoveScriptBytecode::new(script_bytes);
     let abi = script
@@ -31,6 +33,7 @@ pub(crate) fn decode_script_bytes(script_bytes: Vec<u8>) -> Result<Vec<u8>, Erro
     serde_json::to_vec(&abi).map_err(|e| Error::BackendFailure { msg: e.to_string() })
 }
 
+#[allow(dead_code)]
 pub(crate) fn decode_module_bytes(module_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     // deserialized request from the json
     let module: MoveModuleBytecode = MoveModuleBytecode::new(module_bytes);

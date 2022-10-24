@@ -14,4 +14,11 @@ serde_bytes = "0.11.5"
 hex = {version = "0.4.3", default-features = false}
 thiserror = "1.0.34"
 
-[dev-dependencies]
+[build-dependencies]
+serde-generate = "0.24.0"
+serde-reflection = "0.3.6"
+move-deps = { path = "../move-deps", features = ["address20"] }
+serde = { version = "1.0.130", features = ["derive", "alloc"] }
+serde_bytes = "0.11.7"
+hex = {version = "0.4.3", default-features = false}
+anyhow = "1.0.41"

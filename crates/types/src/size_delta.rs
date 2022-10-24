@@ -1,11 +1,13 @@
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SizeDelta {
     pub amount: usize,
     pub is_decrease: bool,
 }
 
+#[allow(dead_code)]
 impl SizeDelta {
     pub fn zero() -> Self {
         Self {

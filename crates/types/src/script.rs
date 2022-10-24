@@ -19,6 +19,7 @@ pub struct Script {
     args: Vec<Vec<u8>>,
 }
 
+#[allow(dead_code)]
 impl Script {
     pub fn new(code: Vec<u8>, ty_args: Vec<TypeTag>, args: Vec<Vec<u8>>) -> Self {
         Script {

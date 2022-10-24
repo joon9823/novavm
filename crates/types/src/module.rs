@@ -46,6 +46,7 @@ pub struct ModuleBundle {
     codes: Vec<Module>,
 }
 
+#[allow(dead_code)]
 impl ModuleBundle {
     pub fn new(codes: Vec<Vec<u8>>) -> ModuleBundle {
         ModuleBundle {

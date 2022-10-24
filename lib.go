@@ -1,8 +1,6 @@
 package nova
 
 import (
-	"encoding/json"
-
 	"github.com/Kernel-Labs/novavm/api"
 	"github.com/Kernel-Labs/novavm/types"
 )
@@ -25,7 +23,7 @@ func (vm *VM) Initialize(
 	kvStore api.KVStore,
 	moduleBundle types.ModuleBundle,
 ) error {
-	bz, err := json.Marshal(moduleBundle)
+	bz, err := moduleBundle.BcsSerialize()
 	if err != nil {
 		return err
 	}
@@ -49,11 +47,11 @@ func (vm *VM) Destroy() {
 func (vm *VM) PublishModuleBundle(
 	kvStore api.KVStore,
 	gasLimit uint64,
-	txHash types.Bytes, // txHash is used for sessionID
+	txHash []byte, // txHash is used for sessionID
 	sender types.AccountAddress,
 	moduleBundle types.ModuleBundle,
-) (uint64, []types.Event, []types.SizeDelta, error) {
-	bz, err := json.Marshal(moduleBundle)
+) (uint64, []types.ContractEvent, []types.SizeDelta, error) {
+	bz, err := moduleBundle.BcsSerialize()
 	if err != nil {
 		return 0, nil, nil, err
 	}
@@ -64,16 +62,14 @@ func (vm *VM) PublishModuleBundle(
 		vm.printDebug,
 		gasLimit,
 		txHash,
-		sender,
+		sender[:],
 		bz,
 	)
 	if err != nil {
 		return 0, nil, nil, err
 	}
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
-
+	execRes, err := types.BcsDeserializeExecutionResult(res)
 	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 
@@ -82,9 +78,9 @@ func (vm *VM) QueryEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
 	gasLimit uint64,
-	payload types.ExecuteEntryFunctionPayload,
+	payload types.EntryFunction,
 ) ([]byte, error) {
-	bz, err := json.Marshal(payload)
+	bz, err := payload.BcsSerialize()
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +98,7 @@ func (vm *VM) QueryEntryFunction(
 		return nil, err
 	}
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
-
+	execRes, err := types.BcsDeserializeExecutionResult(res)
 	return execRes.Result, err
 }
 
@@ -114,11 +108,11 @@ func (vm *VM) ExecuteEntryFunction(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
 	gasLimit uint64,
-	txHash types.Bytes, // txHash is used for sessionID
+	txHash []byte, // txHash is used for sessionID
 	sender types.AccountAddress,
-	payload types.ExecuteEntryFunctionPayload,
-) (uint64, []types.Event, []types.SizeDelta, error) {
-	bz, err := json.Marshal(payload)
+	payload types.EntryFunction,
+) (uint64, []types.ContractEvent, []types.SizeDelta, error) {
+	bz, err := payload.BcsSerialize()
 	if err != nil {
 		return 0, nil, nil, err
 	}
@@ -130,7 +124,7 @@ func (vm *VM) ExecuteEntryFunction(
 		vm.printDebug,
 		gasLimit,
 		txHash,
-		sender,
+		sender[:],
 		bz,
 	)
 
@@ -138,8 +132,7 @@ func (vm *VM) ExecuteEntryFunction(
 		return 0, nil, nil, err
 	}
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
+	execRes, err := types.BcsDeserializeExecutionResult(res)
 	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 
@@ -149,11 +142,11 @@ func (vm *VM) ExecuteScript(
 	kvStore api.KVStore,
 	goApi api.GoAPI,
 	gasLimit uint64,
-	txHash types.Bytes, // txHash is used for sessionID
+	txHash []byte, // txHash is used for sessionID
 	sender types.AccountAddress,
-	payload types.ExecuteScriptPayload,
-) (uint64, []types.Event, []types.SizeDelta, error) {
-	bz, err := json.Marshal(payload)
+	payload types.Script,
+) (uint64, []types.ContractEvent, []types.SizeDelta, error) {
+	bz, err := payload.BcsSerialize()
 	if err != nil {
 		return 0, nil, nil, err
 	}
@@ -165,7 +158,7 @@ func (vm *VM) ExecuteScript(
 		vm.printDebug,
 		gasLimit,
 		txHash,
-		sender,
+		sender[:],
 		bz,
 	)
 
@@ -173,8 +166,7 @@ func (vm *VM) ExecuteScript(
 		return 0, nil, nil, err
 	}
 
-	var execRes types.ExecutionResult
-	err = json.Unmarshal(res, &execRes)
+	execRes, err := types.BcsDeserializeExecutionResult(res)
 	return execRes.GasUsed, execRes.Events, execRes.SizeDeltas, err
 }
 

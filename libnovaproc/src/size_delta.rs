@@ -11,6 +11,7 @@ pub struct SizeDelta {
     is_decreasing: bool,
 }
 
+#[allow(dead_code)]
 impl SizeDelta {
     pub fn new(address: AccountAddress, amount: u64, is_decreasing: bool) -> Self {
         Self {

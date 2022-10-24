@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::memory::UnmanagedVector;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum RustError {
     #[error("Success")]
@@ -41,6 +42,7 @@ pub enum RustError {
     Unimplemented { msg: String },
 }
 
+#[allow(dead_code)]
 impl RustError {
     pub fn success() -> Self {
         RustError::Success {}

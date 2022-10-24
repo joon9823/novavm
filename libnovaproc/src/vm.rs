@@ -24,7 +24,7 @@ pub(crate) fn initialize_vm(vm: &mut NovaVM, db_handle: Db, payload: &[u8]) -> R
     let mut storage = GoStorage::new(db_handle);
 
     // add passed custom module bundles
-    let custom_module_bundle: ModuleBundle = serde_json::from_slice(payload).unwrap();
+    let custom_module_bundle: ModuleBundle = bcs::from_bytes(payload).unwrap();
 
     let data_view = DataViewResolver::new(&storage);
     let (status, output, _retval) = vm
@@ -51,7 +51,7 @@ pub(crate) fn publish_module_bundle(
 ) -> Result<Vec<u8>, Error> {
     let gas_limit = Gas::new(gas);
 
-    let module_bundle: ModuleBundle = serde_json::from_slice(payload).unwrap();
+    let module_bundle: ModuleBundle = bcs::from_bytes(payload).unwrap();
     let sorted_module_bundle = module_bundle.sorted_code_and_modules();
 
     let message: Message = Message::new_module(session_id, Some(sender), sorted_module_bundle);
@@ -146,7 +146,7 @@ fn execute_entry_function_internal(
 
     let gas_limit = Gas::new(gas);
 
-    let ef: EntryFunction = serde_json::from_slice(payload.as_slice()).unwrap();
+    let ef: EntryFunction = bcs::from_bytes(&payload.to_vec()).unwrap();
     let message: Message = Message::new_entry_function(session_id, sender, ef);
 
     //let cv = CosmosView::new(&db_handle);
@@ -213,7 +213,7 @@ fn execute_script_internal(
 
     let gas_limit = Gas::new(gas);
 
-    let script: Script = serde_json::from_slice(payload.as_slice()).unwrap();
+    let script: Script = bcs::from_bytes(&payload.to_vec()).unwrap();
     let message: Message = Message::new_script(session_id, sender, script);
 
     //let cv = CosmosView::new(&db_handle);

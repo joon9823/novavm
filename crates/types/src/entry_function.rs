@@ -15,6 +15,7 @@ pub struct EntryFunction {
     args: Vec<Vec<u8>>,
 }
 
+#[allow(dead_code)]
 impl EntryFunction {
     pub fn new(
         module: ModuleId,

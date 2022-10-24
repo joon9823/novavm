@@ -16,6 +16,7 @@ pub struct ContractEvent {
     event_data: Vec<u8>,
 }
 
+#[allow(dead_code)]
 impl ContractEvent {
     pub fn new(key: Vec<u8>, sequence_number: u64, type_tag: TypeTag, event_data: Vec<u8>) -> Self {
         Self {

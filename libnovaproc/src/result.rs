@@ -7,9 +7,9 @@ use nova_types::message::MessageOutput;
 use move_deps::move_core_types::vm_status::VMStatus;
 use move_deps::move_vm_runtime::session::SerializedReturnValues;
 
-use serde::ser::SerializeStruct;
-use serde::{Serialize, Serializer};
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct ExecutionResult {
     result: Vec<u8>,
     events: Vec<ContractEvent>,
@@ -17,13 +17,16 @@ pub struct ExecutionResult {
     gas_used: u64,
 }
 
+#[allow(dead_code)]
 pub fn to_vec<T>(data: &T) -> Result<Vec<u8>, Error>
 where
     T: Serialize + ?Sized,
 {
-    serde_json::to_vec(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
+    //serde_json::to_vec(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
+    bcs::to_bytes(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
 }
 
+/* 
 impl Serialize for ExecutionResult {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -38,7 +41,9 @@ impl Serialize for ExecutionResult {
         state.end()
     }
 }
+*/
 
+#[allow(dead_code)]
 pub fn generate_result(
     status: VMStatus,
     output: MessageOutput,
