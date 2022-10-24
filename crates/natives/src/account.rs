@@ -3,12 +3,13 @@
 
 use move_deps::{
     move_binary_format::errors::PartialVMResult,
-    move_core_types::{account_address::AccountAddress, gas_algebra::InternalGas},
+    move_core_types::account_address::AccountAddress,
     move_vm_runtime::native_functions::{NativeContext, NativeFunction},
     move_vm_types::{
         loaded_data::runtime_types::Type, natives::function::NativeResult, pop_arg, values::Value,
     },
 };
+use nova_gas::gas_params::account::*;
 use smallvec::smallvec;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -19,10 +20,6 @@ use std::sync::Arc;
  *   gas cost: base_cost
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct CreateAddressGasParameters {
-    pub base_cost: InternalGas,
-}
 
 fn native_create_address(
     gas_params: &CreateAddressGasParameters,
@@ -59,10 +56,6 @@ pub fn make_native_create_address(gas_params: CreateAddressGasParameters) -> Nat
  *   gas cost: base_cost
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct CreateSignerGasParameters {
-    pub base_cost: InternalGas,
-}
 
 fn native_create_signer(
     gas_params: &CreateSignerGasParameters,
@@ -90,12 +83,6 @@ pub fn make_native_create_signer(gas_params: CreateSignerGasParameters) -> Nativ
  * module
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub create_address: CreateAddressGasParameters,
-    pub create_signer: CreateSignerGasParameters,
-}
-
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [
         (

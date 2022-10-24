@@ -27,9 +27,10 @@ use std::{
     sync::Arc,
 };
 
+use nova_gas::AbstractValueSizeGasParameters;
 use nova_gas::{Gas, InitialGasSchedule, NativeGasParameters, NovaGasMeter, NovaGasParameters};
+use nova_natives::all_natives;
 use nova_natives::{
-    all_natives,
     block::BlockInfoResolver,
     block::NativeBlockContext,
     code::{NativeCodeContext, PublishRequest},
@@ -61,11 +62,13 @@ pub struct NovaVM {
 
 impl NovaVM {
     pub fn new() -> Self {
-        let gas_params = NativeGasParameters::zeros();
+        let gas_params = NativeGasParameters::initial();
+        let abs_val_size_gas_params = AbstractValueSizeGasParameters::initial();
         let inner = MoveVM::new(all_natives(
             gas_params.move_stdlib,
             gas_params.nova_stdlib,
             gas_params.table,
+            abs_val_size_gas_params,
         ))
         .expect("should be able to create Move VM; check if there are duplicated natives");
 

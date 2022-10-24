@@ -25,7 +25,7 @@ Our system currently supports the following builds. In general we can only suppo
 | OS family       | Arch    | Linking | Supported                     | Note    |
 | --------------- | ------- | ------- | ----------------------------- | ------- |
 | Linux (glibc)   | x86_64  | shared  | ✅​libnovaproc.x86_64.so       |  |
-| Linux (glibc)   | x86_64  | static  | 🚫​                            | Would link libwasmvm statically but glibc dynamically as static glibc linking is not recommended. Potentially interesting for Osmosis. |
+| Linux (glibc)   | x86_64  | static  | 🚫​                            | Would link libnovavm statically but glibc dynamically as static glibc linking is not recommended. Potentially interesting for Osmosis. |
 | Linux (glibc)   | aarch64 | shared  | ✅​libnovaproc.aarch64.so      |  |
 | Linux (glibc)   | aarch64 | static  | 🚫​                            |  |
 | Linux (musl)    | x86_64  | shared  | 🚫​                            | Possible but not needed |

@@ -1,6 +1,6 @@
 .PHONY: all build build-rust build-go test
 
-# Builds the Rust library libwasmvm
+# Builds the Rust library libnovavm
 BUILDERS_PREFIX := novavm/go-ext-builder:0001
 # Contains a full Go dev environment in order to run Go tests on the built library
 ALPINE_TESTER := novavm/go-ext-builder:0001-alpine

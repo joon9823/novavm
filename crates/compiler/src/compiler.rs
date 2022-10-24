@@ -1,24 +1,26 @@
 // from move-language/move/tools/move-cli/src/lib.rs
 // SPDX-License-Identifier: Apache-2.0
+use crate::extensions::configure_for_unit_test;
+use crate::Command;
 use anyhow::bail;
 use move_deps::move_cli::Move;
 use move_deps::move_core_types::{account_address::AccountAddress, identifier::Identifier};
 use move_deps::move_vm_runtime::native_functions::NativeFunction;
+use nova_gas::AbstractValueSizeGasParameters;
 use nova_gas::NativeGasParameters;
 use nova_natives::all_natives;
-
-use crate::extensions::configure_for_unit_test;
-use crate::Command;
 
 // works as entrypoint
 pub fn compile(move_args: Move, cmd: Command) -> anyhow::Result<Vec<u8>> {
     //let cost_table = &INITIAL_COST_SCHEDULE;
     //let error_descriptions: ErrorMapping = bcs::from_bytes(move_stdlib::error_descriptions()).unwrap();
     let gas_params = NativeGasParameters::zeros();
+    let abs_val_size_gas_params = AbstractValueSizeGasParameters::zeros();
     let natives = all_natives(
         gas_params.move_stdlib,
         gas_params.nova_stdlib,
         gas_params.table,
+        abs_val_size_gas_params,
     );
 
     configure_for_unit_test();

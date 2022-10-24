@@ -1,6 +1,6 @@
 use move_deps::move_core_types::gas_algebra::{GasQuantity, InternalGasUnit, UnitDiv};
 
-pub use crate::algebra_ext::{
+pub use crate::{
     AbstractValueSize, AbstractValueSizePerArg, AbstractValueUnit, InternalGasPerAbstractValueUnit,
 };
 

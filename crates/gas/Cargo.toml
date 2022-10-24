@@ -9,5 +9,7 @@ repository = "https://github.com/Kernel-Labs/novavm/tree/main/crates/gas"
 [dependencies]
 bcs = "0.1.3"
 move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20"] }
-nova-natives = { path = "../natives" }
 nova-types = { path = "../types" }
+
+[features]
+testing = []

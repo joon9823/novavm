@@ -1,10 +1,7 @@
 use better_any::{Tid, TidAble};
 use move_deps::move_binary_format::errors::{PartialVMError, PartialVMResult};
 use move_deps::move_core_types::{
-    account_address::AccountAddress,
-    effects::Op,
-    gas_algebra::{InternalGas, InternalGasPerByte, NumBytes},
-    value::MoveTypeLayout,
+    account_address::AccountAddress, effects::Op, gas_algebra::NumBytes, value::MoveTypeLayout,
     vm_status::StatusCode,
 };
 use move_deps::move_vm_runtime::{
@@ -17,6 +14,8 @@ use move_deps::move_vm_types::{
     pop_arg,
     values::{GlobalValue, Reference, StructRef, Value},
 };
+use nova_gas::gas_params::table::*;
+use nova_gas::table::GasParameters;
 use nova_types::table::{TableChange, TableChangeSet, TableHandle, TableInfo};
 use sha3::{Digest, Sha3_256};
 use smallvec::smallvec;
@@ -273,29 +272,6 @@ pub fn all_natives(table_addr: AccountAddress, gas_params: GasParameters) -> Nat
     native_functions::make_table_from_iter(table_addr, natives)
 }
 
-#[derive(Debug, Clone)]
-pub struct CommonGasParameters {
-    pub load_base: InternalGas,
-    pub load_per_byte: InternalGasPerByte,
-    pub load_failure: InternalGas,
-}
-
-impl CommonGasParameters {
-    fn calculate_load_cost(&self, loaded: Option<Option<NumBytes>>) -> InternalGas {
-        self.load_base
-            + match loaded {
-                Some(Some(num_bytes)) => self.load_per_byte * num_bytes,
-                Some(None) => self.load_failure,
-                None => 0.into(),
-            }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NewTableHandleGasParameters {
-    pub base: InternalGas,
-}
-
 fn native_new_table_handle(
     gas_params: &NewTableHandleGasParameters,
     context: &mut NativeContext,
@@ -345,11 +321,6 @@ pub fn make_native_new_table_handle(gas_params: NewTableHandleGasParameters) -> 
     )
 }
 
-#[derive(Debug, Clone)]
-pub struct SetTablePayerGasParameters {
-    pub base: InternalGas,
-}
-
 fn native_set_table_payer(
     gas_params: &SetTablePayerGasParameters,
     context: &mut NativeContext,
@@ -375,12 +346,6 @@ pub fn make_native_set_table_payer(gas_params: SetTablePayerGasParameters) -> Na
             native_set_table_payer(&gas_params, context, ty_args, args)
         },
     )
-}
-
-#[derive(Debug, Clone)]
-pub struct AddBoxGasParameters {
-    pub base: InternalGas,
-    pub per_byte_serialized: InternalGasPerByte,
 }
 
 fn native_add_box(
@@ -427,12 +392,6 @@ pub fn make_native_add_box(
     )
 }
 
-#[derive(Debug, Clone)]
-pub struct BorrowBoxGasParameters {
-    pub base: InternalGas,
-    pub per_byte_serialized: InternalGasPerByte,
-}
-
 fn native_borrow_box(
     common_gas_params: &CommonGasParameters,
     gas_params: &BorrowBoxGasParameters,
@@ -476,12 +435,6 @@ pub fn make_native_borrow_box(
     )
 }
 
-#[derive(Debug, Clone)]
-pub struct ContainsBoxGasParameters {
-    pub base: InternalGas,
-    pub per_byte_serialized: InternalGasPerByte,
-}
-
 fn native_contains_box(
     common_gas_params: &CommonGasParameters,
     gas_params: &ContainsBoxGasParameters,
@@ -522,12 +475,6 @@ pub fn make_native_contains_box(
             native_contains_box(&common_gas_params, &gas_params, context, ty_args, args)
         },
     )
-}
-
-#[derive(Debug, Clone)]
-pub struct RemoveGasParameters {
-    pub base: InternalGas,
-    pub per_byte_serialized: InternalGasPerByte,
 }
 
 fn native_remove_box(
@@ -573,11 +520,6 @@ pub fn make_native_remove_box(
     )
 }
 
-#[derive(Debug, Clone)]
-pub struct DestroyEmptyBoxGasParameters {
-    pub base: InternalGas,
-}
-
 fn native_destroy_empty_box(
     gas_params: &DestroyEmptyBoxGasParameters,
     context: &mut NativeContext,
@@ -607,11 +549,6 @@ pub fn make_native_destroy_empty_box(gas_params: DestroyEmptyBoxGasParameters) -
     )
 }
 
-#[derive(Debug, Clone)]
-pub struct DropUncheckedBoxGasParameters {
-    pub base: InternalGas,
-}
-
 fn native_drop_unchecked_box(
     gas_params: &DropUncheckedBoxGasParameters,
     _context: &mut NativeContext,
@@ -630,51 +567,6 @@ pub fn make_native_drop_unchecked_box(gas_params: DropUncheckedBoxGasParameters)
             native_drop_unchecked_box(&gas_params, context, ty_args, args)
         },
     )
-}
-
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub common: CommonGasParameters,
-    pub new_table_handle: NewTableHandleGasParameters,
-    pub set_table_payer: SetTablePayerGasParameters,
-    pub add_box: AddBoxGasParameters,
-    pub borrow_box: BorrowBoxGasParameters,
-    pub contains_box: ContainsBoxGasParameters,
-    pub remove_box: RemoveGasParameters,
-    pub destroy_empty_box: DestroyEmptyBoxGasParameters,
-    pub drop_unchecked_box: DropUncheckedBoxGasParameters,
-}
-
-impl GasParameters {
-    pub fn zeros() -> Self {
-        Self {
-            common: CommonGasParameters {
-                load_base: 0.into(),
-                load_per_byte: 0.into(),
-                load_failure: 0.into(),
-            },
-            new_table_handle: NewTableHandleGasParameters { base: 0.into() },
-            set_table_payer: SetTablePayerGasParameters { base: 0.into() },
-            add_box: AddBoxGasParameters {
-                base: 0.into(),
-                per_byte_serialized: 0.into(),
-            },
-            borrow_box: BorrowBoxGasParameters {
-                base: 0.into(),
-                per_byte_serialized: 0.into(),
-            },
-            contains_box: ContainsBoxGasParameters {
-                base: 0.into(),
-                per_byte_serialized: 0.into(),
-            },
-            remove_box: RemoveGasParameters {
-                base: 0.into(),
-                per_byte_serialized: 0.into(),
-            },
-            destroy_empty_box: DestroyEmptyBoxGasParameters { base: 0.into() },
-            drop_unchecked_box: DropUncheckedBoxGasParameters { base: 0.into() },
-        }
-    }
 }
 
 // =========================================================================================

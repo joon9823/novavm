@@ -1,5 +1,4 @@
-use nova_natives::table::GasParameters;
-
+use crate::gas_params::table::*;
 use crate::meter::EXECUTION_GAS_MULTIPLIER as MUL;
 
 crate::natives::define_gas_parameters_for_natives!(GasParameters, "table", [
@@ -27,3 +26,48 @@ crate::natives::define_gas_parameters_for_natives!(GasParameters, "table", [
 
     [.drop_unchecked_box.base, "drop_unchecked_box.base", 100 * MUL],
 ]);
+
+#[derive(Debug, Clone)]
+pub struct GasParameters {
+    pub common: CommonGasParameters,
+    pub new_table_handle: NewTableHandleGasParameters,
+    pub set_table_payer: SetTablePayerGasParameters,
+    pub add_box: AddBoxGasParameters,
+    pub borrow_box: BorrowBoxGasParameters,
+    pub contains_box: ContainsBoxGasParameters,
+    pub remove_box: RemoveGasParameters,
+    pub destroy_empty_box: DestroyEmptyBoxGasParameters,
+    pub drop_unchecked_box: DropUncheckedBoxGasParameters,
+}
+
+impl GasParameters {
+    pub fn zeros() -> Self {
+        Self {
+            common: CommonGasParameters {
+                load_base: 0.into(),
+                load_per_byte: 0.into(),
+                load_failure: 0.into(),
+            },
+            new_table_handle: NewTableHandleGasParameters { base: 0.into() },
+            set_table_payer: SetTablePayerGasParameters { base: 0.into() },
+            add_box: AddBoxGasParameters {
+                base: 0.into(),
+                per_byte_serialized: 0.into(),
+            },
+            borrow_box: BorrowBoxGasParameters {
+                base: 0.into(),
+                per_byte_serialized: 0.into(),
+            },
+            contains_box: ContainsBoxGasParameters {
+                base: 0.into(),
+                per_byte_serialized: 0.into(),
+            },
+            remove_box: RemoveGasParameters {
+                base: 0.into(),
+                per_byte_serialized: 0.into(),
+            },
+            destroy_empty_box: DestroyEmptyBoxGasParameters { base: 0.into() },
+            drop_unchecked_box: DropUncheckedBoxGasParameters { base: 0.into() },
+        }
+    }
+}

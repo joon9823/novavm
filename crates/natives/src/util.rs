@@ -9,6 +9,7 @@ use move_deps::{
         loaded_data::runtime_types::Type, natives::function::NativeResult, pop_arg, values::Value,
     },
 };
+use nova_gas::gas_params::util::*;
 use smallvec::smallvec;
 use std::{collections::VecDeque, sync::Arc};
 
@@ -29,12 +30,6 @@ pub fn make_native_from_func<T: std::marker::Send + std::marker::Sync + 'static>
  *   gas cost: base_cost + unit_cost * bytes_len
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct FromBytesGasParameters {
-    pub base: InternalGas,
-    pub unit: InternalGas,
-}
-
 fn native_from_bytes(
     gas_params: &FromBytesGasParameters,
     context: &mut NativeContext,
@@ -72,11 +67,6 @@ pub fn make_native_from_bytes(gas_params: FromBytesGasParameters) -> NativeFunct
  * module
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub from_bytes: FromBytesGasParameters,
-}
-
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [("from_bytes", make_native_from_bytes(gas_params.from_bytes))];
 

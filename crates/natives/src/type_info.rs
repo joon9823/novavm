@@ -4,7 +4,7 @@
 use move_deps::{
     move_binary_format::errors::PartialVMResult,
     move_core_types::{
-        gas_algebra::{InternalGas, InternalGasPerByte, NumBytes},
+        gas_algebra::NumBytes,
         language_storage::{StructTag, TypeTag},
     },
     move_vm_runtime::native_functions::{NativeContext, NativeFunction},
@@ -14,6 +14,7 @@ use move_deps::{
         values::{Struct, Value},
     },
 };
+use nova_gas::gas_params::type_info::*;
 use smallvec::{smallvec, SmallVec};
 use std::{collections::VecDeque, fmt::Write, sync::Arc};
 
@@ -44,12 +45,6 @@ fn type_of_internal(struct_tag: &StructTag) -> Result<SmallVec<[Value; 1]>, std:
  *   gas cost: base_cost + unit_cost * type_size
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct TypeOfGasParameters {
-    pub base: InternalGas,
-    pub unit: InternalGasPerByte,
-}
-
 fn native_type_of(
     gas_params: &TypeOfGasParameters,
     context: &mut NativeContext,
@@ -90,12 +85,6 @@ pub fn make_native_type_of(gas_params: TypeOfGasParameters) -> NativeFunction {
  *   gas cost: base_cost + unit_cost * type_size
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct TypeNameGasParameters {
-    pub base: InternalGas,
-    pub unit: InternalGasPerByte,
-}
-
 fn native_type_name(
     gas_params: &TypeNameGasParameters,
     context: &mut NativeContext,
@@ -129,12 +118,6 @@ pub fn make_native_type_name(gas_params: TypeNameGasParameters) -> NativeFunctio
  * module
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub type_of: TypeOfGasParameters,
-    pub type_name: TypeNameGasParameters,
-}
-
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [
         ("type_of", make_native_type_of(gas_params.type_of)),

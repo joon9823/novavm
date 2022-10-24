@@ -6,6 +6,7 @@ mod helpers;
 pub mod account;
 pub mod block;
 pub mod code;
+pub mod event;
 pub mod table;
 pub mod type_info;
 pub mod util;
@@ -14,11 +15,17 @@ pub mod util;
 pub mod unit_test;
 
 use move_deps::{
+    move_core_types::account_address::AccountAddress,
     move_core_types::language_storage::CORE_CODE_ADDRESS,
-    move_core_types::{account_address::AccountAddress, identifier::Identifier},
     move_stdlib::natives::nursery_natives,
     move_stdlib::natives::{self as move_natives},
     move_vm_runtime::native_functions::{make_table_from_iter, NativeFunctionTable},
+    move_vm_types::values::Value,
+};
+use nova_gas::AbstractValueSize;
+use nova_gas::{
+    nova::GasParameters as NovaGasParameters, table::GasParameters as TableGasParameters,
+    AbstractValueSizeGasParameters,
 };
 use table as table_natives;
 
@@ -29,73 +36,10 @@ pub mod status {
     pub const NFE_UNABLE_TO_PARSE_ADDRESS: u64 = 0x2;
 }
 
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub account: account::GasParameters,
-    pub block: block::GasParameters,
-    pub type_info: type_info::GasParameters,
-    pub util: util::GasParameters,
-    pub code: code::GasParameters,
-
-    #[cfg(feature = "testing")]
-    pub unit_test: unit_test::GasParameters,
-}
-
-impl GasParameters {
-    pub fn zeros() -> Self {
-        Self {
-            account: account::GasParameters {
-                create_address: account::CreateAddressGasParameters {
-                    base_cost: 0.into(),
-                },
-                create_signer: account::CreateSignerGasParameters {
-                    base_cost: 0.into(),
-                },
-            },
-            block: block::GasParameters {
-                get_block_info: block::GetBlockInfoGasParameters {
-                    base_cost: 0.into(),
-                },
-            },
-            type_info: type_info::GasParameters {
-                type_of: type_info::TypeOfGasParameters {
-                    base: 0.into(),
-                    unit: 0.into(),
-                },
-                type_name: type_info::TypeNameGasParameters {
-                    base: 0.into(),
-                    unit: 0.into(),
-                },
-            },
-            util: util::GasParameters {
-                from_bytes: util::FromBytesGasParameters {
-                    base: 0.into(),
-                    unit: 0.into(),
-                },
-            },
-            code: code::GasParameters {
-                request_publish: code::RequestPublishGasParameters {
-                    base: 0.into(),
-                    unit: 0.into(),
-                },
-            },
-            #[cfg(feature = "testing")]
-            unit_test: unit_test::GasParameters {
-                create_signers_for_testing: unit_test::CreateSignersForTestingGasParameters {
-                    base_cost: 0.into(),
-                    unit_cost: 0.into(),
-                },
-                set_block_info_for_testing: unit_test::SetBlockInfoForTestingGasParameters {
-                    base_cost: 0.into(),
-                },
-            },
-        }
-    }
-}
-
 pub fn nova_natives(
     nova_std_addr: AccountAddress,
-    gas_params: GasParameters,
+    gas_params: NovaGasParameters,
+    calc_abstract_val_size: impl Fn(&Value) -> AbstractValueSize + Send + Sync + 'static,
 ) -> NativeFunctionTable {
     let mut natives = vec![];
 
@@ -112,6 +56,10 @@ pub fn nova_natives(
     add_natives_from_module!("type_info", type_info::make_all(gas_params.type_info));
     add_natives_from_module!("util", util::make_all(gas_params.util));
     add_natives_from_module!("code", code::make_all(gas_params.code));
+    add_natives_from_module!(
+        "event",
+        event::make_all(gas_params.event, calc_abstract_val_size)
+    );
 
     #[cfg(feature = "testing")]
     add_natives_from_module!("unit_test", unit_test::make_all(gas_params.unit_test));
@@ -119,29 +67,31 @@ pub fn nova_natives(
     make_table_from_iter(nova_std_addr, natives)
 }
 
-/// A temporary hack to patch Table -> table module name as long as it is not upgraded
-/// in the Move repo.
-pub fn patch_table_module(table: NativeFunctionTable) -> NativeFunctionTable {
-    table
-        .into_iter()
-        .map(|(m, _, f, i)| (m, Identifier::new("table").unwrap(), f, i))
-        .collect()
-}
-
 pub fn all_natives(
     move_natives_gas_params: move_natives::GasParameters,
-    nova_natives_gas_params: GasParameters,
-    table_natives_gas_params: table_natives::GasParameters,
+    nova_natives_gas_params: NovaGasParameters,
+    table_natives_gas_params: TableGasParameters,
+    abs_val_size_gas_params: AbstractValueSizeGasParameters,
 ) -> NativeFunctionTable {
     move_natives::all_natives(CORE_CODE_ADDRESS, move_natives_gas_params)
         .into_iter()
         .filter(|(_, name, _, _)| name.as_str() != "unit_test")
-        .chain(nursery_natives(
+        .chain(
+            nursery_natives(
+                CORE_CODE_ADDRESS,
+                // TODO - change this as arguments
+                move_natives::NurseryGasParameters::zeros(),
+            )
+            .into_iter()
+            .filter(|(addr, module_name, _, _)| {
+                !(*addr == CORE_CODE_ADDRESS && module_name.as_str() == "event")
+            }),
+        )
+        .chain(nova_natives(
             CORE_CODE_ADDRESS,
-            // TODO - change this as arguments
-            move_natives::NurseryGasParameters::zeros(),
+            nova_natives_gas_params,
+            move |val| abs_val_size_gas_params.abstract_value_size(val),
         ))
-        .chain(nova_natives(CORE_CODE_ADDRESS, nova_natives_gas_params))
         .chain(table_natives::all_natives(
             CORE_CODE_ADDRESS,
             table_natives_gas_params,
