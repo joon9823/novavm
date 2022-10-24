@@ -21,15 +21,12 @@ mod move_api;
 mod error;
 #[path = "src/event.rs"]
 mod event;
-
 #[path = "src/db.rs"]
 mod db;
 use db::Db;
-
 #[path = "src/storage.rs"]
 mod storage;
 use storage::GoStorage;
-
 #[path = "src/result.rs"]
 mod result;
 

@@ -20,14 +20,3 @@ tsu = "1.0.1"
 
 [dev-dependencies]
 serial_test = "0.9.0"
-
-[profile.release]
-opt-level = 3
-debug = false
-rpath = true
-lto = false
-debug-assertions = false
-codegen-units = 16
-panic = 'unwind'
-incremental = true
-overflow-checks = true
