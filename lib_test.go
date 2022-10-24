@@ -3,6 +3,7 @@ package nova_test
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -16,19 +17,14 @@ import (
 
 func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/BasicCoin.mv")
+	fmt.Printf("LENGTH: %d\n", len(f))
 	require.NoError(t, err)
 
 	kvStore := api.NewLookup()
 	vm := vm.NewVM(true)
 	err = vm.Initialize(
 		kvStore,
-		types.ModuleBundle{
-			Codes: []types.Module{
-				{
-					Code: f,
-				},
-			},
-		},
+		types.NewModuleBundle(types.NewModule(f)),
 	)
 	require.NoError(t, err)
 
