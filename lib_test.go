@@ -103,7 +103,7 @@ func mintCoin(
 	require.NoError(t, err)
 
 	tyArg := types.TypeTag__Struct{Value: types.StructTag{Address: *testAccount, Module: "TestCoin", Name: "Nova"}}
-	defer runtime.KeepAlive(tyArg)
+	arg, _ := types.SerializeUint64(amount)
 
 	payload := types.EntryFunction{
 		Module: types.ModuleId{
@@ -112,7 +112,7 @@ func mintCoin(
 		},
 		Function: "mint",
 		TyArgs:   []types.TypeTag{&tyArg},
-		Args:     [][]byte{types.SerializeUint64(amount)},
+		Args:     [][]byte{arg},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -131,7 +131,8 @@ func mintCoin(
 	require.Equal(t, minter, sizeDelta.Address)
 	require.NotZero(t, sizeDelta.Amount)
 
-	num := types.DeserializeUint64(events[0].EventData)
+	num, err := types.DeserializeUint64(events[0].EventData)
+	require.NoError(t, err)
 	require.Equal(t, amount, num)
 	require.NotZero(t, usedGas)
 }
@@ -167,6 +168,7 @@ func Test_FailOnExecute(t *testing.T) {
 	mintCoin(t, vm, kvStore, *testAccount, amount)
 
 	tyArg := types.TypeTag__Struct{Value: types.StructTag{Address: *testAccount, Module: "TestCoin", Name: "Nova"}}
+	arg, _ := types.SerializeUint64(amount)
 	payload := types.EntryFunction{
 		Module: types.ModuleId{
 			Address: *testAccount,
@@ -174,7 +176,7 @@ func Test_FailOnExecute(t *testing.T) {
 		},
 		Function: "mint2",
 		TyArgs:   []types.TypeTag{&tyArg},
-		Args:     [][]byte{types.SerializeUint64(amount)},
+		Args:     [][]byte{arg},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -202,6 +204,7 @@ func Test_OutOfGas(t *testing.T) {
 	require.NoError(t, err)
 
 	tyArg := types.TypeTag__Struct{Value: types.StructTag{Address: *testAccount, Module: "TestCoin", Name: "Nova"}}
+	arg, _ := types.SerializeUint64(amount)
 	payload := types.EntryFunction{
 		Module: types.ModuleId{
 			Address: *testAccount,
@@ -209,7 +212,7 @@ func Test_OutOfGas(t *testing.T) {
 		},
 		Function: "mint2",
 		TyArgs:   []types.TypeTag{&tyArg},
-		Args:     [][]byte{types.SerializeUint64(amount)},
+		Args:     [][]byte{arg},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -258,7 +261,8 @@ func Test_QueryContract(t *testing.T) {
 
 	require.NoError(t, err)
 
-	num := types.DeserializeUint64(res)
+	num, err := types.DeserializeUint64(res)
+	require.NoError(t, err)
 	require.Equal(t, mintAmount, num)
 }
 
@@ -312,13 +316,17 @@ func Test_ExecuteScript(t *testing.T) {
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	optionalUint64 := []byte{1}
-	optionalUint64 = append(optionalUint64, types.SerializeUint64(300)...)
+	tyArg1 := types.TypeTag__Struct{Value: types.StructTag{Address: *testAccount, Module: "TestCoin", Name: "Nova"}}
+	tyArg2 := types.TypeTag__Bool{}
 
-	payload := types.ExecuteScriptPayload{
+	v, _ := types.SerializeUint64(300)
+	optionalUint64 := []byte{1}
+	optionalUint64 = append(optionalUint64, v...)
+
+	payload := types.Script{
 		Code:   f,
-		TyArgs: []types.TypeTag{"0x2::TestCoin::Nova", "bool"},
-		Args:   []types.Bytes{optionalUint64},
+		TyArgs: []types.TypeTag{&tyArg1, &tyArg2},
+		Args:   [][]byte{optionalUint64},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -334,8 +342,8 @@ func Test_ExecuteScript(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 
-	num := types.DeserializeUint64(events[0].EventData)
-	require.Equal(t, uint64(200), num)
+	num, err := types.DeserializeUint64(events[0].EventData)
+	require.NoError(t, err)
+	require.Equal(t, uint64(300), num)
 	require.NotZero(t, usedGas)
 }
-*/

@@ -1,6 +1,11 @@
 package types
 
-import "encoding/binary"
+import (
+	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/bcs"
+)
+
+var NewSerializer = bcs.NewSerializer
+var NewDeserializer = bcs.NewDeserializer
 
 func serializeSequenceLen(length int) []byte {
 	return serializeU32AsUleb128(uint32(length))
@@ -19,26 +24,32 @@ func serializeU32AsUleb128(value uint32) []byte {
 }
 
 // SerializeBytes serialize bytes to BCS bytes
-func SerializeBytes(bz []byte) []byte {
-	var output []byte
-	output = append(output, serializeSequenceLen(len(bz))...)
-	output = append(output, bz...)
-	return output
+func SerializeBytes(bz []byte) ([]byte, error) {
+	s := NewSerializer()
+	err := s.SerializeBytes(bz)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetBytes(), nil
 }
 
 // SerializeString serialize string to BCS bytes
-func SerializeString(str string) []byte {
+func SerializeString(str string) ([]byte, error) {
 	return SerializeBytes([]byte(str))
 }
 
 // SerializeUint64 serialize num to BCS bytes
-func SerializeUint64(num uint64) []byte {
-	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, num)
-	return bz
+func SerializeUint64(num uint64) ([]byte, error) {
+	s := NewSerializer()
+	err := s.SerializeU64(num)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetBytes(), nil
 }
 
 // DeserializeUint64 deserialize BCS bytes
-func DeserializeUint64(bz []byte) uint64 {
-	return binary.LittleEndian.Uint64(bz)
+func DeserializeUint64(bz []byte) (uint64, error) {
+	d := NewDeserializer(bz)
+	return d.DeserializeU64()
 }
