@@ -300,7 +300,6 @@ func Test_DecodeScript(t *testing.T) {
 	require.Contains(t, string(bz), `"name":"main"`)
 }
 
-/*
 func Test_ExecuteScript(t *testing.T) {
 	vm, kvStore := initializeVM(t)
 	defer vm.Destroy()
@@ -313,10 +312,13 @@ func Test_ExecuteScript(t *testing.T) {
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
 
-	payload := types.Script{
+	optionalUint64 := []byte{1}
+	optionalUint64 = append(optionalUint64, types.SerializeUint64(300)...)
+
+	payload := types.ExecuteScriptPayload{
 		Code:   f,
-		TyArgs: []types.TypeTag{},
-		Args:   [][]byte{},
+		TyArgs: []types.TypeTag{"0x2::TestCoin::Nova", "bool"},
+		Args:   []types.Bytes{optionalUint64},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))

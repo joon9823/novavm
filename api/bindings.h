@@ -359,7 +359,9 @@ UnmanagedVector build_move_package(UnmanagedVector *errmsg, NovaCompilerArgument
 
 UnmanagedVector clean_move_package(UnmanagedVector *errmsg,
                                    NovaCompilerArgument nova_args,
-                                   bool clean_cache);
+                                   bool clean_cache,
+                                   bool clean_byproduct,
+                                   bool force);
 
 UnmanagedVector create_new_move_package(UnmanagedVector *errmsg,
                                         NovaCompilerArgument nova_args,

@@ -15,6 +15,7 @@ use move_deps::{
         loaded_data::runtime_types::Type, natives::function::NativeResult, values::Value,
     },
 };
+use nova_gas::gas_params::code::*;
 use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -170,11 +171,6 @@ fn unpack_allowed_dep(v: Value) -> PartialVMResult<(AccountAddress, String)> {
  *   gas cost: base_cost + unit_cost * bytes_len
  *
  **************************************************************************************************/
-#[derive(Clone, Debug)]
-pub struct RequestPublishGasParameters {
-    pub base: InternalGas,
-    pub unit: InternalGasPerByte,
-}
 
 fn native_request_publish(
     gas_params: &RequestPublishGasParameters,
@@ -265,11 +261,6 @@ pub fn make_native_request_publish(gas_params: RequestPublishGasParameters) -> N
  * module
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub request_publish: RequestPublishGasParameters,
-}
-
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [
         (

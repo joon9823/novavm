@@ -22,13 +22,13 @@ mod natives;
 mod params;
 
 mod algebra;
-mod algebra_ext;
+pub mod gas_params;
 mod instr;
 mod meter;
 mod misc;
 mod move_stdlib;
-mod nova;
-mod table;
+pub mod nova;
+pub mod table;
 mod transaction;
 
 pub use algebra::*;
@@ -42,3 +42,12 @@ pub use move_deps::move_core_types::gas_algebra::{
     Arg, Byte, GasQuantity, InternalGas, InternalGasPerArg, InternalGasPerByte, InternalGasUnit,
     NumArgs, NumBytes, UnitDiv,
 };
+
+/// Unit of abstract value size -- a conceptual measurement of the memory space a Move value occupies.
+pub enum AbstractValueUnit {}
+
+pub type AbstractValueSize = GasQuantity<AbstractValueUnit>;
+
+pub type InternalGasPerAbstractValueUnit = GasQuantity<UnitDiv<InternalGasUnit, AbstractValueUnit>>;
+
+pub type AbstractValueSizePerArg = GasQuantity<UnitDiv<AbstractValueUnit, Arg>>;

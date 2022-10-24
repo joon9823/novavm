@@ -8,6 +8,17 @@ pub fn mint_200() -> Script {
             TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Nova").unwrap()),
             TypeTag::Bool,
         ],
-        vec![],
+        vec![bcs::to_bytes::<Option<u64>>(&None).unwrap()],
+    )
+}
+
+pub fn mint_val(val: u64) -> Script {
+    Script::new(
+        include_bytes!("../../../move-test/build/test1/bytecode_scripts/main.mv").to_vec(),
+        vec![
+            TypeTag::Struct(parse_struct_tag("0x1::BasicCoin::Nova").unwrap()),
+            TypeTag::Bool,
+        ],
+        vec![bcs::to_bytes::<Option<u64>>(&Some(val)).unwrap()],
     )
 }

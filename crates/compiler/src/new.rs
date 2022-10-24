@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use clap::*;
 use move_deps::move_package::source_package::layout::SourcePackageLayout;
 
 pub const NOVA_STDLIB_PACKAGE_NAME: &str = "NovaStdlib";
@@ -15,6 +16,8 @@ pub const NOVA_STDLIB_PACKAGE_PATH: &str = "{ \
 pub const NOVA_STDLIB_ADDR_NAME: &str = "std";
 pub const NOVA_STDLIB_ADDR_VALUE: &str = "0x1";
 
+#[derive(Parser)]
+#[clap(name = "new")]
 pub struct New {
     /// The name of the package to be created.
     pub name: String,

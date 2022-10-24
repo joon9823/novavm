@@ -36,7 +36,7 @@ def movevm_supported(os, cpu, build_type):
 
 def get_note(os, cpu, build_type):
     if os == "Linux (glibc)" and cpu == "x86_64" and build_type == "static":
-        return "Would link libwasmvm statically but glibc dynamically as static glibc linking is not recommended. Potentially interesting for Osmosis."
+        return "Would link libnovavm statically but glibc dynamically as static glibc linking is not recommended. Potentially interesting for Osmosis."
     if os == "Linux (musl)" and build_type == "shared":
         return "Possible but not needed"
     return ""

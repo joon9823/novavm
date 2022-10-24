@@ -280,8 +280,10 @@ pub extern "C" fn clean_move_package(
     errmsg: Option<&mut UnmanagedVector>,
     nova_args: NovaCompilerArgument,
     clean_cache: bool,
+    clean_byproduct: bool,
+    force: bool
 ) -> UnmanagedVector {
-    let cmd = Command::Clean(nova_compiler::Clean { clean_cache });
+    let cmd = Command::Clean(nova_compiler::Clean { clean_cache, clean_byproduct, force });
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

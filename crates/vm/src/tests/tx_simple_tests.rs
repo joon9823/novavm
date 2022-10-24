@@ -156,6 +156,20 @@ fn test_simple_trasaction() {
             ),
             ExpectedOutput::new(VMStatus::Executed, Some(vec![100, 0, 0, 0, 0, 0, 0, 0, 1])),
         ),
+        MockTx::one(
+            // mint with script
+            Message::new_script(vec![9; 32], Some(AccountAddress::ONE), script::mint_val(50)),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![])),
+        ),
+        MockTx::one(
+            // get coin amount for 0x1
+            Message::new_entry_function(
+                vec![10; 32],
+                Some(AccountAddress::ZERO),
+                entry_function::get(AccountAddress::ONE),
+            ),
+            ExpectedOutput::new(VMStatus::Executed, Some(vec![250, 0, 0, 0, 0, 0, 0, 0])),
+        ),
     ];
 
     run_transaction(testcases);

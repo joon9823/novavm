@@ -6,7 +6,7 @@ use move_deps::{
         vm_status::{StatusCode, VMStatus},
     },
     move_vm_runtime::session::{LoadedFunctionInstantiation, Session},
-    move_vm_types::loaded_data::runtime_types::Type,
+    move_vm_types::loaded_data::runtime_types::{CachedStructIndex, Type},
 };
 use once_cell::sync::Lazy;
 use std::collections::BTreeSet;
@@ -17,6 +17,7 @@ static ALLOWED_STRUCTS: Lazy<BTreeSet<String>> = Lazy::new(|| {
         .map(|s| s.to_string())
         .collect()
 });
+static OPTION_TYPE_NAME: &str = "0x1::option::Option";
 
 /// Validate and generate args with senders and non-signer arguments
 ///
@@ -75,19 +76,31 @@ pub(crate) fn validate_combine_signer_and_txn_args<S: MoveResolver>(
     Ok(combined_args)
 }
 
+fn is_valid_struct_txn_arg<S: MoveResolver>(
+    session: &Session<S>,
+    idx: &CachedStructIndex,
+    type_params: &Vec<Type>,
+) -> bool {
+    match session.get_struct_type(*idx) {
+        Some(st) => {
+            let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
+            if full_name == OPTION_TYPE_NAME {
+                type_params.len() == 1 && is_valid_txn_arg(session, type_params.first().unwrap())
+            } else {
+                ALLOWED_STRUCTS.contains(&full_name)
+            }
+        }
+        None => false,
+    }
+}
+
 fn is_valid_txn_arg<S: MoveResolver>(session: &Session<S>, typ: &Type) -> bool {
     use move_deps::move_vm_types::loaded_data::runtime_types::Type::*;
     match typ {
         Bool | U8 | U64 | U128 | Address => true,
         Vector(inner) => is_valid_txn_arg(session, inner),
-        Struct(idx) | StructInstantiation(idx, _) => {
-            if let Some(st) = session.get_struct_type(*idx) {
-                let full_name = format!("{}::{}", st.module.short_str_lossless(), st.name);
-                ALLOWED_STRUCTS.contains(&full_name)
-            } else {
-                false
-            }
-        }
+        Struct(idx) => is_valid_struct_txn_arg(session, idx, &Vec::default()),
+        StructInstantiation(idx, inner_types) => is_valid_struct_txn_arg(session, idx, inner_types),
         Signer | Reference(_) | MutableReference(_) | TyParam(_) => false,
     }
 }

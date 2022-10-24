@@ -49,8 +49,8 @@ pub trait InitialGasSchedule: Sized {
 #[derive(Debug, Clone)]
 pub struct NativeGasParameters {
     pub move_stdlib: move_stdlib::natives::GasParameters,
-    pub nova_stdlib: nova_natives::GasParameters,
-    pub table: nova_natives::table::GasParameters,
+    pub nova_stdlib: crate::nova::GasParameters,
+    pub table: crate::table::GasParameters,
 }
 
 impl FromOnChainGasSchedule for NativeGasParameters {
@@ -76,8 +76,8 @@ impl NativeGasParameters {
     pub fn zeros() -> Self {
         Self {
             move_stdlib: move_stdlib::natives::GasParameters::zeros(),
-            nova_stdlib: nova_natives::GasParameters::zeros(),
-            table: nova_natives::table::GasParameters::zeros(),
+            nova_stdlib: crate::nova::GasParameters::zeros(),
+            table: crate::table::GasParameters::zeros(),
         }
     }
 }

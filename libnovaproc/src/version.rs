@@ -1,5 +1,3 @@
-// copy of cosmwasm/libwasmvm
-
 use std::os::raw::c_char;
 
 pub static VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0"); // Add trailing NULL byte for C string

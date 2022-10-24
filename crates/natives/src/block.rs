@@ -1,12 +1,13 @@
 use better_any::{Tid, TidAble};
 use move_deps::{
     move_binary_format::errors::{PartialVMError, PartialVMResult},
-    move_core_types::{gas_algebra::InternalGas, vm_status::StatusCode},
+    move_core_types::vm_status::StatusCode,
     move_vm_runtime::native_functions::{NativeContext, NativeFunction},
     move_vm_types::{
         loaded_data::runtime_types::Type, natives::function::NativeResult, values::Value,
     },
 };
+use nova_gas::gas_params::block::*;
 use smallvec::smallvec;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -25,11 +26,6 @@ pub trait BlockInfoResolver {
  *   gas cost: base_cost
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GetBlockInfoGasParameters {
-    pub base_cost: InternalGas,
-}
-
 /// The native code context.
 #[derive(Tid)]
 pub struct NativeBlockContext<'a> {
@@ -102,11 +98,6 @@ pub fn make_native_get_block_info(gas_params: GetBlockInfoGasParameters) -> Nati
  * module
  *
  **************************************************************************************************/
-#[derive(Debug, Clone)]
-pub struct GasParameters {
-    pub get_block_info: GetBlockInfoGasParameters,
-}
-
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
     let natives = [(
         "get_block_info_internal",

@@ -14,6 +14,9 @@ nova-natives = { path = "../natives", features = ["testing"] }
 nova-types = { path = "../types" }
 nova-gas = { path = "../gas" }
 move-deps = { version = "0.0.1", path = "../move-deps", features = ["address20", "testing"] }
+dialoguer = "0.10.2"
+clap = { version = "3.1.8", features = ["derive"] }
+tsu = "1.0.1"
 
 [dev-dependencies]
 serial_test = "0.9.0"

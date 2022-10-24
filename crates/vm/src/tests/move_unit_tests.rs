@@ -12,9 +12,8 @@ use move_deps::{
     },
 };
 use nova_gas::NativeGasParameters;
-use nova_natives::{
-    all_natives, block::NativeBlockContext, code::NativeCodeContext, table::NativeTableContext,
-};
+use nova_natives::all_natives;
+use nova_natives::{block::NativeBlockContext, code::NativeCodeContext, table::NativeTableContext};
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -37,10 +36,12 @@ fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
 fn nova_test_natives() -> NativeFunctionTable {
     configure_for_unit_test();
     let gas_params = NativeGasParameters::zeros();
+    let abs_val_size_gas_params = nova_gas::AbstractValueSizeGasParameters::zeros();
     all_natives(
         gas_params.move_stdlib,
         gas_params.nova_stdlib,
         gas_params.table,
+        abs_val_size_gas_params,
     )
 }
 
