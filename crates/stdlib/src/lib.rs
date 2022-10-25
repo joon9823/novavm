@@ -71,6 +71,7 @@ fn nova_stdlib_files() -> Vec<TempPath> {
         include_str!("nova_stdlib/sources/table.move"),
         include_str!("nova_stdlib/sources/type_info.move"),
         include_str!("nova_stdlib/sources/util.move"),
+        include_str!("nova_stdlib/sources/staking.move"),
     ];
 
     files
