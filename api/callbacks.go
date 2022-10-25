@@ -10,23 +10,32 @@ package api
 typedef GoError (*read_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 typedef GoError (*write_db_fn)(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 typedef GoError (*remove_db_fn)(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
+typedef GoError (*scan_db_fn)(db_t *ptr, U8SliceView prefix, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
 // and api
 typedef GoError (*get_block_info_fn)(api_t *ptr, uint64_t *height, uint64_t *timestamp,  UnmanagedVector *errOut);
+// and iterator
+typedef GoError (*next_db_fn)(iterator_t ptr, UnmanagedVector *key, UnmanagedVector *errOut);
 
 // forward declarations (db)
 GoError cGet_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *val, UnmanagedVector *errOut);
 GoError cSet_cgo(db_t *ptr, U8SliceView key, U8SliceView val, UnmanagedVector *errOut);
 GoError cDelete_cgo(db_t *ptr, U8SliceView key, UnmanagedVector *errOut);
+GoError cScan_cgo(db_t *ptr, U8SliceView prefix, U8SliceView start, U8SliceView end, int32_t order, GoIter *out, UnmanagedVector *errOut);
 // api
 GoError cGetBlockInfo_cgo(api_t *ptr, uint64_t *height, uint64_t *timestamp, UnmanagedVector *errOut);
+// iterator
+GoError cNext_cgo(iterator_t *ptr, UnmanagedVector *key, UnmanagedVector *errOut);
 */
 import "C"
 
 import (
+	"errors"
 	"log"
 	"reflect"
 	"runtime/debug"
 	"unsafe"
+
+	dbm "github.com/tendermint/tm-db"
 )
 
 // Note: we have to include all exports in the same file (at least since they both import bindings.h),
@@ -90,26 +99,41 @@ type KVStore interface {
 	Get(key []byte) []byte
 	Set(key, value []byte)
 	Delete(key []byte)
+
+	// Iterator over a domain of keys in ascending order. End is exclusive.
+	// Start must be less than end, or the Iterator is invalid.
+	// Iterator must be closed by caller.
+	// To iterate over entire domain, use store.Iterator(nil, nil)
+	Iterator(start, end []byte) dbm.Iterator
+
+	// Iterator over a domain of keys in descending order. End is exclusive.
+	// Start must be less than end, or the Iterator is invalid.
+	// Iterator must be closed by caller.
+	ReverseIterator(start, end []byte) dbm.Iterator
 }
 
 var db_vtable = C.Db_vtable{
 	read_db:   (C.read_db_fn)(C.cGet_cgo),
 	write_db:  (C.write_db_fn)(C.cSet_cgo),
 	remove_db: (C.remove_db_fn)(C.cDelete_cgo),
+	scan_db:   (C.scan_db_fn)(C.cScan_cgo),
 }
 
 type DBState struct {
 	Store KVStore
+	// CallID is used to lookup the proper frame for iterators associated with this contract call (iterator.go)
+	CallID uint64
 }
 
 // use this to create C.Db in two steps, so the pointer lives as long as the calling stack
 //
-//	state := buildDBState(kv)
+//	state := buildDBState(kv, callID)
 //	db := buildDB(&state, &gasMeter)
 //	// then pass db into some FFI function
-func buildDBState(kv KVStore) DBState {
+func buildDBState(kv KVStore, callID uint64) DBState {
 	return DBState{
-		Store: kv,
+		Store:  kv,
+		CallID: callID,
 	}
 }
 
@@ -120,6 +144,28 @@ func buildDB(state *DBState) C.Db {
 		state:  (*C.db_t)(unsafe.Pointer(state)),
 		vtable: db_vtable,
 	}
+}
+
+var iterator_vtable = C.Iterator_vtable{
+	next_db: (C.next_db_fn)(C.cNext_cgo),
+}
+
+// An iterator including referenced objects is 117 bytes large (calculated using https://github.com/DmitriyVTitov/size).
+// We limit the number of iterators per contract call ID here in order limit memory usage to 32768*117 = ~3.8 MB as a safety measure.
+// In any reasonable contract, gas limits should hit sooner than that though.
+const frameLenLimit = 32768
+
+// contract: original pointer/struct referenced must live longer than C.Db struct
+// since this is only used internally, we can verify the code that this is the case
+func buildIterator(callID uint64, it dbm.Iterator) (C.iterator_t, error) {
+	idx, err := storeIterator(callID, it, frameLenLimit)
+	if err != nil {
+		return C.iterator_t{}, err
+	}
+	return C.iterator_t{
+		call_id:        cu64(callID),
+		iterator_index: cu64(idx),
+	}, nil
 }
 
 //export cGet
@@ -229,5 +275,92 @@ func cGetBlockInfo(ptr *C.api_t, height *C.uint64_t, timestamp *C.uint64_t, errO
 	*height = C.uint64_t(h)
 	*timestamp = C.uint64_t(t)
 
+	return C.GoError_None
+}
+
+//export cScan
+func cScan(ptr *C.db_t, prefix C.U8SliceView, start C.U8SliceView, end C.U8SliceView, order ci32, out *C.GoIter, errOut *C.UnmanagedVector) (ret C.GoError) {
+	defer recoverPanic(&ret)
+
+	if ptr == nil || out == nil || errOut == nil {
+		// we received an invalid pointer
+		return C.GoError_BadArgument
+	}
+	if !(*errOut).is_none {
+		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
+	}
+
+	state := (*DBState)(unsafe.Pointer(ptr))
+	kv := state.Store
+	p := copyU8Slice(prefix)
+	s := copyU8Slice(start)
+	e := copyU8Slice(end)
+
+	if len(p) == 0 {
+		*errOut = newUnmanagedVector([]byte(errors.New("iterator prefix should not be empty").Error()))
+		return C.GoError_User
+	}
+
+	var endBytes []byte
+	if len(e) == 0 {
+		endBytes = prefixEndBytes(p)
+	} else {
+		endBytes = append(p, e...)
+	}
+
+	var iter dbm.Iterator
+	switch order {
+	case 1: // Ascending
+		iter = kv.Iterator(append(p, s...), endBytes)
+	case 2: // Descending
+		iter = kv.ReverseIterator(append(p, s...), endBytes)
+	default:
+		return C.GoError_BadArgument
+	}
+
+	cIterator, err := buildIterator(state.CallID, iter)
+	if err != nil {
+		// store the actual error message in the return buffer
+		*errOut = newUnmanagedVector([]byte(err.Error()))
+		return C.GoError_User
+	}
+
+	out.state = cIterator
+	out.vtable = iterator_vtable
+	return C.GoError_None
+}
+
+//export cNext
+func cNext(ref C.iterator_t, key *C.UnmanagedVector, errOut *C.UnmanagedVector) (ret C.GoError) {
+	// typical usage of iterator
+	// 	for ; itr.Valid(); itr.Next() {
+	// 		k, v := itr.Key(); itr.Value()
+	// 		...
+	// 	}
+
+	defer recoverPanic(&ret)
+	if ref.call_id == 0 || key == nil || errOut == nil {
+		// we received an invalid pointer
+		return C.GoError_BadArgument
+	}
+	if !(*key).is_none || !(*errOut).is_none {
+		panic("Got a non-none UnmanagedVector we're about to override. This is a bug because someone has to drop the old one.")
+	}
+
+	iter := retrieveIterator(uint64(ref.call_id), uint64(ref.iterator_index))
+	if iter == nil {
+		panic("Unable to retrieve iterator.")
+	}
+	if !iter.Valid() {
+		// end of iterator, return as no-op, nil key is considered end
+		return C.GoError_None
+	}
+
+	// call Next at the end, upon creation we have first data loaded
+	k := iter.Key()
+
+	iter.Next()
+
+	*key = newUnmanagedVector(k)
 	return C.GoError_None
 }

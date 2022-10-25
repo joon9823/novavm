@@ -1,13 +1,9 @@
-//use std::collections::HashMap;
-//use std::convert::TryInto;
-
 use nova_storage::state_view::StateView;
 use nova_types::access_path::AccessPath;
 use novavm::backend::BackendResult;
 
 use crate::db::Db;
 use crate::error::GoError;
-//use crate::iterator::{GoIter, Order, Record};
 use crate::memory::{U8SliceView, UnmanagedVector};
 
 use anyhow::anyhow;
@@ -31,24 +27,24 @@ pub trait Storage {
     fn remove(&mut self, key: &[u8]) -> BackendResult<()>;
 }
 
-pub struct GoStorage {
-    db: Db,
+pub struct GoStorage<'r> {
+    db: &'r Db,
 }
 
-impl GoStorage {
-    pub fn new(db: Db) -> Self {
+impl<'r> GoStorage<'r> {
+    pub fn new(db: &'r Db) -> Self {
         GoStorage { db }
     }
 }
 
-impl StateView for GoStorage {
+impl<'r> StateView for GoStorage<'r> {
     fn get(&self, access_path: &AccessPath) -> anyhow::Result<Option<Vec<u8>>> {
-        let key = access_path.to_string();
+        let key = access_path.to_bytes()?;
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();
         let go_error: GoError = (self.db.vtable.read_db)(
             self.db.state,
-            U8SliceView::new(Some(key.as_bytes())),
+            U8SliceView::new(Some(&key)),
             &mut output as *mut UnmanagedVector,
             &mut error_msg as *mut UnmanagedVector,
         )
@@ -57,12 +53,7 @@ impl StateView for GoStorage {
         let output = output.consume();
 
         // return complete error message (reading from buffer for GoError::Other)
-        let default = || {
-            format!(
-                "Failed to read a key in the db: {}",
-                String::from_utf8_lossy(key.as_bytes())
-            )
-        };
+        let default = || format!("Failed to read a key in the db: {}", access_path);
         unsafe {
             if let Err(err) = go_error.into_result(error_msg, default) {
                 return Err(anyhow!(err));
@@ -73,7 +64,7 @@ impl StateView for GoStorage {
     }
 }
 
-impl Storage for GoStorage {
+impl<'r> Storage for GoStorage<'r> {
     fn get(&self, key: &[u8]) -> BackendResult<Option<Vec<u8>>> {
         let mut output = UnmanagedVector::default();
         let mut error_msg = UnmanagedVector::default();

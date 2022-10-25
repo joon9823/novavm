@@ -3,7 +3,6 @@ use crate::move_api::move_types::MoveResource;
 use anyhow::Result;
 use move_deps::move_core_types::{language_storage::StructTag, resolver::MoveResolver};
 use move_deps::move_resource_viewer::MoveValueAnnotator;
-use nova_natives::table::TableResolver;
 
 use std::str::FromStr;
 
@@ -16,7 +15,7 @@ pub struct MoveConverter<'a, R: ?Sized> {
 }
 
 #[allow(dead_code)]
-impl<'a, R: MoveResolver + TableResolver + ?Sized> MoveConverter<'a, R> {
+impl<'a, R: MoveResolver + ?Sized> MoveConverter<'a, R> {
     pub fn new(inner: &'a R) -> Self {
         Self {
             inner: MoveValueAnnotator::new(inner),

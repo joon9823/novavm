@@ -9,7 +9,6 @@ repository = "https://github.com/Kernel-Labs/novavm/tree/main/crates/compiler"
 [dependencies]
 anyhow = "1.0.65"
 bcs = "0.1.4"
-once_cell = "1.7.2"
 nova-natives = { path = "../natives", features = ["testing"] }
 nova-types = { path = "../types" }
 nova-gas = { path = "../gas" }

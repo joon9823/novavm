@@ -25,6 +25,15 @@ crate::natives::define_gas_parameters_for_natives!(GasParameters, "table", [
     [.destroy_empty_box.base, "destroy_empty_box.base", 1200 * MUL],
 
     [.drop_unchecked_box.base, "drop_unchecked_box.base", 100 * MUL],
+
+    // for iterators
+    [.new_table_iter.base, "new_table_iter.base", 1000 * MUL],
+    [.new_table_iter.per_item_sorted, "new_table_iter.per_item_sorted", 100 * MUL],
+
+    [.prepare_box.base, "prepare_box.base", 1000 * MUL],
+    [.prepare_box.per_byte_serialized, "prepare_box.per_byte_serialized", 10 * MUL],
+
+    [.next_box.base, "next_box.base", 1000 * MUL],
 ]);
 
 #[derive(Debug, Clone)]
@@ -38,6 +47,9 @@ pub struct GasParameters {
     pub remove_box: RemoveGasParameters,
     pub destroy_empty_box: DestroyEmptyBoxGasParameters,
     pub drop_unchecked_box: DropUncheckedBoxGasParameters,
+    pub new_table_iter: NewTableIteratorGasParameters,
+    pub prepare_box: PrepareBoxGasParameters,
+    pub next_box: NextBoxGasParameters,
 }
 
 impl GasParameters {
@@ -68,6 +80,15 @@ impl GasParameters {
             },
             destroy_empty_box: DestroyEmptyBoxGasParameters { base: 0.into() },
             drop_unchecked_box: DropUncheckedBoxGasParameters { base: 0.into() },
+            new_table_iter: NewTableIteratorGasParameters {
+                base: 0.into(),
+                per_item_sorted: 0.into(),
+            },
+            prepare_box: PrepareBoxGasParameters {
+                base: 0.into(),
+                per_byte_serialized: 0.into(),
+            },
+            next_box: NextBoxGasParameters { base: 0.into() },
         }
     }
 }

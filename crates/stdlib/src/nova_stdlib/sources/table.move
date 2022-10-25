@@ -2,6 +2,9 @@
 module nova_std::table {
     use std::error;
     use std::signer;
+    use std::vector;
+    use std::bcs;
+    use std::option::{Self, Option};
 
     // TODO: native code should not use reasons to signal logical type of error. Instead,
     // use Errors::ALREADY_PUBLISHED and Errors::NOT_PUBLISHED.
@@ -14,6 +17,11 @@ module nova_std::table {
     struct Table<phantom K: copy + drop, phantom V> has store {
         handle: address,
         length: u64,
+    }
+
+    /// Type of table iterators
+    struct TableIter has drop {
+        iterator_id: u64,
     }
 
     /// Create a new Table.
@@ -94,6 +102,50 @@ module nova_std::table {
         drop_unchecked_box<K, V, Box<V>>(table)
     }
 
+    /// Create iterator for `table`.
+    /// A user has to check `prepare` before calling `next` to prevent abort
+    /// 
+    /// let iter = table::iter(&t, start, end, order);
+    /// loop {
+    ///     if (!table::prepare<K, V>(&mut iter)) {
+    ///         break;
+    ///     }
+    /// 
+    ///     let (key, value) = table::next<K, V>(&mut iter);
+    /// } 
+    public fun iter<K: copy + drop, V>(
+        table: &Table<K, V>, 
+        start: Option<K>, /* inclusive */
+        end: Option<K>, /* exclusive */
+        order: u8 /* 1: Ascending, 2: Descending */,
+    ): TableIter {
+        let start_bytes: vector<u8> = if (option::is_some(&start)) {
+            bcs::to_bytes<K>(&option::extract(&mut start))
+        } else {
+            vector::empty()
+        };
+
+        let end_bytes: vector<u8> = if (option::is_some(&end)) {
+            bcs::to_bytes<K>(&option::extract(&mut end))
+        } else {
+            vector::empty()
+        };
+        
+        let iterator_id = new_table_iter<K, V, Box<V>>(table, start_bytes, end_bytes, order);
+        TableIter {
+            iterator_id,
+        }
+    }
+
+    public fun prepare<K: copy + drop, V>(table_iter: &mut TableIter): bool {
+        prepare_box<K, V, Box<V>>(table_iter)
+    }
+
+    public fun next<K: copy + drop, V>(table_iter: &mut TableIter): (K, &V) {
+        let (key, box) = next_box<K, V, Box<V>>(table_iter);
+        (key, &box.val)
+    }
+
     // ======================================================================================================
     // Internal API
 
@@ -113,4 +165,7 @@ module nova_std::table {
     native fun remove_box<K: copy + drop, V, B>(table: &mut Table<K, V>, key: K): Box<V>;
     native fun destroy_empty_box<K: copy + drop, V, B>(table: &Table<K, V>);
     native fun drop_unchecked_box<K: copy + drop, V, B>(table: Table<K, V>);
+    native fun new_table_iter<K: copy + drop, V, B>(table: &Table<K, V>, start: vector<u8>, end: vector<u8>, order: u8): u64;
+    native fun next_box<K: copy + drop, V, B>(table_iter: &mut TableIter): (K, &Box<V>);
+    native fun prepare_box<K: copy + drop, V, B>(table_iter: &mut TableIter): bool;
 }

@@ -281,9 +281,13 @@ pub extern "C" fn clean_move_package(
     nova_args: NovaCompilerArgument,
     clean_cache: bool,
     clean_byproduct: bool,
-    force: bool
+    force: bool,
 ) -> UnmanagedVector {
-    let cmd = Command::Clean(nova_compiler::Clean { clean_cache, clean_byproduct, force });
+    let cmd = Command::Clean(nova_compiler::Clean {
+        clean_cache,
+        clean_byproduct,
+        force,
+    });
 
     let res = catch_unwind(AssertUnwindSafe(move || compile(nova_args.into(), cmd)))
         .unwrap_or_else(|_| Err(Error::panic()));

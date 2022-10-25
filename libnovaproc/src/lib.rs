@@ -8,11 +8,13 @@ mod db;
 mod error;
 mod event;
 mod interface;
+mod iterator;
 mod memory;
 mod move_api;
 mod result;
 mod size_delta;
 mod storage;
+mod table_storage;
 mod version;
 mod vm;
 

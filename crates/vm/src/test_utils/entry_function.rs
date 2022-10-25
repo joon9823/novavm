@@ -150,3 +150,30 @@ pub fn get_coin_struct(addr: AccountAddress) -> EntryFunction {
         vec![addr.to_vec()],
     )
 }
+
+pub fn prepare_table_for_iterator() -> EntryFunction {
+    EntryFunction::new(
+        module::get_table_test_data_module_id(),
+        Identifier::new("prepare_table_for_iterator").unwrap(),
+        vec![],
+        vec![],
+    )
+}
+
+pub fn iterate_ascending(addr: AccountAddress) -> EntryFunction {
+    EntryFunction::new(
+        module::get_table_test_data_module_id(),
+        Identifier::new("iterate_ascending").unwrap(),
+        vec![],
+        vec![addr.to_vec()],
+    )
+}
+
+pub fn iterate_descending(addr: AccountAddress) -> EntryFunction {
+    EntryFunction::new(
+        module::get_table_test_data_module_id(),
+        Identifier::new("iterate_descending").unwrap(),
+        vec![],
+        vec![addr.to_vec()],
+    )
+}

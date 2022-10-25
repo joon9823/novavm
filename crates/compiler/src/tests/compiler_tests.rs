@@ -56,7 +56,11 @@ fn test_move_clean() {
         build_config,
     };
 
-    let c = Clean { clean_cache: false , clean_byproduct: false, force: true};
+    let c = Clean {
+        clean_cache: false,
+        clean_byproduct: false,
+        force: true,
+    };
 
     let res = compile(move_args, Command::Clean(c)).expect("compiler err");
     assert!(res == Vec::from("ok"));

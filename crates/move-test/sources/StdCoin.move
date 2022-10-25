@@ -2,7 +2,6 @@ module 0x2::StdCoin {
     use 0x1::coin;
     use std::string;
     use std::signer;
-    use std::debug;
 
     struct Std {}
 
@@ -30,7 +29,6 @@ module 0x2::StdCoin {
         let caps = borrow_global<CapStore>(sender_address);
         
         let minted = coin::mint(amount, &caps.mint);
-        debug::print(&coin::value<Std>(&minted));
         coin::deposit(account_to, minted);
     }
 }

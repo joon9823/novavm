@@ -2,7 +2,7 @@ use crate::move_api::convert::MoveConverter;
 use crate::move_api::move_types::{MoveModuleBytecode, MoveScriptBytecode};
 use crate::{error::Error, Db, GoStorage};
 
-use nova_storage::data_view_resolver::DataViewResolver;
+use nova_storage::state_view_impl::StateViewImpl;
 
 #[allow(dead_code)]
 pub(crate) fn decode_move_resource(
@@ -10,10 +10,10 @@ pub(crate) fn decode_move_resource(
     struct_tag: String,
     data_bytes: &[u8],
 ) -> Result<Vec<u8>, Error> {
-    let storage = GoStorage::new(db_handle);
+    let storage = GoStorage::new(&db_handle);
 
-    let data_view = DataViewResolver::new(&storage);
-    let converter = MoveConverter::new(&data_view);
+    let state_view_impl = StateViewImpl::new(&storage);
+    let converter = MoveConverter::new(&state_view_impl);
     let resource = converter
         .try_into_resource(&struct_tag, data_bytes)
         .map_err(|e| Error::BackendFailure { msg: e.to_string() })?;

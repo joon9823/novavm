@@ -11,7 +11,7 @@ use move_deps::move_package::source_package::layout::SourcePackageLayout;
 pub const NOVA_STDLIB_PACKAGE_NAME: &str = "NovaStdlib";
 pub const NOVA_STDLIB_PACKAGE_PATH: &str = "{ \
     git = \"https://github.com/Kernel-Labs/novavm.git\", \
-    subdir = \"vm/src/nova_stdlib\", rev = \"main\" \
+    subdir = \"crates/stdlib/src/nova_stdlib\", rev = \"main\" \
 }";
 pub const NOVA_STDLIB_ADDR_NAME: &str = "std";
 pub const NOVA_STDLIB_ADDR_VALUE: &str = "0x1";

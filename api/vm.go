@@ -36,7 +36,10 @@ func Initialize(
 ) error {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 
 	mb := makeView(moduleBundle)
@@ -65,7 +68,10 @@ func PublishModuleBundle(
 ) ([]byte, error) {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 
 	sid := makeView(sessionID)
@@ -100,7 +106,10 @@ func ExecuteContract(
 ) ([]byte, error) {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 
@@ -135,7 +144,10 @@ func ExecuteScript(
 ) ([]byte, error) {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 
@@ -168,7 +180,10 @@ func QueryContract(
 ) ([]byte, error) {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 	_api := buildAPI(&api)
 
@@ -195,7 +210,10 @@ func DecodeMoveResource(
 ) ([]byte, error) {
 	var err error
 
-	dbState := buildDBState(store)
+	callID := startCall()
+	defer endCall(callID)
+
+	dbState := buildDBState(store, callID)
 	db := buildDB(&dbState)
 
 	structTagView := makeView([]byte(structTag))

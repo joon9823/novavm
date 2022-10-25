@@ -37,8 +37,9 @@ use nova_natives::{
     table::{NativeTableContext, TableResolver},
 };
 use nova_storage::{
-    data_view_resolver::DataViewResolver, size::size_resolver::SizeResolver, state_view::StateView,
-    table_meta::table_meta_resolver::TableMetaResolver,
+    size::size_resolver::SizeResolver, state_view::StateView, state_view_impl::StateViewImpl,
+    table_meta::table_meta_resolver::TableMetaResolver, table_view::TableView,
+    table_view_impl::TableViewImpl,
 };
 use nova_types::{
     errors::NovaVMError,
@@ -50,7 +51,7 @@ use nova_types::{
 
 use crate::{
     arguments::validate_combine_signer_and_txn_args,
-    session::{SessionExt, SessionOutput},
+    session::{empty_session_output, SessionExt, SessionOutput},
 };
 
 #[derive(Clone)]
@@ -78,45 +79,50 @@ impl NovaVM {
         }
     }
 
-    fn create_session<'r, S: MoveResolver + TableResolver + SizeResolver + TableMetaResolver>(
+    fn create_session<'r, S: MoveResolver + SizeResolver + TableMetaResolver, T: TableResolver>(
         &self,
-        remote: &'r S,
+        resolver: &'r S,
+        table_resolver: &'r mut T,
         session_id: Vec<u8>,
     ) -> SessionExt<'r, '_, S> {
         let mut extensions = NativeContextExtensions::default();
         let txn_hash: [u8; 32] = session_id
             .try_into()
             .expect("HashValue should convert to [u8; 32]");
-        extensions.add(NativeTableContext::new(txn_hash, remote));
+        extensions.add(NativeTableContext::new(txn_hash, table_resolver));
         extensions.add(NativeCodeContext::default());
 
         self.move_vm.flush_loader_cache_if_invalidated();
         SessionExt::new(
-            self.move_vm.new_session_with_extensions(remote, extensions),
-            remote,
+            self.move_vm
+                .new_session_with_extensions(resolver, extensions),
+            resolver,
         )
     }
 
     fn create_session_with_api<
         'r,
-        S: MoveResolver + TableResolver + SizeResolver + TableMetaResolver,
+        S: MoveResolver + SizeResolver + TableMetaResolver,
+        T: TableResolver,
         A: BlockInfoResolver,
     >(
         &self,
-        remote: &'r S,
+        resolver: &'r S,
+        table_resolver: &'r mut T,
         api: &'r A,
         session_id: Vec<u8>,
     ) -> SessionExt<'r, '_, S> {
-        let mut session = self.create_session(remote, session_id);
+        let mut session = self.create_session(resolver, table_resolver, session_id);
         session
             .get_native_extensions()
             .add(NativeBlockContext::new(api));
         session
     }
 
-    pub fn initialize<S: StateView>(
+    pub fn initialize<S: StateView, T: TableView>(
         &mut self,
-        resolver: &DataViewResolver<'_, S>,
+        state_view_impl: &StateViewImpl<'_, S>,
+        table_view_impl: &mut TableViewImpl<'_, T>,
         custom_module_bundle: Option<ModuleBundle>,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
         // publish move_stdlib and nova_stdlib modules
@@ -131,7 +137,7 @@ impl NovaVM {
             compiled_modules.extend(custom_modules.into_iter());
         }
 
-        let mut session = self.create_session(resolver, vec![0; 32]);
+        let mut session = self.create_session(state_view_impl, table_view_impl, vec![0; 32]);
         let modules = Modules::new(&compiled_modules);
         let dep_graph = modules.compute_dependency_graph();
         let mut addr: Option<AccountAddress> = None;
@@ -163,10 +169,11 @@ impl NovaVM {
         Ok((VMStatus::Executed, output, None))
     }
 
-    pub fn execute_message<S: StateView, A: BlockInfoResolver>(
+    pub fn execute_message<S: StateView, T: TableView, A: BlockInfoResolver>(
         &mut self,
         msg: Message,
-        remote_cache: &DataViewResolver<'_, S>,
+        state_view_impl: &StateViewImpl<'_, S>,
+        table_view_impl: &mut TableViewImpl<'_, T>,
         api: Option<&A>,
         gas_limit: Gas,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), NovaVMError> {
@@ -190,7 +197,8 @@ impl NovaVM {
                 self.execute_script_or_entry_function(
                     msg.session_id().to_vec(),
                     sender,
-                    remote_cache,
+                    state_view_impl,
+                    table_view_impl,
                     api,
                     payload,
                     &mut gas_meter,
@@ -200,7 +208,8 @@ impl NovaVM {
                 Some(sender) => self.publish_module_bundle(
                     msg.session_id().to_vec(),
                     sender,
-                    remote_cache,
+                    state_view_impl,
+                    table_view_impl,
                     m,
                     &mut gas_meter,
                 ),
@@ -208,7 +217,7 @@ impl NovaVM {
             },
         };
 
-        // Charge for err msg
+        // Charge gas for error handling
         let gas_used = gas_limit.checked_sub(gas_meter.balance()).unwrap();
 
         match result {
@@ -218,12 +227,7 @@ impl NovaVM {
 
                 let (status, message_output) = match txn_status.is_discarded() {
                     true => discard_error_vm_status(err, gas_used),
-                    false => self.failed_message_cleanup(
-                        msg.session_id().to_vec(),
-                        err,
-                        remote_cache,
-                        gas_used,
-                    ),
+                    false => self.failed_message_cleanup(err, gas_used),
                 };
 
                 Ok((status, message_output, None))
@@ -231,15 +235,16 @@ impl NovaVM {
         }
     }
 
-    fn publish_module_bundle<S: StateView>(
+    fn publish_module_bundle<S: StateView, T: TableView>(
         &self,
         session_id: Vec<u8>,
         sender: AccountAddress,
-        remote_cache: &DataViewResolver<'_, S>,
+        state_view_impl: &StateViewImpl<'_, S>,
+        table_view_impl: &mut TableViewImpl<'_, T>,
         modules: &ModuleBundle,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session(remote_cache, session_id);
+        let mut session = self.create_session(state_view_impl, table_view_impl, session_id);
 
         let module_bin_list = modules.clone().into_inner();
         session
@@ -257,16 +262,18 @@ impl NovaVM {
         Ok((status, output, None))
     }
 
-    fn execute_script_or_entry_function<S: StateView, A: BlockInfoResolver>(
+    fn execute_script_or_entry_function<S: StateView, T: TableView, A: BlockInfoResolver>(
         &self,
         session_id: Vec<u8>,
         sender: Option<AccountAddress>,
-        remote_cache: &DataViewResolver<'_, S>,
+        state_view_impl: &StateViewImpl<'_, S>,
+        table_view_impl: &mut TableViewImpl<'_, T>,
         api: &A,
         payload: &MessagePayload,
         gas_meter: &mut NovaGasMeter,
     ) -> Result<(VMStatus, MessageOutput, Option<SerializedReturnValues>), VMStatus> {
-        let mut session = self.create_session_with_api(remote_cache, api, session_id.clone());
+        let mut session =
+            self.create_session_with_api(state_view_impl, table_view_impl, api, session_id.clone());
 
         let senders = match sender {
             Some(s) => vec![s],
@@ -342,21 +349,14 @@ impl NovaVM {
         ))
     }
 
-    fn failed_message_cleanup<S: StateView>(
+    fn failed_message_cleanup(
         &self,
-        session_id: Vec<u8>,
         error_code: VMStatus,
-        remote_cache: &DataViewResolver<'_, S>,
         gas_used: Gas,
     ) -> (VMStatus, MessageOutput) {
-        // TODO - in aptos vm, they rerun tx in simulation mode and get the used gas to charge cost
-        // even the tx failed. should we follow this?
-        let session: SessionExt<_> = self.create_session(remote_cache, session_id).into();
-        let session_output = session.finish().unwrap();
-
         match MessageStatus::from(error_code.clone()) {
             MessageStatus::Keep(status) => {
-                let txn_output = get_message_output(session_output, gas_used, status)
+                let txn_output = get_message_output(empty_session_output(), gas_used, status)
                     .unwrap_or_else(|e| discard_error_vm_status(e, gas_used).1);
                 (error_code, txn_output)
             }
@@ -385,7 +385,7 @@ impl NovaVM {
     }
 
     /// Resolve a pending code publish request registered via the NativeCodeContext.
-    fn resolve_pending_code_publish<'r, S: MoveResolver + TableResolver>(
+    fn resolve_pending_code_publish<'r, S: MoveResolver>(
         &self,
         session: &mut Session<'r, '_, S>,
         gas_meter: &mut NovaGasMeter,

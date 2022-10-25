@@ -4,7 +4,6 @@ use move_deps::move_core_types::{
     account_address::AccountAddress,
     effects::{ChangeSet, Op},
     language_storage::ModuleId,
-    resolver::MoveResolver,
     vm_status::{StatusCode, VMStatus},
 };
 
@@ -15,7 +14,7 @@ use self::size_resolver::SizeResolver;
 
 pub mod size_resolver;
 
-pub fn compute_size_changes<S: MoveResolver + SizeResolver>(
+pub fn compute_size_changes<S: SizeResolver>(
     remote: &S,
     change_set: &ChangeSet,
 ) -> Result<BTreeMap<AccountAddress, SizeDelta>, VMStatus> {
