@@ -1,6 +1,5 @@
 use move_deps::move_core_types::{
     account_address::AccountAddress,
-    resolver::MoveResolver,
     vm_status::{StatusCode, VMStatus},
 };
 
@@ -17,7 +16,7 @@ use nova_types::table_meta::TableMeta;
 
 pub mod table_meta_resolver;
 
-pub fn compute_table_meta_changes<S: MoveResolver + SizeResolver + TableMetaResolver>(
+pub fn compute_table_meta_changes<S: SizeResolver + TableMetaResolver>(
     remote: &S,
     table_change_set: &TableChangeSet,
     account_size_changes: &mut BTreeMap<AccountAddress, SizeDelta>,

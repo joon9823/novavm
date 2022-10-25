@@ -284,9 +284,28 @@ typedef struct {
 } U8SliceView;
 
 typedef struct {
+  /**
+   * An ID assigned to this contract call
+   */
+  uint64_t call_id;
+  uint64_t iterator_index;
+} iterator_t;
+
+typedef struct {
+  int32_t (*next_db)(iterator_t, UnmanagedVector*, UnmanagedVector*);
+} Iterator_vtable;
+
+typedef struct {
+  iterator_t state;
+  Iterator_vtable vtable;
+  size_t prefix_len;
+} GoIter;
+
+typedef struct {
   int32_t (*read_db)(db_t*, U8SliceView, UnmanagedVector*, UnmanagedVector*);
   int32_t (*write_db)(db_t*, U8SliceView, U8SliceView, UnmanagedVector*);
   int32_t (*remove_db)(db_t*, U8SliceView, UnmanagedVector*);
+  int32_t (*scan_db)(db_t*, U8SliceView, U8SliceView, U8SliceView, int32_t, GoIter*, UnmanagedVector*);
 } Db_vtable;
 
 typedef struct {

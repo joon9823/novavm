@@ -4,7 +4,7 @@
 use anyhow::bail;
 use better_any::{Tid, TidAble};
 use move_deps::move_binary_format::errors::PartialVMError;
-use move_deps::move_core_types::gas_algebra::{InternalGas, InternalGasPerByte, NumBytes};
+use move_deps::move_core_types::gas_algebra::NumBytes;
 use move_deps::move_vm_types::pop_arg;
 use move_deps::move_vm_types::values::Struct;
 use move_deps::{

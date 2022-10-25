@@ -40,6 +40,26 @@ func (l Lookup) Delete(key []byte) {
 	}
 }
 
+// Iterator wraps the underlying DB's Iterator method panicing on error.
+func (l Lookup) Iterator(start, end []byte) dbm.Iterator {
+	iter, err := l.db.Iterator(start, end)
+	if err != nil {
+		panic(err)
+	}
+
+	return iter
+}
+
+// ReverseIterator wraps the underlying DB's ReverseIterator method panicing on error.
+func (l Lookup) ReverseIterator(start, end []byte) dbm.Iterator {
+	iter, err := l.db.ReverseIterator(start, end)
+	if err != nil {
+		panic(err)
+	}
+
+	return iter
+}
+
 var _ KVStore = (*Lookup)(nil)
 
 /***** Mock GoAPI ****/

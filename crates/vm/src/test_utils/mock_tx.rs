@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use super::mock_chain::MockChain;
 
 use nova_gas::Gas;
-use nova_storage::data_view_resolver::DataViewResolver;
+use nova_storage::{state_view_impl::StateViewImpl, table_view_impl::TableViewImpl};
 use nova_types::{message::Message, message::MessageOutput, size_delta::SizeDelta};
 
-use crate::nova_vm::NovaVM;
+use crate::{nova_vm::NovaVM, test_utils::mock_chain::MockTableState};
 
 use move_deps::{
     move_core_types::{account_address::AccountAddress, vm_status::VMStatus},
@@ -112,9 +112,15 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
     let mut vm = NovaVM::new();
 
     let mut state = chain.create_state();
+    let mut table_state = MockTableState::new(&state);
+
     let api = chain.create_api(0, 0);
-    let resolver = DataViewResolver::new(&state);
-    let (status, output, _) = vm.initialize(&resolver, None).expect("Module must load");
+    let resolver = StateViewImpl::new(&state);
+    let mut table_resolver = TableViewImpl::new(&mut table_state);
+
+    let (status, output, _) = vm
+        .initialize(&resolver, &mut table_resolver, None)
+        .expect("Module must load");
     assert!(status == VMStatus::Executed);
     let inner_output = output.into_inner();
     state.push_write_set(inner_output.1);
@@ -132,9 +138,13 @@ pub fn run_transaction(testcases: Vec<MockTx>) {
         let mut state = chain.create_state();
 
         for (msg, exp_output) in msg_tests {
-            let resolver = DataViewResolver::new(&state);
+            let resolver = StateViewImpl::new(&state);
+
+            let mut table_state = MockTableState::new(&state);
+            let mut table_resolver = TableViewImpl::new(&mut table_state);
+
             let vm_output = vm
-                .execute_message(msg, &resolver, Some(&api), gas_limit)
+                .execute_message(msg, &resolver, &mut table_resolver, Some(&api), gas_limit)
                 .expect("nova vm failure");
 
             exp_output.check_output(&vm_output);

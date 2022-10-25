@@ -1,6 +1,7 @@
 pub mod access_path;
 pub mod entry_function;
 pub mod errors;
+pub mod iterator;
 pub mod message;
 pub mod module;
 pub mod script;

@@ -1,5 +1,6 @@
 use better_any::{Tid, TidAble};
 use move_deps::move_binary_format::errors::{PartialVMError, PartialVMResult};
+use move_deps::move_core_types::gas_algebra::NumArgs;
 use move_deps::move_core_types::{
     account_address::AccountAddress, effects::Op, gas_algebra::NumBytes, value::MoveTypeLayout,
     vm_status::StatusCode,
@@ -8,6 +9,7 @@ use move_deps::move_vm_runtime::{
     native_functions,
     native_functions::{NativeContext, NativeFunction, NativeFunctionTable},
 };
+use move_deps::move_vm_types::values::Vector;
 use move_deps::move_vm_types::{
     loaded_data::runtime_types::Type,
     natives::function::NativeResult,
@@ -16,9 +18,12 @@ use move_deps::move_vm_types::{
 };
 use nova_gas::gas_params::table::*;
 use nova_gas::table::GasParameters;
+use nova_types::iterator::Order;
 use nova_types::table::{TableChange, TableChangeSet, TableHandle, TableInfo};
 use sha3::{Digest, Sha3_256};
 use smallvec::smallvec;
+
+use std::ops::{Bound, RangeBounds};
 use std::{
     cell::RefCell,
     collections::{btree_map::Entry, BTreeMap, BTreeSet, VecDeque},
@@ -32,7 +37,17 @@ pub trait TableResolver {
         &self,
         handle: &TableHandle,
         key: &[u8],
-    ) -> Result<Option<Vec<u8>>, anyhow::Error>;
+    ) -> anyhow::Result<Option<Vec<u8>>>;
+
+    fn create_iterator(
+        &mut self,
+        handle: &TableHandle,
+        start: Option<&[u8]>,
+        end: Option<&[u8]>,
+        order: Order,
+    ) -> anyhow::Result<u32>;
+
+    fn next_key(&mut self, iterator_id: u32) -> anyhow::Result<Option<Vec<u8>>>;
 }
 
 /// A table operation, for supporting cost calculation.
@@ -51,9 +66,10 @@ pub enum TableOperation {
 /// extension.
 #[derive(Tid)]
 pub struct NativeTableContext<'a> {
-    resolver: &'a dyn TableResolver,
+    resolver: &'a mut dyn TableResolver,
     txn_hash: [u8; 32],
     table_data: RefCell<TableData>,
+    iterators: RefCell<Vec<TableIter>>,
 }
 
 // See stdlib/Error.move
@@ -86,8 +102,23 @@ struct Table {
     content: BTreeMap<Vec<u8>, GlobalValue>,
 }
 
+/// A structure representing a table iterator
+struct TableIter {
+    iterator_id: u32,
+    handle: TableHandle,
+    /// The changes is built from BTreeMap range function,
+    /// so the contents are sorted
+    changes: BTreeSet<Vec<u8>>,
+    /// next item loaded from the iterator
+    next: Option<(Value, Value)>,
+    order: Order,
+}
+
 /// The field index of the `handle` field in the `Table` Move struct.
 const HANDLE_FIELD_INDEX: usize = 0;
+
+/// The field index of the `iterator` field in the `TableIter` Move struct.
+const ITERATOR_ID_FIELD_INDEX: usize = 0;
 
 // =========================================================================================
 // Implementation of Native Table Context
@@ -95,11 +126,12 @@ const HANDLE_FIELD_INDEX: usize = 0;
 impl<'a> NativeTableContext<'a> {
     /// Create a new instance of a native table context. This must be passed in via an
     /// extension into VM session functions.
-    pub fn new(txn_hash: [u8; 32], resolver: &'a dyn TableResolver) -> Self {
+    pub fn new(txn_hash: [u8; 32], resolver: &'a mut dyn TableResolver) -> Self {
         Self {
             resolver,
             txn_hash,
             table_data: Default::default(),
+            iterators: Default::default(),
         }
     }
 
@@ -216,12 +248,46 @@ impl Table {
     }
 }
 
+impl TableIter {
+    fn load_next_key<'a>(
+        &mut self,
+        resolver: &'a mut dyn TableResolver,
+    ) -> PartialVMResult<(Option<Vec<u8>>, Option<Option<NumBytes>>)> {
+        let res = resolver.next_key(self.iterator_id).map_err(|err| {
+            partial_extension_error(format!("remote table resolver failure: {}", err))
+        })?;
+
+        let (next_item, loaded) = match res {
+            Some(key_bytes) => {
+                let num_bytes = key_bytes.len() as u64;
+
+                (Some(key_bytes), Some(Some(NumBytes::new(num_bytes))))
+            }
+            None => (None, Some(None)),
+        };
+
+        if next_item.is_some() {
+            self.changes.insert(next_item.unwrap());
+        }
+
+        let next_key_bytes = match self.order {
+            Order::Ascending => self.changes.iter().next().map(|k| k.to_vec()),
+            Order::Descending => self.changes.iter().rev().next().map(|k| k.to_vec()),
+        };
+
+        Ok((
+            next_key_bytes.map(|k| self.changes.take(&k).unwrap()),
+            loaded,
+        ))
+    }
+}
+
 // =========================================================================================
 // Native Function Implementations
 
 /// Returns all natives for tables.
 pub fn all_natives(table_addr: AccountAddress, gas_params: GasParameters) -> NativeFunctionTable {
-    let natives: [(&str, &str, NativeFunction); 9] = [
+    let natives: [(&str, &str, NativeFunction); 12] = [
         (
             "table",
             "new_table_handle",
@@ -255,7 +321,7 @@ pub fn all_natives(table_addr: AccountAddress, gas_params: GasParameters) -> Nat
         (
             "table",
             "contains_box",
-            make_native_contains_box(gas_params.common, gas_params.contains_box),
+            make_native_contains_box(gas_params.common.clone(), gas_params.contains_box),
         ),
         (
             "table",
@@ -266,6 +332,21 @@ pub fn all_natives(table_addr: AccountAddress, gas_params: GasParameters) -> Nat
             "table",
             "drop_unchecked_box",
             make_native_drop_unchecked_box(gas_params.drop_unchecked_box),
+        ),
+        (
+            "table",
+            "new_table_iter",
+            make_native_new_table_iter(gas_params.new_table_iter),
+        ),
+        (
+            "table",
+            "prepare_box",
+            make_native_prepare_box(gas_params.common, gas_params.prepare_box),
+        ),
+        (
+            "table",
+            "next_box",
+            make_native_next_box(gas_params.next_box),
         ),
     ];
 
@@ -569,6 +650,162 @@ pub fn make_native_drop_unchecked_box(gas_params: DropUncheckedBoxGasParameters)
     )
 }
 
+fn native_new_table_iter(
+    gas_params: &NewTableIteratorGasParameters,
+    context: &mut NativeContext,
+    ty_args: Vec<Type>,
+    mut args: VecDeque<Value>,
+) -> PartialVMResult<NativeResult> {
+    assert_eq!(ty_args.len(), 3);
+    assert_eq!(args.len(), 4);
+
+    let order = Order::try_from(pop_arg!(args, u8) as i32)
+        .map_err(|_| PartialVMError::new(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR))?;
+    let end_bytes = pop_arg!(args, Vector).to_vec_u8()?;
+    let start_bytes = pop_arg!(args, Vector).to_vec_u8()?;
+
+    // convert vector start end args into option iterator arguments
+    let start_option: Option<&[u8]> = if start_bytes.len() == 0 {
+        None
+    } else {
+        Some(start_bytes.as_ref())
+    };
+    let end_option: Option<&[u8]> = if end_bytes.len() == 0 {
+        None
+    } else {
+        Some(end_bytes.as_ref())
+    };
+
+    let handle = get_table_handle(&pop_arg!(args, StructRef))?;
+
+    // create iterator and store this to table context
+    let changes = iter_table_changes(
+        &context,
+        handle,
+        &ty_args[0],
+        &ty_args[2],
+        start_option,
+        end_option,
+        order,
+    )?;
+
+    // charge gas cost
+    let mut cost = gas_params.base;
+    cost += NumArgs::new(changes.len() as u64) * gas_params.per_item_sorted;
+
+    let table_context = context.extensions_mut().get_mut::<NativeTableContext>();
+    let iterator_id = table_context
+        .resolver
+        .create_iterator(&handle, start_option, end_option, order)
+        .map_err(|err| {
+            partial_extension_error(format!("remote table resolver failure: {}", err))
+        })?;
+
+    let mut iterators = table_context.iterators.borrow_mut();
+    let context_iterator_id = iterators.len();
+    iterators.push(TableIter {
+        iterator_id,
+        handle,
+        changes,
+        next: None,
+        order,
+    });
+
+    Ok(NativeResult::ok(
+        cost,
+        smallvec![Value::u64(context_iterator_id as u64)],
+    ))
+}
+
+pub fn make_native_new_table_iter(gas_params: NewTableIteratorGasParameters) -> NativeFunction {
+    Arc::new(
+        move |context, ty_args, args| -> PartialVMResult<NativeResult> {
+            native_new_table_iter(&gas_params, context, ty_args, args)
+        },
+    )
+}
+
+/// Check the `next_key` exist or not and store
+/// the computed `next` to the `table_context.next`
+/// for the function `next_box`.
+fn native_prepare_box(
+    common_gas_params: &CommonGasParameters,
+    gas_params: &PrepareBoxGasParameters,
+    context: &mut NativeContext,
+    ty_args: Vec<Type>,
+    mut args: VecDeque<Value>,
+) -> PartialVMResult<NativeResult> {
+    assert_eq!(ty_args.len(), 3);
+    assert_eq!(args.len(), 1);
+
+    let mut cost = gas_params.base;
+    let iterator_id = get_iterator_id(&pop_arg!(args, StructRef))? as usize;
+
+    loop {
+        let ((next_key, loaded), handle) = get_next_key_with_table_handle(context, iterator_id)?;
+        cost += common_gas_params.calculate_load_cost(loaded);
+
+        if next_key.is_none() {
+            return Ok(NativeResult::ok(cost, smallvec![Value::bool(false)]));
+        }
+
+        let key_bytes = next_key.unwrap();
+        let (next, loaded, serialized) =
+            load_table_entry(context, handle, &ty_args[0], &ty_args[2], key_bytes)?;
+        cost += common_gas_params.calculate_load_cost(loaded);
+        cost += gas_params.calculate_serialize_cost(serialized);
+
+        if next.is_some() {
+            set_next(context, iterator_id, next);
+            return Ok(NativeResult::ok(cost, smallvec![Value::bool(true)]));
+        }
+    }
+}
+
+pub fn make_native_prepare_box(
+    common_gas_params: CommonGasParameters,
+    gas_params: PrepareBoxGasParameters,
+) -> NativeFunction {
+    Arc::new(
+        move |context, ty_args, args| -> PartialVMResult<NativeResult> {
+            native_prepare_box(&common_gas_params, &gas_params, context, ty_args, args)
+        },
+    )
+}
+
+/// Return `iterator.next` which was computed from
+/// the function `prepare_box`.
+fn native_next_box(
+    gas_params: &NextBoxGasParameters,
+    context: &mut NativeContext,
+    ty_args: Vec<Type>,
+    mut args: VecDeque<Value>,
+) -> PartialVMResult<NativeResult> {
+    assert_eq!(ty_args.len(), 3);
+    assert_eq!(args.len(), 1);
+
+    let iterator_id = get_iterator_id(&pop_arg!(args, StructRef))? as usize;
+
+    let table_context = context.extensions().get::<NativeTableContext>();
+    let mut iterators = table_context.iterators.borrow_mut();
+    let iterator = iterators.get_mut(iterator_id).unwrap();
+
+    assert!(iterator.next.is_some());
+
+    let (key, value) = iterator.next.take().unwrap();
+    iterator.next = None;
+
+    Ok(NativeResult::ok(gas_params.base, smallvec![key, value]))
+}
+
+pub fn make_native_next_box(gas_params: NextBoxGasParameters) -> NativeFunction {
+    Arc::new(
+        move |context, ty_args, args| -> PartialVMResult<NativeResult> {
+            native_next_box(&gas_params, context, ty_args, args)
+        },
+    )
+}
+
 // =========================================================================================
 // Helpers
 
@@ -579,6 +816,15 @@ fn get_table_handle(table: &StructRef) -> PartialVMResult<TableHandle> {
         .read_ref()?
         .value_as::<AccountAddress>()?;
     Ok(TableHandle(handle))
+}
+
+fn get_iterator_id(table_iter: &StructRef) -> PartialVMResult<u64> {
+    let iterator_id = table_iter
+        .borrow_field(ITERATOR_ID_FIELD_INDEX)?
+        .value_as::<Reference>()?
+        .read_ref()?
+        .value_as::<u64>()?;
+    Ok(iterator_id)
 }
 
 fn serialize(layout: &MoveTypeLayout, val: &Value) -> PartialVMResult<Vec<u8>> {
@@ -599,4 +845,109 @@ fn get_type_layout(context: &NativeContext, ty: &Type) -> PartialVMResult<MoveTy
     context
         .type_to_type_layout(ty)?
         .ok_or_else(|| partial_extension_error("cannot determine type layout"))
+}
+
+fn iter_table_changes(
+    context: &NativeContext,
+    handle: TableHandle,
+    key_type: &Type,
+    value_type: &Type,
+    start: Option<&[u8]>,
+    end: Option<&[u8]>,
+    order: Order,
+) -> PartialVMResult<BTreeSet<Vec<u8>>> {
+    let table_context = context.extensions().get::<NativeTableContext>();
+    let mut table_data = table_context.table_data.borrow_mut();
+    let table = table_data.get_or_create_table(context, handle, key_type, value_type)?;
+
+    // change set iterator
+    let bounds = range_bounds(start, end);
+
+    // BTreeMap.range panics if range is start > end.
+    // However, this cases represent just empty range and we treat it as such.
+    match (bounds.start_bound(), bounds.end_bound()) {
+        (Bound::Included(start), Bound::Excluded(end)) if start > end => {
+            return Ok(BTreeSet::default());
+        }
+        _ => {}
+    }
+
+    let content_iter = table.content.range(bounds);
+    let mut entries: BTreeSet<Vec<u8>> = BTreeSet::default();
+    match order {
+        Order::Ascending => {
+            for (key, _) in content_iter {
+                entries.insert(key.to_vec());
+            }
+        }
+        Order::Descending => {
+            for (key, _) in content_iter.rev() {
+                entries.insert(key.to_vec());
+            }
+        }
+    };
+
+    Ok(entries)
+}
+
+fn set_next(context: &mut NativeContext, iterator_id: usize, next: Option<(Value, Value)>) {
+    let table_context = context.extensions().get::<NativeTableContext>();
+    let mut iterators = table_context.iterators.borrow_mut();
+    let iterator = iterators.get_mut(iterator_id);
+    assert!(iterator.is_some());
+
+    iterator.unwrap().next = next;
+}
+
+fn get_next_key_with_table_handle(
+    context: &mut NativeContext,
+    iterator_id: usize,
+) -> PartialVMResult<((Option<Vec<u8>>, Option<Option<NumBytes>>), TableHandle)> {
+    let table_context = context.extensions_mut().get_mut::<NativeTableContext>();
+    let mut iterators = table_context.iterators.borrow_mut();
+    let iterator = iterators.get_mut(iterator_id);
+
+    assert!(iterator.is_some());
+    let iterator = iterator.unwrap();
+
+    let res = iterator.load_next_key(table_context.resolver)?;
+    Ok((res, iterator.handle))
+}
+
+fn load_table_entry(
+    context: &mut NativeContext,
+    handle: TableHandle,
+    key_type: &Type,
+    value_type: &Type,
+    key_bytes: Vec<u8>,
+) -> PartialVMResult<(
+    Option<(Value, Value)>,
+    Option<Option<NumBytes>>,
+    Option<NumBytes>,
+)> {
+    let table_context = context.extensions().get::<NativeTableContext>();
+    let mut table_data = table_context.table_data.borrow_mut();
+    let table = table_data.get_or_create_table(context, handle, key_type, value_type)?;
+    let key_layout = table.key_layout.clone();
+
+    let (gv, loaded) = table.get_or_create_global_value(table_context, key_bytes.clone())?;
+    let (key_value, serialized) = if gv.exists()? {
+        let key = deserialize(&key_layout, &key_bytes)?;
+        let value = gv.borrow_global()?;
+        (
+            Some((key, value)),
+            Some(NumBytes::new(key_bytes.len() as u64)),
+        )
+    } else {
+        (None, None)
+    };
+
+    Ok((key_value, loaded, serialized))
+}
+
+fn range_bounds(start: Option<&[u8]>, end: Option<&[u8]>) -> impl RangeBounds<Vec<u8>> {
+    (
+        start.map_or(Bound::Unbounded, |x| Bound::Included(x.to_vec())),
+        end.map_or(Bound::Unbounded, |x| Bound::Excluded(x.to_vec())),
+    )
 }

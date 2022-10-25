@@ -1,4 +1,6 @@
-use move_deps::move_core_types::gas_algebra::{InternalGas, InternalGasPerByte, NumBytes};
+use move_deps::move_core_types::gas_algebra::{
+    InternalGas, InternalGasPerArg, InternalGasPerByte, NumBytes,
+};
 
 #[derive(Debug, Clone)]
 pub struct CommonGasParameters {
@@ -59,5 +61,31 @@ pub struct DestroyEmptyBoxGasParameters {
 
 #[derive(Debug, Clone)]
 pub struct DropUncheckedBoxGasParameters {
+    pub base: InternalGas,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewTableIteratorGasParameters {
+    pub base: InternalGas,
+    pub per_item_sorted: InternalGasPerArg,
+}
+
+#[derive(Debug, Clone)]
+pub struct PrepareBoxGasParameters {
+    pub base: InternalGas,
+    pub per_byte_serialized: InternalGasPerByte,
+}
+
+impl PrepareBoxGasParameters {
+    pub fn calculate_serialize_cost(&self, serialized: Option<NumBytes>) -> InternalGas {
+        match serialized {
+            Some(num_bytes) => self.per_byte_serialized * num_bytes,
+            None => 0.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NextBoxGasParameters {
     pub base: InternalGas,
 }

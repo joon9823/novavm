@@ -57,6 +57,8 @@ func publishModuleBundle(
 	require.NoError(t, err)
 	f3, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/Bundle3.mv")
 	require.NoError(t, err)
+	f4, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/TableTestData.mv")
+	require.NoError(t, err)
 
 	usedGas, _, sizeDeltas, err := vm.PublishModuleBundle(
 		kvStore,
@@ -76,6 +78,9 @@ func publishModuleBundle(
 				},
 				{
 					Code: f2,
+				},
+				{
+					Code: f4,
 				},
 			},
 		},
@@ -329,4 +334,78 @@ func Test_ExecuteScript(t *testing.T) {
 	num := types.DeserializeUint64(events[0].Data)
 	require.Equal(t, uint64(300), num)
 	require.NotZero(t, usedGas)
+}
+
+func Test_TableIterator(t *testing.T) {
+	vm, kvStore := initializeVM(t)
+	defer vm.Destroy()
+
+	publishModuleBundle(t, vm, kvStore)
+
+	testAccount, err := types.NewAccountAddress("0x2")
+	require.NoError(t, err)
+
+	// prepare table iterator test data
+	payload := types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: testAccount,
+			Name:    "TableTestData",
+		},
+		Function: "prepare_table_for_iterator",
+		TyArgs:   []types.TypeTag{},
+		Args:     []types.Bytes{},
+	}
+
+	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
+	_, _, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		mockAPI,
+		100000000,
+		bytes.Repeat([]byte{0}, 32),
+		testAccount,
+		payload,
+	)
+	require.NoError(t, err)
+
+	// run ascending test
+	payload = types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: testAccount,
+			Name:    "TableTestData",
+		},
+		Function: "iterate_ascending",
+		TyArgs:   []types.TypeTag{},
+		Args:     []types.Bytes{types.Bytes(testAccount)},
+	}
+
+	_, _, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		mockAPI,
+		100000000,
+		bytes.Repeat([]byte{0}, 32),
+		testAccount,
+		payload,
+	)
+	require.NoError(t, err)
+
+	// run descending test
+	payload = types.ExecuteEntryFunctionPayload{
+		Module: types.ModuleId{
+			Address: testAccount,
+			Name:    "TableTestData",
+		},
+		Function: "iterate_ascending",
+		TyArgs:   []types.TypeTag{},
+		Args:     []types.Bytes{types.Bytes(testAccount)},
+	}
+
+	_, _, _, err = vm.ExecuteEntryFunction(
+		kvStore,
+		mockAPI,
+		100000000,
+		bytes.Repeat([]byte{0}, 32),
+		testAccount,
+		payload,
+	)
+	require.NoError(t, err)
 }

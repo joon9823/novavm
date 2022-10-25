@@ -2,7 +2,7 @@
 // Copyright (c) The Move Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::test_utils::mock_chain::{BlankStorage, MockApi};
+use crate::test_utils::mock_chain::{BlankTableViewImpl, MockApi};
 use move_deps::{
     move_cli::base::test::{run_move_unit_tests, UnitTestResult},
     move_package, move_unit_test,
@@ -12,13 +12,13 @@ use move_deps::{
     },
 };
 use nova_gas::NativeGasParameters;
-use nova_natives::all_natives;
-use nova_natives::{block::NativeBlockContext, code::NativeCodeContext, table::NativeTableContext};
-use once_cell::sync::Lazy;
+use nova_natives::{
+    all_natives, block::NativeBlockContext, code::NativeCodeContext, table::NativeTableContext,
+};
 use std::path::PathBuf;
 use tempfile::tempdir;
 
-static DUMMY_RESOLVER: Lazy<BlankStorage> = Lazy::new(|| BlankStorage);
+static mut BLANK_TABLE_RESOLVER: BlankTableViewImpl = BlankTableViewImpl {};
 
 pub fn configure_for_unit_test() {
     move_unit_test::extensions::set_extension_hook(Box::new(unit_test_extensions_hook))
@@ -26,7 +26,9 @@ pub fn configure_for_unit_test() {
 
 fn unit_test_extensions_hook(exts: &mut NativeContextExtensions) {
     exts.add(NativeCodeContext::default());
-    exts.add(NativeTableContext::new([0; 32], &*DUMMY_RESOLVER));
+    exts.add(NativeTableContext::new([0; 32], unsafe {
+        &mut BLANK_TABLE_RESOLVER
+    }));
     exts.add(NativeBlockContext::new(&MockApi {
         height: 0,
         timestamp: 0,

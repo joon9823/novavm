@@ -3,13 +3,12 @@
 
 use crate::helpers::make_module_natives;
 use move_deps::move_binary_format::errors::PartialVMResult;
-use move_deps::move_core_types::gas_algebra::InternalGas;
 use move_deps::move_vm_runtime::native_functions::{NativeContext, NativeFunction};
 use move_deps::move_vm_types::{
     loaded_data::runtime_types::Type, natives::function::NativeResult, pop_arg, values::Value,
 };
 use nova_gas::gas_params::event::*;
-use nova_gas::{AbstractValueSize, InternalGasPerAbstractValueUnit};
+use nova_gas::AbstractValueSize;
 use smallvec::smallvec;
 use std::{collections::VecDeque, sync::Arc};
 

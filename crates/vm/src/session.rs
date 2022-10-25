@@ -3,7 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use nova_natives::table::{NativeTableContext, TableResolver};
+use nova_natives::table::NativeTableContext;
 use nova_types::{
     size_change_set::SizeChangeSet, size_delta::SizeDelta, table::TableHandle,
     table_meta::TableMeta, table_meta_change_set::TableMetaChangeSet, write_set::WriteSet,
@@ -23,18 +23,21 @@ use move_deps::{
 };
 
 pub type SessionOutput = (Vec<Event>, WriteSet, SizeChangeSet);
+pub fn empty_session_output() -> SessionOutput {
+    (vec![], WriteSet::default(), SizeChangeSet::default())
+}
 
 pub struct SessionExt<'r, 'l, S> {
-    remote: &'r S,
+    resolver: &'r S,
     inner: Session<'r, 'l, S>,
 }
 
 impl<'r, 'l, S> SessionExt<'r, 'l, S>
 where
-    S: MoveResolver + TableResolver + SizeResolver + TableMetaResolver,
+    S: MoveResolver + SizeResolver + TableMetaResolver,
 {
-    pub fn new(inner: Session<'r, 'l, S>, remote: &'r S) -> Self {
-        Self { inner, remote }
+    pub fn new(inner: Session<'r, 'l, S>, resolver: &'r S) -> Self {
+        Self { inner, resolver }
     }
 
     pub fn finish(self) -> Result<SessionOutput, VMStatus> {
@@ -49,11 +52,11 @@ where
 
         // Compute storage size delta for all accounts to charge storage fee
         let mut size_changes: BTreeMap<AccountAddress, SizeDelta> =
-            compute_size_changes(self.remote, &change_set)?;
+            compute_size_changes(self.resolver, &change_set)?;
 
         // Compute storage size delta for all tables to charge storage fee
         let table_meta_changes: BTreeMap<TableHandle, TableMeta> =
-            compute_table_meta_changes(self.remote, &table_change_set, &mut size_changes)?;
+            compute_table_meta_changes(self.resolver, &table_change_set, &mut size_changes)?;
 
         let table_meta_change_set = TableMetaChangeSet::new(
             table_meta_changes,

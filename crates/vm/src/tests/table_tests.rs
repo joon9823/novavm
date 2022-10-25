@@ -66,7 +66,7 @@ fn test_tables() {
                 Item::VMStatusReturn(VMStatus::Executed),
                 Item::SizeChange(
                     [
-                        (account_two, SizeDelta::decreasing(303)),
+                        (account_two, SizeDelta::decreasing(289)),
                         (account_three, SizeDelta::increasing(130 + 201 + 111)),
                         // access_path "0000000000000000000000000000000000000003/1/0x2::TableTestData::S<address, 0x1::table::Table<u64, u64>>" => 102
                         // S { address, u64 } => 28
@@ -146,8 +146,38 @@ fn test_tables() {
             ),
             ExpectedOutput(vec![
                 Item::VMStatusReturn(VMStatus::Executed),
-                Item::SizeChange([(generate_account("0x7"), SizeDelta::decreasing(236))].into()),
+                Item::SizeChange([(generate_account("0x7"), SizeDelta::decreasing(162))].into()),
             ]),
+        ),
+        MockTx::one(
+            // prepare table for iterator
+            Message::new_entry_function(
+                vec![12; 32],
+                Some(generate_account("0x8")),
+                entry_function::prepare_table_for_iterator(),
+            ),
+            ExpectedOutput(vec![
+                Item::VMStatusReturn(VMStatus::Executed),
+                Item::SizeChange([(generate_account("0x8"), SizeDelta::increasing(772))].into()),
+            ]),
+        ),
+        MockTx::one(
+            // iterate ascending
+            Message::new_entry_function(
+                vec![12; 32],
+                Some(generate_account("0x8")),
+                entry_function::iterate_ascending(generate_account("0x8")),
+            ),
+            ExpectedOutput(vec![Item::VMStatusReturn(VMStatus::Executed)]),
+        ),
+        MockTx::one(
+            // iterate descending
+            Message::new_entry_function(
+                vec![12; 32],
+                Some(generate_account("0x8")),
+                entry_function::iterate_descending(generate_account("0x8")),
+            ),
+            ExpectedOutput(vec![Item::VMStatusReturn(VMStatus::Executed)]),
         ),
     ];
 

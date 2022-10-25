@@ -35,7 +35,7 @@
 //! On the other hand, if you want to query only <Alice>/a/*, `address` will be set to Alice and
 //! `path` will be set to "/a" and use the `get_prefix()` method from statedb
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use move_deps::move_core_types::{
     account_address::AccountAddress,
     identifier::Identifier,
@@ -108,6 +108,14 @@ impl AccessPath {
             DataPath::Code(module_name) => Some(ModuleId::new(self.address, module_name.clone())),
             _ => None,
         }
+    }
+
+    pub fn to_bytes(&self) -> anyhow::Result<Vec<u8>> {
+        let mut out = self.address.to_vec();
+        let path_bytes = self.path.encode()?;
+
+        out.extend(path_bytes);
+        Ok(out)
     }
 }
 
@@ -210,6 +218,41 @@ impl DataPath {
             DataPath::Resource(_) => DataType::RESOURCE,
             DataPath::TableItem(_) => DataType::TABLE_ITEM,
             DataPath::TableMeta => DataType::TABLE_META,
+        }
+    }
+
+    /// Serializes to bytes for physical storage.
+    pub fn encode(&self) -> anyhow::Result<Vec<u8>> {
+        let mut out = vec![];
+
+        let prefix = self.data_type().storage_index();
+        let raw_key = match self {
+            DataPath::Code(module_name) => bcs::to_bytes(module_name)?,
+            DataPath::Resource(struct_tag) => bcs::to_bytes(struct_tag)?,
+            DataPath::TableItem(key) => key.to_vec(),
+            DataPath::TableMeta => {
+                vec![]
+            }
+        };
+
+        out.push(prefix as u8);
+        out.extend(raw_key);
+        Ok(out)
+    }
+
+    /// Recovers from serialized bytes in physical storage.
+    pub fn decode(val: &[u8]) -> anyhow::Result<Self> {
+        if val.is_empty() {
+            return Err(anyhow!("empty input bytes"));
+        }
+
+        let data_type = val[0];
+        let data_type = DataType::from_index(data_type).map_err(|e| anyhow!(e))?;
+        match data_type {
+            DataType::CODE => Ok(DataPath::Code(bcs::from_bytes(&val[1..])?)),
+            DataType::RESOURCE => Ok(DataPath::Resource(bcs::from_bytes(&val[1..])?)),
+            DataType::TABLE_ITEM => Ok(DataPath::TableItem(val[1..].to_vec())),
+            DataType::TABLE_META => Ok(DataPath::TableMeta),
         }
     }
 }
