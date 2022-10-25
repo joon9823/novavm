@@ -21,6 +21,8 @@ mod move_api;
 mod error;
 #[path = "src/event.rs"]
 mod event;
+#[path = "src/iterator.rs"]
+mod iterator;
 #[path = "src/db.rs"]
 mod db;
 use db::Db;

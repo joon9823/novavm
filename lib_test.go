@@ -65,6 +65,7 @@ func publishModuleBundle(
 			types.NewModule(f1),
 			types.NewModule(f2),
 			types.NewModule(f3),
+			types.NewModule(f4),
 		),
 	)
 	require.NoError(t, err)
@@ -342,16 +343,18 @@ func Test_TableIterator(t *testing.T) {
 
 	testAccount, err := types.NewAccountAddress("0x2")
 	require.NoError(t, err)
+	serialiizedTestAccount, err := testAccount.BcsSerialize()
+	require.NoError(t, err)
 
 	// prepare table iterator test data
-	payload := types.ExecuteEntryFunctionPayload{
+	payload := types.EntryFunction{
 		Module: types.ModuleId{
-			Address: testAccount,
+			Address: *testAccount,
 			Name:    "TableTestData",
 		},
 		Function: "prepare_table_for_iterator",
 		TyArgs:   []types.TypeTag{},
-		Args:     []types.Bytes{},
+		Args:     [][]byte{},
 	}
 
 	mockAPI := api.NewMockBlockInfo(100, uint64(time.Now().Unix()))
@@ -360,20 +363,20 @@ func Test_TableIterator(t *testing.T) {
 		mockAPI,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
-		testAccount,
+		*testAccount,
 		payload,
 	)
 	require.NoError(t, err)
 
 	// run ascending test
-	payload = types.ExecuteEntryFunctionPayload{
+	payload = types.EntryFunction{
 		Module: types.ModuleId{
-			Address: testAccount,
+			Address: *testAccount,
 			Name:    "TableTestData",
 		},
 		Function: "iterate_ascending",
 		TyArgs:   []types.TypeTag{},
-		Args:     []types.Bytes{types.Bytes(testAccount)},
+		Args:     [][]byte{serialiizedTestAccount},
 	}
 
 	_, _, _, err = vm.ExecuteEntryFunction(
@@ -381,20 +384,20 @@ func Test_TableIterator(t *testing.T) {
 		mockAPI,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
-		testAccount,
+		*testAccount,
 		payload,
 	)
 	require.NoError(t, err)
 
 	// run descending test
-	payload = types.ExecuteEntryFunctionPayload{
+	payload = types.EntryFunction{
 		Module: types.ModuleId{
-			Address: testAccount,
+			Address: *testAccount,
 			Name:    "TableTestData",
 		},
 		Function: "iterate_ascending",
 		TyArgs:   []types.TypeTag{},
-		Args:     []types.Bytes{types.Bytes(testAccount)},
+		Args:     [][]byte{serialiizedTestAccount},
 	}
 
 	_, _, _, err = vm.ExecuteEntryFunction(
@@ -402,7 +405,7 @@ func Test_TableIterator(t *testing.T) {
 		mockAPI,
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
-		testAccount,
+		*testAccount,
 		payload,
 	)
 	require.NoError(t, err)
