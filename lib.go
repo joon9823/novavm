@@ -1,8 +1,6 @@
 package nova
 
 import (
-	"fmt"
-
 	"github.com/Kernel-Labs/novavm/api"
 	"github.com/Kernel-Labs/novavm/types"
 )
@@ -29,9 +27,6 @@ func (vm *VM) Initialize(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("BLAHBLAH\n")
-	fmt.Printf("%+v\n", bz)
-	fmt.Printf("BLAHBLAH\n")
 
 	err = api.Initialize(
 		vm.inner,

@@ -3,7 +3,6 @@ package nova_test
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -17,7 +16,6 @@ import (
 
 func initializeVM(t *testing.T) (vm.VM, *api.Lookup) {
 	f, err := os.ReadFile("./crates/move-test/build/test1/bytecode_modules/BasicCoin.mv")
-	fmt.Printf("LENGTH: %d\n", len(f))
 	require.NoError(t, err)
 
 	kvStore := api.NewLookup()
@@ -60,22 +58,12 @@ func publishModuleBundle(
 		100000000,
 		bytes.Repeat([]byte{0}, 32),
 		*testAccount,
-		types.ModuleBundle{
-			Codes: []types.Module{
-				{
-					Code: f0,
-				},
-				{
-					Code: f1,
-				},
-				{
-					Code: f3,
-				},
-				{
-					Code: f2,
-				},
-			},
-		},
+		types.NewModuleBundle(
+			types.NewModule(f0),
+			types.NewModule(f1),
+			types.NewModule(f2),
+			types.NewModule(f3),
+		),
 	)
 	require.NoError(t, err)
 	require.NotZero(t, usedGas)
