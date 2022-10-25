@@ -33,6 +33,7 @@ pub struct GoIter {
     pub prefix_len: usize,
 }
 
+#[allow(dead_code)]
 impl GoIter {
     pub fn new(prefix_len: usize) -> Self {
         GoIter {
