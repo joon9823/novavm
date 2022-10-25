@@ -22,26 +22,8 @@ pub fn to_vec<T>(data: &T) -> Result<Vec<u8>, Error>
 where
     T: Serialize + ?Sized,
 {
-    //serde_json::to_vec(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
     bcs::to_bytes(data).map_err(|_| Error::invalid_utf8("failed to serialize"))
 }
-
-/* 
-impl Serialize for ExecutionResult {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("ExecutionResult", 3)?;
-        state.serialize_field("result", &self.result)?;
-        state.serialize_field("events", &self.events)?;
-        state.serialize_field("size_deltas", &self.size_deltas)?;
-        state.serialize_field("gas_used", &self.gas_used)?;
-        state.end()
-    }
-}
-*/
 
 #[allow(dead_code)]
 pub fn generate_result(
